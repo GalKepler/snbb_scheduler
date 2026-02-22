@@ -25,3 +25,7 @@ snbb-scheduler = "snbb_scheduler.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=snbb_scheduler --cov-report=term-missing"

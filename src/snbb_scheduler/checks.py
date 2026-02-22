@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["is_complete"]
+
 from pathlib import Path
 
 from snbb_scheduler.config import Procedure

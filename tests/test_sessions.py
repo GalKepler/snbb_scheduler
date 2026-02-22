@@ -36,6 +36,22 @@ def test_empty_dicom_root_returns_empty_dataframe(tmp_path):
     assert "session" in df.columns
 
 
+def test_dicom_root_exists_but_no_sessions(tmp_path):
+    """dicom_root exists but contains no sub-*/ses-* directories."""
+    dicom = tmp_path / "dicom"
+    dicom.mkdir()
+    (dicom / "README").touch()  # a file, not a subject dir
+    cfg = SchedulerConfig(
+        dicom_root=dicom,
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    df = discover_sessions(cfg)
+    assert df.empty
+    assert "subject" in df.columns
+
+
 def test_empty_dicom_root_has_procedure_columns(tmp_path):
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "nonexistent",
