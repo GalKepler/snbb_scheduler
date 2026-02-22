@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["discover_sessions"]
+
 import pandas as pd
 
 from snbb_scheduler.config import SchedulerConfig

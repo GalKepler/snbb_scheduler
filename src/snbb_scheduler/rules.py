@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["Rule", "build_rules"]
+
 from typing import Callable
 
 import pandas as pd
