@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from snbb_scheduler.config import SchedulerConfig
+from snbb_scheduler.rules import build_rules
+
+# Columns and dtypes for the state parquet file
+_STATE_COLUMNS = {
+    "subject": "object",
+    "session": "object",
+    "procedure": "object",
+    "status": "object",
+    "submitted_at": "datetime64[ns]",
+    "job_id": "object",
+}
+
+
+def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFrame:
+    """Evaluate rules against all sessions and return a task manifest.
+
+    Returns a DataFrame with columns:
+        subject, session, procedure, dicom_path, priority
+
+    priority reflects the order of procedures in config.procedures
+    (lower index = higher priority = submitted first).
+    """
+    if sessions.empty:
+        return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
+
+    rules = build_rules(config)
+    priority = {proc.name: i for i, proc in enumerate(config.procedures)}
+
+    rows = []
+    for _, session_row in sessions.iterrows():
+        for proc_name, rule in rules.items():
+            if rule(session_row):
+                rows.append({
+                    "subject": session_row["subject"],
+                    "session": session_row["session"],
+                    "procedure": proc_name,
+                    "dicom_path": session_row["dicom_path"],
+                    "priority": priority[proc_name],
+                })
+
+    if not rows:
+        return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
+
+    return pd.DataFrame(rows).sort_values("priority").reset_index(drop=True)
+
+
+def load_state(config: SchedulerConfig) -> pd.DataFrame:
+    """Load the state parquet file.
+
+    Returns an empty DataFrame with the correct schema if the file does not exist.
+    """
+    if not Path(config.state_file).exists():
+        return _empty_state()
+    return pd.read_parquet(config.state_file)
+
+
+def save_state(state: pd.DataFrame, config: SchedulerConfig) -> None:
+    """Persist the state DataFrame to the parquet state file."""
+    Path(config.state_file).parent.mkdir(parents=True, exist_ok=True)
+    state.to_parquet(config.state_file, index=False)
+
+
+def filter_in_flight(manifest: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
+    """Remove tasks that are already pending or running in the state file."""
+    if manifest.empty or state.empty:
+        return manifest
+
+    in_flight = state[state["status"].isin(["pending", "running"])][
+        ["subject", "session", "procedure"]
+    ]
+    if in_flight.empty:
+        return manifest
+
+    merged = manifest.merge(
+        in_flight, on=["subject", "session", "procedure"], how="left", indicator=True
+    )
+    return (
+        merged[merged["_merge"] == "left_only"]
+        .drop(columns="_merge")
+        .reset_index(drop=True)
+    )
+
+
+def _empty_state() -> pd.DataFrame:
+    df = pd.DataFrame(columns=list(_STATE_COLUMNS))
+    return df.astype({k: v for k, v in _STATE_COLUMNS.items() if k != "submitted_at"})
