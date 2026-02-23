@@ -3,8 +3,26 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import math
+
 from snbb_scheduler.config import DEFAULT_PROCEDURES, Procedure, SchedulerConfig
-from snbb_scheduler.sessions import discover_sessions
+from snbb_scheduler.sessions import discover_sessions, load_sessions, sanitize_session_id
+
+
+# ---------------------------------------------------------------------------
+# sanitize_session_id — float / NaN handling
+# ---------------------------------------------------------------------------
+
+
+def test_sanitize_session_id_float_nan_returns_empty_string():
+    """A float NaN session ID (e.g. from missing CSV value) returns an empty string."""
+    assert sanitize_session_id(float("nan")) == ""
+
+
+def test_sanitize_session_id_float_numeric_converts_to_int_string():
+    """A float like 1.0 is treated as integer 1 and zero-padded."""
+    result = sanitize_session_id(1.0)
+    assert result == "1".zfill(12)
 
 
 # ---------------------------------------------------------------------------
@@ -311,3 +329,57 @@ def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
     assert df.empty
     assert "subject" in df.columns
     assert "session" in df.columns
+
+
+# ---------------------------------------------------------------------------
+# CSV validation — load_sessions() (raw linked_sessions CSV)
+# ---------------------------------------------------------------------------
+
+
+def test_load_sessions_missing_column_raises_value_error(tmp_path):
+    """load_sessions raises ValueError when a required column is missing."""
+    csv = tmp_path / "bad.csv"
+    pd.DataFrame([{"SubjectCode": "sub0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
+    # 'dicom_path' column is missing
+    with pytest.raises(ValueError, match="dicom_path"):
+        load_sessions(csv)
+
+
+def test_load_sessions_error_lists_missing_columns(tmp_path):
+    """ValueError message names each missing column."""
+    csv = tmp_path / "bad.csv"
+    pd.DataFrame([{"irrelevant": "x"}]).to_csv(csv, index=False)
+    with pytest.raises(ValueError, match="SubjectCode"):
+        load_sessions(csv)
+
+
+def test_load_sessions_all_required_columns_present_does_not_raise(tmp_path):
+    """A raw CSV with all required columns loads without error."""
+    csv = tmp_path / "ok.csv"
+    # Use a non-numeric SubjectCode to prevent pandas from casting to int on read
+    pd.DataFrame([
+        {"SubjectCode": "sub0001", "ScanID": "SCAN001", "dicom_path": "/data/SCAN001"},
+    ]).to_csv(csv, index=False)
+    df = load_sessions(csv)
+    assert len(df) == 1
+
+
+# ---------------------------------------------------------------------------
+# CSV validation — _discover_from_file (pre-sanitized sessions file)
+# ---------------------------------------------------------------------------
+
+
+def test_sessions_file_missing_column_raises_value_error(tmp_path):
+    """discover_sessions raises ValueError when the sessions file is missing a column."""
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame([{"subject_code": "0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
+    # 'session_id' column is missing
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=csv,
+    )
+    with pytest.raises(ValueError, match="session_id"):
+        discover_sessions(cfg)

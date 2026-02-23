@@ -13,12 +13,41 @@ from snbb_scheduler.config import SchedulerConfig
 def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) -> str | None:
     """Submit a single task to Slurm via sbatch.
 
-    Returns the Slurm job ID on success, or None for dry runs.
+    Builds the sbatch command from the procedure's script and the row's
+    subject/session values. The ``--partition`` flag is included only when
+    ``config.slurm_partition`` is non-empty, so sites that do not use
+    Slurm partitions can leave the field blank.
+
+    Parameters
+    ----------
+    row:
+        A manifest row with at least ``procedure``, ``subject``, and
+        ``session`` keys.
+    config:
+        Scheduler configuration supplying Slurm settings and the procedure
+        registry.
+    dry_run:
+        When *True*, prints the command that would be run and returns *None*
+        without calling sbatch.
+
+    Returns
+    -------
+    str or None
+        The Slurm job ID string on success, or *None* for dry runs.
+
+    Raises
+    ------
+    RuntimeError
+        If sbatch exits successfully but its stdout does not match the
+        expected ``"Submitted batch job <ID>"`` format.
+    subprocess.CalledProcessError
+        If sbatch exits with a non-zero status.
     """
     proc = config.get_procedure(row["procedure"])
-    cmd = [
-        "sbatch",
-        # f"--partition={config.slurm_partition}",
+    cmd = ["sbatch"]
+    if config.slurm_partition:
+        cmd.append(f"--partition={config.slurm_partition}")
+    cmd += [
         f"--account={config.slurm_account}",
         f"--job-name={row['procedure']}_{row['subject']}_{row['session']}",
         proc.script,
@@ -31,8 +60,14 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
         return None
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    # sbatch output: "Submitted batch job 12345"
-    return result.stdout.strip().split()[-1]
+    # sbatch stdout: "Submitted batch job 12345"
+    output = result.stdout.strip()
+    if not output.startswith("Submitted batch job "):
+        raise RuntimeError(
+            f"Unexpected sbatch output: {output!r}. "
+            "Expected format: 'Submitted batch job <ID>'"
+        )
+    return output.split()[-1]
 
 
 def submit_manifest(

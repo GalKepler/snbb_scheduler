@@ -136,6 +136,31 @@ def test_submit_task_parses_job_id_from_stdout(cfg):
     assert job_id == "54321"
 
 
+def test_submit_task_raises_on_unexpected_sbatch_output(cfg):
+    """sbatch stdout that doesn't start with 'Submitted batch job' raises RuntimeError."""
+    bad_mock = MagicMock()
+    bad_mock.stdout = "Error: some sbatch problem\n"
+    with patch("subprocess.run", return_value=bad_mock):
+        with pytest.raises(RuntimeError, match="Unexpected sbatch output"):
+            submit_task(make_row(), cfg)
+
+
+def test_submit_task_no_partition_when_empty(tmp_path):
+    """When slurm_partition is empty, --partition flag is omitted from the command."""
+    cfg_no_partition = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_partition="",
+        slurm_account="snbb",
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg_no_partition)
+    cmd = mock_run.call_args[0][0]
+    assert not any(arg.startswith("--partition") for arg in cmd)
+
+
 # ---------------------------------------------------------------------------
 # submit_task — dry run
 # ---------------------------------------------------------------------------

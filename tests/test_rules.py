@@ -14,18 +14,8 @@ from snbb_scheduler.rules import build_rules
 
 
 # ---------------------------------------------------------------------------
-# Fixtures / helpers
+# Helpers
 # ---------------------------------------------------------------------------
-
-@pytest.fixture
-def cfg(tmp_path):
-    return SchedulerConfig(
-        dicom_root=tmp_path / "dicom",
-        bids_root=tmp_path / "bids",
-        derivatives_root=tmp_path / "derivatives",
-        state_file=tmp_path / "state.parquet",
-    )
-
 
 def make_row(cfg: SchedulerConfig, subject: str = "sub-0001", session: str = "ses-01") -> dict:
     """Build a row dict with all path columns for the given config."""
