@@ -130,23 +130,93 @@ def test_glob_strategy_empty_dir(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# completion_marker is a list of glob patterns (all must match)
+# ---------------------------------------------------------------------------
+
+
+def proc_list(name="test", patterns=None):
+    """completion_marker is a list of glob patterns."""
+    if patterns is None:
+        patterns = ["anat/*.nii.gz", "dwi/*.bvec"]
+    return Procedure(name=name, output_dir=name, script=f"{name}.sh", completion_marker=patterns)
+
+
+def test_list_marker_all_present(tmp_path):
+    d = tmp_path / "out"
+    (d / "anat").mkdir(parents=True)
+    (d / "anat" / "T1w.nii.gz").touch()
+    (d / "dwi").mkdir()
+    (d / "dwi" / "dwi.bvec").touch()
+    assert is_complete(proc_list(), d) is True
+
+
+def test_list_marker_one_missing(tmp_path):
+    d = tmp_path / "out"
+    (d / "anat").mkdir(parents=True)
+    (d / "anat" / "T1w.nii.gz").touch()
+    # dwi directory not created — second pattern won't match
+    assert is_complete(proc_list(), d) is False
+
+
+def test_list_marker_empty_list(tmp_path):
+    """An empty list is vacuously true (all() of nothing is True)."""
+    d = tmp_path / "out"
+    d.mkdir()
+    assert is_complete(proc_list(patterns=[]), d) is True
+
+
+def test_list_marker_nonexistent_path(tmp_path):
+    assert is_complete(proc_list(), tmp_path / "missing") is False
+
+
+# ---------------------------------------------------------------------------
 # Realistic procedure configurations from DEFAULT_PROCEDURES
 # ---------------------------------------------------------------------------
 
-def test_bids_complete_with_nifti(tmp_path):
-    """bids uses completion_marker='**/*.nii.gz'."""
+def _create_bids_session_files(bids_session_dir) -> None:
+    """Create all 8 required BIDS modality files."""
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_session_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
+
+
+def test_bids_complete_all_patterns_present(tmp_path):
+    """bids is complete when all 8 modality patterns are satisfied."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
     bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
-    anat = bids_session / "anat"
-    anat.mkdir(parents=True)
-    (anat / "sub-0001_ses-01_T1w.nii.gz").touch()
+    _create_bids_session_files(bids_session)
 
     assert is_complete(bids, bids_session) is True
 
 
-def test_bids_incomplete_no_nifti(tmp_path):
+def test_bids_incomplete_missing_one_pattern(tmp_path):
+    """bids is incomplete when any one of the 8 patterns is missing."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
+
+    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
+    _create_bids_session_files(bids_session)
+    # Remove the func file to make one pattern fail
+    (bids_session / "func" / "sub_task-rest_bold.nii.gz").unlink()
+
+    assert is_complete(bids, bids_session) is False
+
+
+def test_bids_incomplete_no_files(tmp_path):
     from snbb_scheduler.config import DEFAULT_PROCEDURES
     bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
 

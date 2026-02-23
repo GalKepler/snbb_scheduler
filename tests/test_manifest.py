@@ -27,9 +27,23 @@ def make_sessions(cfg: SchedulerConfig, tmp_path: Path) -> pd.DataFrame:
 
 
 def mark_bids_complete(tmp_path: Path, subject: str, session: str) -> None:
-    anat = tmp_path / "bids" / subject / session / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / "T1w.nii.gz").touch()
+    """Create all 8 required BIDS modality files for the session."""
+    bids_dir = tmp_path / "bids" / subject / session
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
 
 
 def make_state_row(subject, session, procedure, status, job_id="12345") -> dict:

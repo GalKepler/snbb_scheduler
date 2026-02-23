@@ -40,9 +40,27 @@ def add_dicom(tmp_path, subject, session):
 
 
 def add_bids(tmp_path, subject, session):
-    anat = tmp_path / "bids" / subject / session / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
+    """Create all 8 required BIDS modality files for the session."""
+    bids_dir = tmp_path / "bids" / subject / session
+    files = {
+        "anat": [f"{subject}_{session}_T1w.nii.gz"],
+        "dwi": [
+            f"{subject}_{session}_dir-AP_dwi.nii.gz",
+            f"{subject}_{session}_dir-AP_dwi.bvec",
+            f"{subject}_{session}_dir-AP_dwi.bval",
+        ],
+        "fmap": [
+            f"{subject}_{session}_acq-dwi_dir-AP_epi.nii.gz",
+            f"{subject}_{session}_acq-func_dir-AP_epi.nii.gz",
+            f"{subject}_{session}_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": [f"{subject}_{session}_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
 
 
 def add_qsiprep(tmp_path, subject, session):

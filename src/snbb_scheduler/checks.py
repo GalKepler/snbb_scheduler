@@ -7,13 +7,14 @@ from pathlib import Path
 from snbb_scheduler.config import Procedure
 
 
-def is_complete(proc: Procedure, output_path: Path) -> bool:
+def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
     """Return True if a procedure's output is considered complete.
 
     Completion is determined by proc.completion_marker:
       None          — output directory must exist and be non-empty
       "path/file"   — that specific file must exist inside output_path
       "**/*.nii.gz" — at least one file matching the glob must exist
+      ["pat1", ...] — ALL patterns must match at least one file
     """
     if not output_path.exists():
         return False
@@ -22,6 +23,9 @@ def is_complete(proc: Procedure, output_path: Path) -> bool:
 
     if marker is None:
         return _dir_nonempty(output_path)
+
+    if isinstance(marker, list):
+        return all(any(output_path.glob(pat)) for pat in marker)
 
     if _is_glob(marker):
         return any(output_path.glob(marker))

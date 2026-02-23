@@ -19,11 +19,12 @@ class Procedure:
     script: str  # sbatch script filename
     scope: Literal["session", "subject"] = "session"
     depends_on: list[str] = field(default_factory=list)
-    completion_marker: str | None = None
+    completion_marker: str | list[str] | None = None
     # completion_marker semantics:
     #   None          → output directory must exist (non-empty)
     #   "path/file"   → that specific file must exist inside the output dir
     #   "**/*.nii.gz" → at least one file matching the glob must exist
+    #   ["pat1", ...] → ALL patterns must match at least one file
 
 
 DEFAULT_PROCEDURES: list[Procedure] = [
@@ -33,7 +34,16 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_bids.sh",
         scope="session",
         depends_on=[],
-        completion_marker="**/*.nii.gz",
+        completion_marker=[
+            "anat/*_T1w.nii.gz",
+            "dwi/*dir-AP*_dwi.nii.gz",
+            "dwi/*dir-AP*_dwi.bvec",
+            "dwi/*dir-AP*_dwi.bval",
+            "fmap/*acq-dwi_dir-AP*epi.nii.gz",
+            "fmap/*acq-func_dir-AP*epi.nii.gz",
+            "fmap/*acq-func_dir-PA*epi.nii.gz",
+            "func/*task-rest_bold.nii.gz",
+        ],
     ),
     Procedure(
         name="qsiprep",

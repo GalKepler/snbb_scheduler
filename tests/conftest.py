@@ -5,6 +5,33 @@ from snbb_scheduler.config import SchedulerConfig
 
 
 # ---------------------------------------------------------------------------
+# Shared BIDS file creation helper
+# ---------------------------------------------------------------------------
+
+def _create_bids_session_files(bids_session_dir) -> None:
+    """Create all 8 required BIDS modality files inside *bids_session_dir*.
+
+    The filenames are chosen to match the 8 glob patterns in the BIDS
+    Procedure's completion_marker list.
+    """
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_session_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
+
+
+# ---------------------------------------------------------------------------
 # Generic config fixture (used in test_rules, test_manifest, and others)
 # ---------------------------------------------------------------------------
 
@@ -36,10 +63,9 @@ def fake_data_dir(tmp_path):
     dicom1.mkdir(parents=True)
     (dicom1 / "file.dcm").touch()
 
-    # BIDS complete for sub-0001/ses-01
-    bids1 = tmp_path / "bids" / "sub-0001" / "ses-01" / "anat"
-    bids1.mkdir(parents=True)
-    (bids1 / "sub-0001_ses-01_T1w.nii.gz").touch()
+    # BIDS complete for sub-0001/ses-01 — all 8 required modality files
+    bids1_root = tmp_path / "bids" / "sub-0001" / "ses-01"
+    _create_bids_session_files(bids1_root)
 
     # DICOM for sub-0002/ses-01 — no BIDS output
     dicom2 = tmp_path / "dicom" / "sub-0002" / "ses-01"
