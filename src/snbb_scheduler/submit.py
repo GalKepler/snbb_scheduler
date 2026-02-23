@@ -18,7 +18,7 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     proc = config.get_procedure(row["procedure"])
     cmd = [
         "sbatch",
-        f"--partition={config.slurm_partition}",
+        # f"--partition={config.slurm_partition}",
         f"--account={config.slurm_account}",
         f"--job-name={row['procedure']}_{row['subject']}_{row['session']}",
         proc.script,

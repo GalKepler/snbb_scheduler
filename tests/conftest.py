@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from snbb_scheduler.config import SchedulerConfig
@@ -37,4 +38,29 @@ def fake_config(fake_data_dir):
         bids_root=fake_data_dir / "bids",
         derivatives_root=fake_data_dir / "derivatives",
         state_file=fake_data_dir / "state.parquet",
+    )
+
+
+@pytest.fixture
+def fake_sessions_csv(tmp_path):
+    """Minimal CSV with two sessions and matching flat DICOM directories."""
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame([
+        {"subject_code": "0001", "session_id": "01", "ScanID": "SCAN001"},
+        {"subject_code": "0002", "session_id": "01", "ScanID": "SCAN002"},
+    ]).to_csv(csv, index=False)
+    (tmp_path / "dicom" / "SCAN001").mkdir(parents=True)
+    (tmp_path / "dicom" / "SCAN002").mkdir(parents=True)
+    return tmp_path
+
+
+@pytest.fixture
+def fake_sessions_config(fake_sessions_csv):
+    """SchedulerConfig using CSV-based session discovery."""
+    return SchedulerConfig(
+        dicom_root=fake_sessions_csv / "dicom",
+        bids_root=fake_sessions_csv / "bids",
+        derivatives_root=fake_sessions_csv / "derivatives",
+        state_file=fake_sessions_csv / "state.parquet",
+        sessions_file=fake_sessions_csv / "sessions.csv",
     )

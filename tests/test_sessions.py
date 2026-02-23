@@ -218,3 +218,96 @@ def test_custom_procedure_path_value(tmp_path):
     )
     df = discover_sessions(cfg)
     assert df.iloc[0]["fmriprep_path"] == tmp_path / "derivatives" / "fmriprep" / "sub-0001" / "ses-01"
+
+
+# ---------------------------------------------------------------------------
+# File-based discovery
+# ---------------------------------------------------------------------------
+
+
+def test_file_discovery_subject_session_values(fake_sessions_config):
+    df = discover_sessions(fake_sessions_config)
+    assert set(df["subject"]) == {"sub-0001", "sub-0002"}
+    assert list(df["session"]) == ["ses-01", "ses-01"]
+
+
+def test_file_discovery_bids_prefix_added(fake_sessions_config):
+    df = discover_sessions(fake_sessions_config)
+    assert all(s.startswith("sub-") for s in df["subject"])
+    assert all(s.startswith("ses-") for s in df["session"])
+
+
+def test_file_discovery_dicom_path_is_flat(fake_sessions_config, fake_sessions_csv):
+    df = discover_sessions(fake_sessions_config)
+    row = df[df["subject"] == "sub-0001"].iloc[0]
+    assert row["dicom_path"] == fake_sessions_csv / "dicom" / "SCAN001"
+
+
+def test_file_discovery_dicom_exists_true_when_dir_present(fake_sessions_config):
+    df = discover_sessions(fake_sessions_config)
+    assert df["dicom_exists"].all()
+
+
+def test_file_discovery_dicom_exists_false_when_dir_missing(fake_sessions_csv):
+    cfg = SchedulerConfig(
+        dicom_root=fake_sessions_csv / "dicom",
+        bids_root=fake_sessions_csv / "bids",
+        derivatives_root=fake_sessions_csv / "derivatives",
+        state_file=fake_sessions_csv / "state.parquet",
+        sessions_file=fake_sessions_csv / "sessions.csv",
+    )
+    # Remove one DICOM dir
+    import shutil
+    shutil.rmtree(fake_sessions_csv / "dicom" / "SCAN001")
+    df = discover_sessions(cfg)
+    row = df[df["subject"] == "sub-0001"].iloc[0]
+    assert row["dicom_exists"] is False or row["dicom_exists"] == False
+
+
+def test_file_discovery_procedure_columns_present(fake_sessions_config):
+    df = discover_sessions(fake_sessions_config)
+    for proc in fake_sessions_config.procedures:
+        assert f"{proc.name}_path" in df.columns
+        assert f"{proc.name}_exists" in df.columns
+
+
+def test_file_discovery_session_scoped_procedure_path(fake_sessions_config, fake_sessions_csv):
+    df = discover_sessions(fake_sessions_config)
+    row = df[df["subject"] == "sub-0001"].iloc[0]
+    assert row["bids_path"] == fake_sessions_csv / "bids" / "sub-0001" / "ses-01"
+    assert row["qsiprep_path"] == fake_sessions_csv / "derivatives" / "qsiprep" / "sub-0001" / "ses-01"
+
+
+def test_file_discovery_subject_scoped_procedure_path(fake_sessions_config, fake_sessions_csv):
+    df = discover_sessions(fake_sessions_config)
+    row = df[df["subject"] == "sub-0001"].iloc[0]
+    assert row["freesurfer_path"] == fake_sessions_csv / "derivatives" / "freesurfer" / "sub-0001"
+
+
+def test_file_discovery_missing_csv_raises(tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=tmp_path / "nonexistent.csv",
+    )
+    with pytest.raises(FileNotFoundError):
+        discover_sessions(cfg)
+
+
+def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame(columns=["subject_code", "session_id", "ScanID"]).to_csv(csv, index=False)
+    (tmp_path / "dicom").mkdir()
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=csv,
+    )
+    df = discover_sessions(cfg)
+    assert df.empty
+    assert "subject" in df.columns
+    assert "session" in df.columns

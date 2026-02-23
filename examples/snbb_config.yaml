@@ -7,16 +7,21 @@
 # ---------------------------------------------------------------------------
 # Root directories
 # ---------------------------------------------------------------------------
-dicom_root:       /data/snbb/dicom
-bids_root:        /data/snbb/bids
-derivatives_root: /data/snbb/derivatives
-state_file:       /data/snbb/.scheduler_state.parquet
+dicom_root:       /media/storage/yalab-dev/test_dicom
+bids_root:        /media/storage/yalab-dev/snbb_scheduler/bids
+derivatives_root: /media/storage/yalab-dev/snbb_scheduler/derivatives
+state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parquet
+
+# Path to the daily-updated sessions CSV (columns: subject_code, session_id, ScanID).
+# When set, the DICOM filesystem scan is skipped and ScanID is resolved as a
+# flat subdirectory under dicom_root.  Remove or set to null to use filesystem scanning.
+sessions_file: /home/galkepler/Downloads/linked_sessions.csv
 
 # ---------------------------------------------------------------------------
 # Slurm settings
 # ---------------------------------------------------------------------------
 slurm_partition: normal
-slurm_account:   snbb
+slurm_account:   slurm
 
 # ---------------------------------------------------------------------------
 # Processing procedures — in dependency order
@@ -27,42 +32,42 @@ procedures:
   # Completion: at least one .nii.gz anywhere in the session directory
   - name: bids
     output_dir: ""              # lives in bids_root, not derivatives_root
-    script: snbb_run_bids.sh
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_bids.sh
     scope: session
     depends_on: []
     completion_marker: "**/*.nii.gz"
 
-  # DWI preprocessing
-  # Completion: output directory is non-empty
-  - name: qsiprep
-    output_dir: qsiprep
-    script: snbb_run_qsiprep.sh
-    scope: session
-    depends_on: [bids]
-    completion_marker: null
+  # # DWI preprocessing
+  # # Completion: output directory is non-empty
+  # - name: qsiprep
+  #   output_dir: qsiprep
+  #   script: /opt/snbb_scheduler/scripts/snbb_run_qsiprep.sh
+  #   scope: session
+  #   depends_on: [bids]
+  #   completion_marker: null
 
-  # Cortical reconstruction (one run covers all sessions for a subject)
-  # Completion: recon-all writes this marker file when it finishes
-  - name: freesurfer
-    output_dir: freesurfer
-    script: snbb_run_freesurfer.sh
-    scope: subject
-    depends_on: [bids]
-    completion_marker: "scripts/recon-all.done"
+  # # Cortical reconstruction (one run covers all sessions for a subject)
+  # # Completion: recon-all writes this marker file when it finishes
+  # - name: freesurfer
+  #   output_dir: freesurfer
+  #   script: /opt/snbb_scheduler/scripts/snbb_run_freesurfer.sh
+  #   scope: subject
+  #   depends_on: [bids]
+  #   completion_marker: "scripts/recon-all.done"
 
-  # DWI reconstruction (requires qsiprep output)
-  - name: qsirecon
-    output_dir: qsirecon
-    script: snbb_run_qsirecon.sh
-    scope: session
-    depends_on: [qsiprep]
-    completion_marker: null
+  # # DWI reconstruction (requires qsiprep output)
+  # - name: qsirecon
+  #   output_dir: qsirecon
+  #   script: snbb_run_qsirecon.sh
+  #   scope: session
+  #   depends_on: [qsiprep]
+  #   completion_marker: null
 
-  # fMRI preprocessing
-  # Completion: fmriprep writes an HTML report on success
-  - name: fmriprep
-    output_dir: fmriprep
-    script: snbb_run_fmriprep.sh
-    scope: session
-    depends_on: [bids]
-    completion_marker: "**/*.html"
+  # # fMRI preprocessing
+  # # Completion: fmriprep writes an HTML report on success
+  # - name: fmriprep
+  #   output_dir: fmriprep
+  #   script: snbb_run_fmriprep.sh
+  #   scope: session
+  #   depends_on: [bids]
+  #   completion_marker: "**/*.html"

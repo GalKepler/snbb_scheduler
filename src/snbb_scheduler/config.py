@@ -69,6 +69,10 @@ class SchedulerConfig:
     # State tracking
     state_file: Path = field(default_factory=lambda: Path("/data/snbb/.scheduler_state.parquet"))
 
+    # Optional CSV for session discovery (subject_code, session_id, ScanID).
+    # When set, filesystem scanning is skipped.
+    sessions_file: Path | None = field(default=None)
+
     # Procedure registry — add new procedures here or via YAML
     procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
 
@@ -91,9 +95,9 @@ class SchedulerConfig:
         with open(path) as f:
             data = yaml.safe_load(f) or {}
 
-        path_fields = {"dicom_root", "bids_root", "derivatives_root", "state_file"}
+        path_fields = {"dicom_root", "bids_root", "derivatives_root", "state_file", "sessions_file"}
         for key in path_fields:
-            if key in data:
+            if data.get(key) is not None:
                 data[key] = Path(data[key])
 
         if "procedures" in data:
