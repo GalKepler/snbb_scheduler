@@ -57,16 +57,17 @@ procedures:
     depends_on: [bids]
     completion_marker: "scripts/recon-all.done"
 
-  # # DWI reconstruction (requires qsiprep output)
-  # - name: qsirecon
-  #   output_dir: qsirecon
-  #   script: snbb_run_qsirecon.sh
-  #   scope: session
-  #   depends_on: [qsiprep]
-  #   completion_marker: null
+  # DWI reconstruction (requires qsiprep output)
+  # Completion: <output_dir>/derivatives/qsirecon-MRtrix3_act-HSVS/sub-<subject_code>/ses-<session_id> is non-empty
+  - name: qsirecon
+    output_dir: qsirecon
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
+    scope: session
+    depends_on: [qsiprep]
+    completion_marker: null
 
-  # # fMRI preprocessing
-  # # Completion: fmriprep writes an HTML report on success
+  # fMRI preprocessing
+  # Completion: fmriprep writes an HTML report on success
   # - name: fmriprep
   #   output_dir: fmriprep
   #   script: snbb_run_fmriprep.sh
