@@ -5,10 +5,10 @@
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_QSIPREP_DIR="${SNBB_QSIPREP_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
-SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives}"
+SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsirecon}"
 SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
 SNBB_FS_SUBJECTS_DIR="${SNBB_FS_SUBJECTS_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
-SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/home/galkepler/Projects/snbb_scheduler/examples/mrtrix_tractography.yaml}"
+SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/home/galkepler/Projects/yalab-devops/VoxelOps/mrtrix_tractography.yaml}"
 SNBB_RECON_SPEC_AUX_FILES="${SNBB_RECON_SPEC_AUX_FILES:-}"
 SNBB_LOG_DIR="${SNBB_LOG_DIR:-/media/storage/yalab-dev/snbb_scheduler/logs/qsirecon}"
 SNBB_RUNNERS_DIR="${SNBB_RUNNERS_DIR:-/home/galkepler/Projects/snbb_scheduler/examples/runners}"
