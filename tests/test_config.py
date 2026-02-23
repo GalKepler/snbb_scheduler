@@ -15,7 +15,7 @@ def test_defaults():
     assert cfg.dicom_root == Path("/data/snbb/dicom")
     assert cfg.bids_root == Path("/data/snbb/bids")
     assert cfg.derivatives_root == Path("/data/snbb/derivatives")
-    assert cfg.slurm_partition == "normal"
+    assert cfg.slurm_partition == "debug"
     assert cfg.slurm_account == "snbb"
     assert cfg.state_file == Path("/data/snbb/.scheduler_state.parquet")
 

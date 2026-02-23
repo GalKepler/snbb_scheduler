@@ -64,8 +64,10 @@ class SchedulerConfig:
     derivatives_root: Path = field(default_factory=lambda: Path("/data/snbb/derivatives"))
 
     # Slurm settings
-    slurm_partition: str = "normal"
+    slurm_partition: str = "debug"
     slurm_account: str = "snbb"
+    slurm_mem: str | None = None           # e.g. "32G"; omitted from sbatch if None
+    slurm_cpus_per_task: int | None = None  # e.g. 8; omitted from sbatch if None
 
     # State tracking
     state_file: Path = field(default_factory=lambda: Path("/data/snbb/.scheduler_state.parquet"))

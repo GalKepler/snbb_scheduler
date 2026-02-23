@@ -49,7 +49,7 @@ bids_root:  /data/snbb/bids
 derivatives_root: /data/snbb/derivatives
 state_file: /data/snbb/.scheduler_state.parquet
 
-slurm_partition: normal   # omit or set to "" to skip --partition flag
+slurm_partition: debug   # omit or set to "" to skip --partition flag
 slurm_account:   snbb
 ```
 
@@ -65,7 +65,7 @@ bids_root:         /data/snbb/bids
 derivatives_root:  /data/snbb/derivatives
 state_file:        /data/snbb/.scheduler_state.parquet
 
-slurm_partition: normal
+slurm_partition: debug
 slurm_account:   snbb
 
 procedures:

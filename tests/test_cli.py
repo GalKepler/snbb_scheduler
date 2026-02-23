@@ -45,6 +45,8 @@ def test_main_help(runner):
     result = runner.invoke(main, ["--help"])
     assert result.exit_code == 0
     assert "snbb-scheduler" in result.output
+    assert "--slurm-mem" in result.output
+    assert "--slurm-cpus" in result.output
 
 
 def test_run_help(runner):
@@ -89,6 +91,28 @@ def test_run_dry_run_with_sessions(runner, cfg_with_sessions):
 def test_run_dry_run_does_not_write_state(runner, cfg_with_sessions, tmp_path):
     runner.invoke(main, ["--config", str(cfg_with_sessions), "run", "--dry-run"])
     assert not (tmp_path / "state.parquet").exists()
+
+
+def test_slurm_mem_cli_overrides_config(runner, cfg_with_sessions):
+    """--slurm-mem on the CLI overrides the config and reaches sbatch."""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "Submitted batch job 1\n"
+        runner.invoke(main, ["--config", str(cfg_with_sessions), "--slurm-mem", "64G", "run"])
+    calls = mock_run.call_args_list
+    assert calls, "sbatch was never called"
+    for c in calls:
+        assert "--mem=64G" in c[0][0]
+
+
+def test_slurm_cpus_cli_overrides_config(runner, cfg_with_sessions):
+    """--slurm-cpus on the CLI overrides the config and reaches sbatch."""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "Submitted batch job 2\n"
+        runner.invoke(main, ["--config", str(cfg_with_sessions), "--slurm-cpus", "4", "run"])
+    calls = mock_run.call_args_list
+    assert calls, "sbatch was never called"
+    for c in calls:
+        assert "--cpus-per-task=4" in c[0][0]
 
 
 def test_run_live_submits_and_saves_state(runner, cfg_with_sessions, tmp_path):

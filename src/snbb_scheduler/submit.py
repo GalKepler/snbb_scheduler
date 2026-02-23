@@ -47,9 +47,13 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     cmd = ["sbatch"]
     if config.slurm_partition:
         cmd.append(f"--partition={config.slurm_partition}")
+    cmd.append(f"--account={config.slurm_account}")
+    cmd.append(f"--job-name={row['procedure']}_{row['subject']}_{row['session']}")
+    if config.slurm_mem:
+        cmd.append(f"--mem={config.slurm_mem}")
+    if config.slurm_cpus_per_task:
+        cmd.append(f"--cpus-per-task={config.slurm_cpus_per_task}")
     cmd += [
-        f"--account={config.slurm_account}",
-        f"--job-name={row['procedure']}_{row['subject']}_{row['session']}",
         proc.script,
         row["subject"],
         row["session"],

@@ -117,12 +117,8 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
     FileNotFoundError
         If ``config.sessions_file`` does not exist.
     """
-    # dtype=str for subject_code and session_id preserves zero-padded values
-    # (e.g. "0001" → "0001", not integer 1)
-    df_csv = pd.read_csv(
-        config.sessions_file,
-        dtype={"subject_code": str, "session_id": str},
-    )
+    # dtype=str preserves zero-padded values (e.g. "0001" → "0001", not 1)
+    df_csv = pd.read_csv(config.sessions_file, dtype=str)
     missing = _SESSION_FILE_COLUMNS - set(df_csv.columns)
     if missing:
         raise ValueError(
