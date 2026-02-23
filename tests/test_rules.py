@@ -68,9 +68,16 @@ def mark_qsiprep_complete(row: dict) -> None:
 
 
 def mark_freesurfer_complete(row: dict) -> None:
+    """Create recon-all.done with CMDARGS matching the available T1w count."""
     scripts = row["freesurfer_path"] / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").touch()
+    # Count T1w files already in the BIDS subject dir
+    subject_bids = row["bids_path"].parent  # bids_root/subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {row['subject']} -all {i_flags}\n"
+    )
 
 
 # ---------------------------------------------------------------------------

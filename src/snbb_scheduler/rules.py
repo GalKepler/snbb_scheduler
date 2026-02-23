@@ -24,6 +24,19 @@ def build_rules(config: SchedulerConfig) -> dict[str, Rule]:
     return {proc.name: _make_rule(proc, config) for proc in config.procedures}
 
 
+def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig) -> dict:
+    """Return extra keyword arguments for ``is_complete`` based on procedure name.
+
+    Some specialized checks require additional context (e.g. the BIDS root
+    and subject label) that cannot be derived from the output path alone.
+    This helper centralises that mapping so that ``_make_rule`` stays clean.
+    """
+    subject = row["subject"]
+    if proc.name == "freesurfer":
+        return {"bids_root": config.bids_root, "subject": subject}
+    return {}
+
+
 def _make_rule(proc: Procedure, config: SchedulerConfig) -> Rule:
     """Create a rule closure that decides whether *proc* needs to run for a session.
 
@@ -42,9 +55,11 @@ def _make_rule(proc: Procedure, config: SchedulerConfig) -> Rule:
             return False
         for dep_name in proc.depends_on:
             dep_proc = config.get_procedure(dep_name)
-            if not is_complete(dep_proc, row[f"{dep_name}_path"]):
+            dep_kwargs = _completion_kwargs(dep_proc, row, config)
+            if not is_complete(dep_proc, row[f"{dep_name}_path"], **dep_kwargs):
                 return False
-        return not is_complete(proc, row[f"{proc.name}_path"])
+        self_kwargs = _completion_kwargs(proc, row, config)
+        return not is_complete(proc, row[f"{proc.name}_path"], **self_kwargs)
 
     rule.__name__ = f"needs_{proc.name}"
     return rule

@@ -114,6 +114,18 @@ def test_build_manifest_sorted_by_priority(cfg, tmp_path):
     assert list(manifest["priority"]) == sorted(manifest["priority"].tolist())
 
 
+def mark_freesurfer_complete(tmp_path: Path, subject: str, session: str) -> None:
+    """Create recon-all.done with CMDARGS matching available T1w count."""
+    scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    subject_bids = tmp_path / "bids" / subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+    )
+
+
 def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     sessions = make_sessions(cfg, tmp_path)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
@@ -123,9 +135,7 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
         qp.mkdir(parents=True)
         (qp / "out.nii.gz").touch()
-        fs = tmp_path / "derivatives" / "freesurfer" / sub / "scripts"
-        fs.mkdir(parents=True)
-        (fs / "recon-all.done").touch()
+        mark_freesurfer_complete(tmp_path, sub, "ses-01")
     sessions = make_sessions(cfg, tmp_path)
     manifest = build_manifest(sessions, cfg)
     assert manifest.empty

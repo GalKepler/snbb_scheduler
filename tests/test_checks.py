@@ -2,7 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from snbb_scheduler.checks import is_complete
+from snbb_scheduler.checks import (
+    _count_available_t1w,
+    _count_recon_all_inputs,
+    is_complete,
+)
 from snbb_scheduler.config import Procedure
 
 
@@ -226,14 +230,26 @@ def test_bids_incomplete_no_files(tmp_path):
     assert is_complete(bids, bids_session) is False
 
 
-def test_freesurfer_complete_with_marker(tmp_path):
-    """freesurfer uses completion_marker='scripts/recon-all.done'."""
+def _write_recon_all_done(scripts_dir, subject, n_t1w):
+    """Write a realistic recon-all.done file with *n_t1w* -i flags."""
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(n_t1w))
+    (scripts_dir / "recon-all.done").write_text(
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# FreeSurfer — fallback (no kwargs)
+# ---------------------------------------------------------------------------
+
+def test_freesurfer_complete_with_marker_no_kwargs(tmp_path):
+    """Without bids_root/subject kwargs the fallback is: done file exists → True."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     fs_subject = tmp_path / "freesurfer" / "sub-0001"
-    (fs_subject / "scripts").mkdir(parents=True)
-    (fs_subject / "scripts" / "recon-all.done").touch()
+    _write_recon_all_done(fs_subject / "scripts", "sub-0001", n_t1w=1)
 
     assert is_complete(fs, fs_subject) is True
 
@@ -243,9 +259,102 @@ def test_freesurfer_incomplete_no_marker(tmp_path):
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     fs_subject = tmp_path / "freesurfer" / "sub-0001"
-    fs_subject.mkdir(parents=True)  # dir exists but no marker
+    fs_subject.mkdir(parents=True)  # dir exists but no done file
 
     assert is_complete(fs, fs_subject) is False
+
+
+# ---------------------------------------------------------------------------
+# FreeSurfer — T1w count matching (with kwargs)
+# ---------------------------------------------------------------------------
+
+def test_freesurfer_complete_when_t1w_count_matches(tmp_path):
+    """T1w count in done file matches available → complete."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
+
+    subject = "sub-0001"
+    fs_subject = tmp_path / "freesurfer" / subject
+    _write_recon_all_done(fs_subject / "scripts", subject, n_t1w=1)
+
+    bids_root = tmp_path / "bids"
+    anat = bids_root / subject / "ses-01" / "anat"
+    anat.mkdir(parents=True)
+    (anat / f"{subject}_ses-01_T1w.nii.gz").touch()
+
+    assert is_complete(fs, fs_subject, bids_root=bids_root, subject=subject) is True
+
+
+def test_freesurfer_incomplete_when_new_t1w_added(tmp_path):
+    """More T1w files available than used in done file → needs re-run."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
+
+    subject = "sub-0001"
+    fs_subject = tmp_path / "freesurfer" / subject
+    # Done file only used 1 T1w
+    _write_recon_all_done(fs_subject / "scripts", subject, n_t1w=1)
+
+    bids_root = tmp_path / "bids"
+    for ses in ("ses-01", "ses-02"):  # 2 T1w now available
+        anat = bids_root / subject / ses / "anat"
+        anat.mkdir(parents=True)
+        (anat / f"{subject}_{ses}_T1w.nii.gz").touch()
+
+    assert is_complete(fs, fs_subject, bids_root=bids_root, subject=subject) is False
+
+
+def test_freesurfer_incomplete_no_done_file_with_kwargs(tmp_path):
+    """Done file missing → incomplete even with kwargs provided."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
+
+    subject = "sub-0001"
+    fs_subject = tmp_path / "freesurfer" / subject
+    fs_subject.mkdir(parents=True)
+
+    assert is_complete(fs, fs_subject, bids_root=tmp_path / "bids", subject=subject) is False
+
+
+# ---------------------------------------------------------------------------
+# _count_recon_all_inputs helper
+# ---------------------------------------------------------------------------
+
+def test_count_recon_all_inputs_one_flag(tmp_path):
+    done = tmp_path / "recon-all.done"
+    done.write_text("#CMDARGS -subject sub-0001 -all -i /data/T1w.nii.gz\n")
+    assert _count_recon_all_inputs(done) == 1
+
+
+def test_count_recon_all_inputs_multiple_flags(tmp_path):
+    done = tmp_path / "recon-all.done"
+    done.write_text(
+        "#CMDARGS -subject sub-0001 -all -i /data/ses-01/T1w.nii.gz -i /data/ses-02/T1w.nii.gz\n"
+    )
+    assert _count_recon_all_inputs(done) == 2
+
+
+def test_count_recon_all_inputs_no_cmdargs_line(tmp_path):
+    done = tmp_path / "recon-all.done"
+    done.write_text("some other content\n")
+    assert _count_recon_all_inputs(done) == 0
+
+
+# ---------------------------------------------------------------------------
+# _count_available_t1w helper
+# ---------------------------------------------------------------------------
+
+def test_count_available_t1w_two_sessions(tmp_path):
+    subject = "sub-0001"
+    for ses in ("ses-01", "ses-02"):
+        anat = tmp_path / subject / ses / "anat"
+        anat.mkdir(parents=True)
+        (anat / f"{subject}_{ses}_T1w.nii.gz").touch()
+    assert _count_available_t1w(tmp_path, subject) == 2
+
+
+def test_count_available_t1w_subject_missing(tmp_path):
+    assert _count_available_t1w(tmp_path, "sub-9999") == 0
 
 
 def test_qsiprep_complete_nonempty(tmp_path):

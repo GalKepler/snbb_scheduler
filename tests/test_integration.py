@@ -70,9 +70,15 @@ def add_qsiprep(tmp_path, subject, session):
 
 
 def add_freesurfer(tmp_path, subject):
+    """Create recon-all.done with CMDARGS matching T1w files in BIDS."""
     scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").touch()
+    subject_bids = tmp_path / "bids" / subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+    )
 
 
 def mock_sbatch(job_id="1"):
