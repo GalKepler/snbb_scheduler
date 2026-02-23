@@ -20,7 +20,12 @@ _STATE_COLUMNS = {
 }
 
 
-def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFrame:
+def build_manifest(
+    sessions: pd.DataFrame,
+    config: SchedulerConfig,
+    force: bool = False,
+    force_procedures: list[str] | None = None,
+) -> pd.DataFrame:
     """Evaluate rules against all sessions and return a task manifest.
 
     Returns a DataFrame with columns:
@@ -28,11 +33,15 @@ def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFr
 
     priority reflects the order of procedures in config.procedures
     (lower index = higher priority = submitted first).
+
+    When *force* is True, the self-completion check is skipped for all
+    procedures (or only those in *force_procedures* when provided), so
+    already-complete procedures are resubmitted.
     """
     if sessions.empty:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
 
-    rules = build_rules(config)
+    rules = build_rules(config, force=force, force_procedures=force_procedures)
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
     subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
 

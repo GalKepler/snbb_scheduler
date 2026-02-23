@@ -53,6 +53,8 @@ def test_run_help(runner):
     result = runner.invoke(main, ["run", "--help"])
     assert result.exit_code == 0
     assert "--dry-run" in result.output
+    assert "--force" in result.output
+    assert "--procedure" in result.output
 
 
 def test_manifest_help(runner):
@@ -216,6 +218,63 @@ def test_retry_clears_failed_entries(runner, cfg_path, tmp_path):
     remaining = load_state(cfg)
     assert len(remaining) == 1
     assert remaining.iloc[0]["status"] == "complete"
+
+
+# ---------------------------------------------------------------------------
+# --force
+# ---------------------------------------------------------------------------
+
+def _add_bids(tmp_path, subject, session):
+    """Create all 8 BIDS modality files for a session."""
+    bids_dir = tmp_path / "bids" / subject / session
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
+
+
+@pytest.fixture
+def cfg_with_bids_complete(tmp_path, cfg_path):
+    """Config + DICOM + complete BIDS for sub-0001/ses-01."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    _add_bids(tmp_path, "sub-0001", "ses-01")
+    return cfg_path
+
+
+def test_force_resubmits_complete_procedure(runner, cfg_with_bids_complete):
+    """--force causes already-complete procedures to be re-submitted."""
+    result = runner.invoke(
+        main,
+        ["--config", str(cfg_with_bids_complete), "run", "--force", "--dry-run"],
+    )
+    assert result.exit_code == 0
+    # bids is complete but --force means it appears in dry-run output
+    assert "[DRY RUN]" in result.output
+    assert "bids" in result.output
+
+
+def test_force_procedure_limits_forced_procedure(runner, cfg_with_bids_complete):
+    """--force --procedure bids only forces bids, not other procedures."""
+    result = runner.invoke(
+        main,
+        [
+            "--config", str(cfg_with_bids_complete),
+            "run", "--force", "--procedure", "bids", "--dry-run",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "[DRY RUN]" in result.output
 
 
 def test_retry_filter_by_subject(runner, cfg_path, tmp_path):

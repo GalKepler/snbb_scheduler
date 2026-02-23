@@ -13,15 +13,24 @@ from snbb_scheduler.config import Procedure, SchedulerConfig
 Rule = Callable[[pd.Series], bool]
 
 
-def build_rules(config: SchedulerConfig) -> dict[str, Rule]:
+def build_rules(
+    config: SchedulerConfig,
+    force: bool = False,
+    force_procedures: list[str] | None = None,
+) -> dict[str, Rule]:
     """Generate a rule function for every procedure in config.
 
     Each rule returns True when all of the following hold:
       1. DICOM data exists for the session (dicom_exists)
       2. All upstream procedures listed in proc.depends_on are complete
       3. This procedure's own output is not yet complete
+         (skipped when *force* is True and the procedure is in *force_procedures*,
+         or when *force* is True and *force_procedures* is None)
     """
-    return {proc.name: _make_rule(proc, config) for proc in config.procedures}
+    return {
+        proc.name: _make_rule(proc, config, force=force, force_procedures=force_procedures)
+        for proc in config.procedures
+    }
 
 
 def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig) -> dict:
@@ -39,7 +48,12 @@ def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig)
     return {}
 
 
-def _make_rule(proc: Procedure, config: SchedulerConfig) -> Rule:
+def _make_rule(
+    proc: Procedure,
+    config: SchedulerConfig,
+    force: bool = False,
+    force_procedures: list[str] | None = None,
+) -> Rule:
     """Create a rule closure that decides whether *proc* needs to run for a session.
 
     The returned callable accepts a session row (``pd.Series``) and returns
@@ -60,6 +74,9 @@ def _make_rule(proc: Procedure, config: SchedulerConfig) -> Rule:
             dep_kwargs = _completion_kwargs(dep_proc, row, config)
             if not is_complete(dep_proc, row[f"{dep_name}_path"], **dep_kwargs):
                 return False
+        should_force = force and (force_procedures is None or proc.name in force_procedures)
+        if should_force:
+            return True
         self_kwargs = _completion_kwargs(proc, row, config)
         return not is_complete(proc, row[f"{proc.name}_path"], **self_kwargs)
 

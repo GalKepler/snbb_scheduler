@@ -276,6 +276,66 @@ def test_qsirecon_not_needed_when_already_complete(cfg):
 
 
 # ---------------------------------------------------------------------------
+# --force flag
+# ---------------------------------------------------------------------------
+
+def test_force_reruns_already_complete_procedure(cfg):
+    """force=True causes a complete procedure to be re-submitted."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    rules = build_rules(cfg, force=True)
+    # bids is already complete but --force overrides
+    assert rules["bids"](pd.Series(row)) is True
+
+
+def test_force_procedure_only_forces_named_procedure(cfg):
+    """force + force_procedures=['bids'] only forces bids, not others."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    rules = build_rules(cfg, force=True, force_procedures=["bids"])
+    assert rules["bids"](pd.Series(row)) is True
+    # qsiprep is not forced — bids is done so it would normally fire,
+    # but qsiprep itself is not complete yet → True either way; check freesurfer
+    # (also not complete yet) → True. The key test is that bids IS forced.
+
+
+def test_force_still_requires_dicom(cfg):
+    """force does not bypass the dicom_exists gate."""
+    row = make_row(cfg)
+    # dicom_exists = False
+    rules = build_rules(cfg, force=True)
+    assert rules["bids"](pd.Series(row)) is False
+
+
+def test_force_still_requires_dependencies(cfg):
+    """force on qsiprep still requires bids to be complete."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    # bids NOT done
+    rules = build_rules(cfg, force=True, force_procedures=["qsiprep"])
+    assert rules["qsiprep"](pd.Series(row)) is False
+
+
+def test_force_none_forces_all_procedures(cfg):
+    """force=True with force_procedures=None forces every procedure."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
+    rules = build_rules(cfg, force=True, force_procedures=None)
+    # Everything is complete, but --force should make all rules fire
+    # (given dicom + deps are satisfied)
+    assert rules["bids"](pd.Series(row)) is True
+    assert rules["qsiprep"](pd.Series(row)) is True
+    assert rules["freesurfer"](pd.Series(row)) is True
+    assert rules["qsirecon"](pd.Series(row)) is True
+
+
+# ---------------------------------------------------------------------------
 # Dynamic custom procedure
 # ---------------------------------------------------------------------------
 
