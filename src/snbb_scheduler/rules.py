@@ -25,6 +25,18 @@ def build_rules(config: SchedulerConfig) -> dict[str, Rule]:
 
 
 def _make_rule(proc: Procedure, config: SchedulerConfig) -> Rule:
+    """Create a rule closure that decides whether *proc* needs to run for a session.
+
+    The returned callable accepts a session row (``pd.Series``) and returns
+    ``True`` when **all** of the following hold:
+
+    1. DICOM data exists for the session (``dicom_exists`` is ``True``).
+    2. Every procedure in ``proc.depends_on`` is already complete on disk.
+    3. This procedure's own output is **not** yet complete on disk.
+
+    The closure captures *proc* and *config* by reference so that rule
+    functions stay lightweight and can be regenerated cheaply.
+    """
     def rule(row: pd.Series) -> bool:
         if not row["dicom_exists"]:
             return False

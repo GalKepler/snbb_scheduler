@@ -49,11 +49,13 @@ bids_root:  /data/snbb/bids
 derivatives_root: /data/snbb/derivatives
 state_file: /data/snbb/.scheduler_state.parquet
 
-slurm_partition: normal
+slurm_partition: normal   # omit or set to "" to skip --partition flag
 slurm_account:   snbb
 ```
 
 With no `procedures` key the built-in defaults run: **bids → qsiprep** and **bids → freesurfer**.
+
+> **`slurm_partition`** is optional. When set to a non-empty string the `--partition=<value>` flag is passed to `sbatch`. Leave it empty (or omit the key) for clusters that do not use Slurm partitions.
 
 ### Full config with all options
 
@@ -228,6 +230,62 @@ snbb-scheduler --config config.yaml retry --subject sub-0002
 # Both filters combined
 snbb-scheduler --config config.yaml retry --procedure bids --subject sub-0002
 ```
+
+---
+
+## State file
+
+The scheduler tracks every submitted job in a single [Apache Parquet](https://parquet.apache.org/) file (configured via `state_file`). No external database is required.
+
+### Schema
+
+| Column | Type | Description |
+|---|---|---|
+| `subject` | string | BIDS subject label (e.g. `sub-0001`) |
+| `session` | string | BIDS session label (e.g. `ses-01`) |
+| `procedure` | string | Procedure name (e.g. `bids`, `qsiprep`) |
+| `status` | string | Current status — see lifecycle below |
+| `submitted_at` | datetime (UTC) | When the job was submitted |
+| `job_id` | string | Slurm job ID returned by `sbatch` |
+
+### Status lifecycle
+
+```
+pending → running → complete
+                 ↘ failed
+```
+
+| Status | Meaning |
+|---|---|
+| `pending` | Submitted to Slurm, not yet confirmed running |
+| `running` | Slurm reports the job as active |
+| `complete` | Output verified complete by the completion marker |
+| `failed` | Slurm reported failure or output is absent after job completion |
+
+> **Note:** The scheduler does **not** poll Slurm automatically. Status transitions from `pending` to `running`/`complete`/`failed` must be managed by an external process (e.g. a Slurm epilog script or a separate monitoring cron job). Failed entries can be cleared with `snbb-scheduler retry` so they are re-submitted on the next run.
+
+### Inspecting the state file directly
+
+```python
+import pandas as pd
+state = pd.read_parquet("/data/snbb/.scheduler_state.parquet")
+print(state[state["status"] == "failed"])
+```
+
+---
+
+## Error handling
+
+| Situation | What happens |
+|---|---|
+| Config file not found | `FileNotFoundError` with the missing path |
+| Malformed YAML syntax | `ValueError: Invalid YAML in <path>: …` |
+| `depends_on` references unknown procedure | `ValueError` at config load time |
+| Sessions CSV missing required columns | `ValueError` listing the missing column names |
+| `sbatch` exits non-zero | `subprocess.CalledProcessError` — job is not recorded in state |
+| `sbatch` stdout has unexpected format | `RuntimeError: Unexpected sbatch output: …` |
+
+All errors propagate to the CLI and print a traceback. Use `--dry-run` to validate the configuration safely before submitting real jobs.
 
 ---
 

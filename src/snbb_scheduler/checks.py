@@ -34,10 +34,12 @@ def is_complete(proc: Procedure, output_path: Path) -> bool:
 # ---------------------------------------------------------------------------
 
 def _is_glob(pattern: str) -> bool:
+    """Return True if *pattern* contains any glob metacharacter (``*``, ``?``, ``[``)."""
     return "*" in pattern or "?" in pattern or "[" in pattern
 
 
 def _dir_nonempty(path: Path) -> bool:
+    """Return True if *path* is a directory that contains at least one entry."""
     try:
         next(path.iterdir())
         return True

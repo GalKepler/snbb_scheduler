@@ -139,6 +139,12 @@ def test_from_yaml_custom_procedures(tmp_path):
     yaml_file = tmp_path / "config.yaml"
     yaml_file.write_text(
         "procedures:\n"
+        "  - name: qsiprep\n"
+        "    output_dir: qsiprep\n"
+        "    script: snbb_run_qsiprep.sh\n"
+        "    scope: session\n"
+        "    depends_on: []\n"
+        "    completion_marker: null\n"
         "  - name: qsirecon\n"
         "    output_dir: qsirecon\n"
         "    script: snbb_run_qsirecon.sh\n"
@@ -147,8 +153,8 @@ def test_from_yaml_custom_procedures(tmp_path):
         "    completion_marker: null\n"
     )
     cfg = SchedulerConfig.from_yaml(yaml_file)
-    assert len(cfg.procedures) == 1
-    proc = cfg.procedures[0]
+    assert len(cfg.procedures) == 2
+    proc = cfg.procedures[1]
     assert proc.name == "qsirecon"
     assert proc.depends_on == ["qsiprep"]
     assert proc.scope == "session"
@@ -178,3 +184,79 @@ def test_procedures_list_independent_per_instance():
         Procedure(name="extra", output_dir="extra", script="extra.sh")
     )
     assert len(cfg2.procedures) == len(DEFAULT_PROCEDURES)
+
+
+# ---------------------------------------------------------------------------
+# Validation — depends_on references
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_depends_on_raises_at_init():
+    """depends_on that references an unknown procedure raises ValueError."""
+    with pytest.raises(ValueError, match="depends on"):
+        SchedulerConfig(
+            procedures=[
+                Procedure(
+                    name="orphan",
+                    output_dir="orphan",
+                    script="orphan.sh",
+                    depends_on=["nonexistent"],
+                )
+            ]
+        )
+
+
+def test_invalid_depends_on_names_listed_in_error():
+    with pytest.raises(ValueError, match="nonexistent"):
+        SchedulerConfig(
+            procedures=[
+                Procedure(
+                    name="orphan",
+                    output_dir="orphan",
+                    script="orphan.sh",
+                    depends_on=["nonexistent"],
+                )
+            ]
+        )
+
+
+def test_valid_depends_on_does_not_raise():
+    """A procedure that depends on a known sibling is accepted."""
+    SchedulerConfig(
+        procedures=[
+            Procedure(name="step1", output_dir="step1", script="step1.sh"),
+            Procedure(name="step2", output_dir="step2", script="step2.sh", depends_on=["step1"]),
+        ]
+    )
+
+
+def test_from_yaml_invalid_depends_on_raises(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        "procedures:\n"
+        "  - name: orphan\n"
+        "    output_dir: orphan\n"
+        "    script: orphan.sh\n"
+        "    depends_on: [ghost]\n"
+    )
+    with pytest.raises(ValueError, match="depends on"):
+        SchedulerConfig.from_yaml(yaml_file)
+
+
+# ---------------------------------------------------------------------------
+# Validation — malformed YAML
+# ---------------------------------------------------------------------------
+
+
+def test_from_yaml_malformed_raises_value_error(tmp_path):
+    yaml_file = tmp_path / "bad.yaml"
+    yaml_file.write_text("key: [unclosed bracket\n")
+    with pytest.raises(ValueError, match="Invalid YAML"):
+        SchedulerConfig.from_yaml(yaml_file)
+
+
+def test_from_yaml_malformed_error_includes_path(tmp_path):
+    yaml_file = tmp_path / "bad.yaml"
+    yaml_file.write_text(": bad:\n  - [broken")
+    with pytest.raises(ValueError, match=str(yaml_file)):
+        SchedulerConfig.from_yaml(yaml_file)

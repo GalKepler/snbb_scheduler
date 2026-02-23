@@ -4,6 +4,25 @@ import pytest
 from snbb_scheduler.config import SchedulerConfig
 
 
+# ---------------------------------------------------------------------------
+# Generic config fixture (used in test_rules, test_manifest, and others)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def cfg(tmp_path):
+    """Minimal SchedulerConfig pointing at a temporary directory tree."""
+    return SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Filesystem-backed fake data
+# ---------------------------------------------------------------------------
+
 @pytest.fixture
 def fake_data_dir(tmp_path):
     """Create a minimal fake SNBB directory tree.

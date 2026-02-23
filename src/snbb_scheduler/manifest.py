@@ -91,5 +91,7 @@ def filter_in_flight(manifest: pd.DataFrame, state: pd.DataFrame) -> pd.DataFram
 
 
 def _empty_state() -> pd.DataFrame:
-    df = pd.DataFrame(columns=list(_STATE_COLUMNS))
-    return df.astype({k: v for k, v in _STATE_COLUMNS.items() if k != "submitted_at"})
+    """Return an empty DataFrame with the correct state schema and dtypes."""
+    return pd.DataFrame(
+        {col: pd.Series(dtype=dtype) for col, dtype in _STATE_COLUMNS.items()}
+    )

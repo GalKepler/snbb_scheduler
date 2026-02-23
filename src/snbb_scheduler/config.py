@@ -9,6 +9,7 @@ from typing import Literal
 import yaml
 
 
+
 @dataclass
 class Procedure:
     """Declaration of a single processing procedure."""
@@ -76,6 +77,24 @@ class SchedulerConfig:
     # Procedure registry — add new procedures here or via YAML
     procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
 
+    def __post_init__(self) -> None:
+        """Validate that all ``depends_on`` entries reference known procedures.
+
+        Raises
+        ------
+        ValueError
+            If any procedure's ``depends_on`` list contains a name that does
+            not match another procedure in this config.
+        """
+        known = {p.name for p in self.procedures}
+        for proc in self.procedures:
+            for dep in proc.depends_on:
+                if dep not in known:
+                    raise ValueError(
+                        f"Procedure {proc.name!r} depends on {dep!r}, which is not "
+                        f"in the procedures list. Known procedures: {sorted(known)}"
+                    )
+
     def get_procedure_root(self, proc: Procedure) -> Path:
         """Return the base output root for a procedure."""
         if proc.name == "bids":
@@ -91,9 +110,20 @@ class SchedulerConfig:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "SchedulerConfig":
-        """Load config from a YAML file, overriding defaults."""
+        """Load config from a YAML file, overriding defaults.
+
+        Raises
+        ------
+        ValueError
+            If the file contains invalid YAML syntax.
+        FileNotFoundError
+            If *path* does not exist.
+        """
         with open(path) as f:
-            data = yaml.safe_load(f) or {}
+            try:
+                data = yaml.safe_load(f) or {}
+            except yaml.YAMLError as exc:
+                raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
 
         path_fields = {"dicom_root", "bids_root", "derivatives_root", "state_file", "sessions_file"}
         for key in path_fields:

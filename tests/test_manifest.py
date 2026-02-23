@@ -14,18 +14,8 @@ from snbb_scheduler.manifest import (
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Helpers
 # ---------------------------------------------------------------------------
-
-@pytest.fixture
-def cfg(tmp_path):
-    return SchedulerConfig(
-        dicom_root=tmp_path / "dicom",
-        bids_root=tmp_path / "bids",
-        derivatives_root=tmp_path / "derivatives",
-        state_file=tmp_path / "state.parquet",
-    )
-
 
 def make_sessions(cfg: SchedulerConfig, tmp_path: Path) -> pd.DataFrame:
     """Return a two-row sessions DataFrame from fake_data_dir layout."""
