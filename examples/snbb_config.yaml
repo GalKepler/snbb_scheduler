@@ -47,12 +47,12 @@ procedures:
       - "fmap/*acq-func_dir-PA*epi.nii.gz"
       - "func/*task-rest_bold.nii.gz"
 
-  # DWI preprocessing
-  # Completion: output directory is non-empty
+  # DWI preprocessing (subject-scoped: one run covers all sessions)
+  # Completion: ses-* output dirs match BIDS DWI session count
   - name: qsiprep
     output_dir: qsiprep
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsiprep.sh
-    scope: session
+    scope: subject
     depends_on: [bids]
     completion_marker: null
 
@@ -65,13 +65,13 @@ procedures:
     depends_on: [bids]
     completion_marker: "scripts/recon-all.done"
 
-  # DWI reconstruction (requires qsiprep output)
-  # Completion: <output_dir>/derivatives/qsirecon-MRtrix3_act-HSVS/sub-<subject_code>/ses-<session_id> is non-empty
+  # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
+  # Completion: ses-* output dirs match qsiprep session count
   - name: qsirecon
-    output_dir: qsirecon
+    output_dir: qsirecon-MRtrix3_act-HSVS
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
-    scope: session
-    depends_on: [qsiprep]
+    scope: subject
+    depends_on: [qsiprep, freesurfer]
     completion_marker: null
 
   # fMRI preprocessing

@@ -34,18 +34,30 @@ def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFr
 
     rules = build_rules(config)
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
+    subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
 
     rows = []
+    seen_subject_procs: set[tuple[str, str]] = set()
     for _, session_row in sessions.iterrows():
         for proc_name, rule in rules.items():
-            if rule(session_row):
-                rows.append({
-                    "subject": session_row["subject"],
-                    "session": session_row["session"],
-                    "procedure": proc_name,
-                    "dicom_path": session_row["dicom_path"],
-                    "priority": priority[proc_name],
-                })
+            if not rule(session_row):
+                continue
+            subject = session_row["subject"]
+            if proc_name in subject_scoped:
+                key = (subject, proc_name)
+                if key in seen_subject_procs:
+                    continue
+                seen_subject_procs.add(key)
+                session = ""
+            else:
+                session = session_row["session"]
+            rows.append({
+                "subject": subject,
+                "session": session,
+                "procedure": proc_name,
+                "dicom_path": session_row["dicom_path"],
+                "priority": priority[proc_name],
+            })
 
     if not rows:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])

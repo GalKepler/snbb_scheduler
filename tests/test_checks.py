@@ -4,7 +4,9 @@ import pytest
 
 from snbb_scheduler.checks import (
     _count_available_t1w,
+    _count_bids_dwi_sessions,
     _count_recon_all_inputs,
+    _count_subject_ses_dirs,
     is_complete,
 )
 from snbb_scheduler.config import Procedure
@@ -356,6 +358,146 @@ def test_count_available_t1w_two_sessions(tmp_path):
 def test_count_available_t1w_subject_missing(tmp_path):
     assert _count_available_t1w(tmp_path, "sub-9999") == 0
 
+
+# ---------------------------------------------------------------------------
+# _count_subject_ses_dirs helper
+# ---------------------------------------------------------------------------
+
+def test_count_subject_ses_dirs_two_sessions(tmp_path):
+    subject_dir = tmp_path / "sub-0001"
+    (subject_dir / "ses-01").mkdir(parents=True)
+    (subject_dir / "ses-02").mkdir()
+    assert _count_subject_ses_dirs(subject_dir) == 2
+
+
+def test_count_subject_ses_dirs_missing_dir(tmp_path):
+    assert _count_subject_ses_dirs(tmp_path / "nonexistent") == 0
+
+
+# ---------------------------------------------------------------------------
+# _count_bids_dwi_sessions helper
+# ---------------------------------------------------------------------------
+
+def test_count_bids_dwi_sessions_two_sessions(tmp_path):
+    subject = "sub-0001"
+    for ses in ("ses-01", "ses-02"):
+        dwi = tmp_path / subject / ses / "dwi"
+        dwi.mkdir(parents=True)
+        (dwi / f"{subject}_{ses}_dir-AP_dwi.nii.gz").touch()
+    assert _count_bids_dwi_sessions(tmp_path, subject) == 2
+
+
+def test_count_bids_dwi_sessions_subject_missing(tmp_path):
+    assert _count_bids_dwi_sessions(tmp_path, "sub-9999") == 0
+
+
+# ---------------------------------------------------------------------------
+# QSIPrep specialized check
+# ---------------------------------------------------------------------------
+
+def test_qsiprep_complete_session_count_matches(tmp_path):
+    """QSIPrep complete when ses-* dirs match BIDS DWI session count."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
+
+    subject = "sub-0001"
+    bids_root = tmp_path / "bids"
+    dwi = bids_root / subject / "ses-01" / "dwi"
+    dwi.mkdir(parents=True)
+    (dwi / f"{subject}_ses-01_dir-AP_dwi.nii.gz").touch()
+
+    qsiprep_subject = tmp_path / "derivatives" / "qsiprep" / subject
+    (qsiprep_subject / "ses-01").mkdir(parents=True)
+    (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
+
+    assert is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject) is True
+
+
+def test_qsiprep_incomplete_missing_session(tmp_path):
+    """QSIPrep incomplete when fewer ses-* dirs than BIDS DWI sessions."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
+
+    subject = "sub-0001"
+    bids_root = tmp_path / "bids"
+    for ses in ("ses-01", "ses-02"):
+        dwi = bids_root / subject / ses / "dwi"
+        dwi.mkdir(parents=True)
+        (dwi / f"{subject}_{ses}_dir-AP_dwi.nii.gz").touch()
+
+    qsiprep_subject = tmp_path / "derivatives" / "qsiprep" / subject
+    (qsiprep_subject / "ses-01").mkdir(parents=True)
+    (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
+    # ses-02 not yet processed
+
+    assert is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject) is False
+
+
+def test_qsiprep_fallback_nonempty(tmp_path):
+    """Without kwargs, qsiprep falls back to dir-nonempty check."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
+
+    subject_dir = tmp_path / "qsiprep" / "sub-0001"
+    (subject_dir / "ses-01").mkdir(parents=True)
+    (subject_dir / "ses-01" / "dwi.nii.gz").touch()
+
+    assert is_complete(qsiprep, subject_dir) is True
+
+
+# ---------------------------------------------------------------------------
+# QSIRecon specialized check
+# ---------------------------------------------------------------------------
+
+def test_qsirecon_complete_session_count_matches(tmp_path):
+    """QSIRecon complete when ses-* dirs match QSIPrep session count."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject = "sub-0001"
+    derivatives_root = tmp_path / "derivatives"
+    qsiprep_subject = derivatives_root / "qsiprep" / subject
+    (qsiprep_subject / "ses-01").mkdir(parents=True)
+
+    qsirecon_subject = derivatives_root / "qsirecon-MRtrix3_act-HSVS" / subject
+    (qsirecon_subject / "ses-01").mkdir(parents=True)
+    (qsirecon_subject / "ses-01" / "report.html").touch()
+
+    assert is_complete(qsirecon, qsirecon_subject, derivatives_root=derivatives_root, subject=subject) is True
+
+
+def test_qsirecon_incomplete_missing_session(tmp_path):
+    """QSIRecon incomplete when fewer ses-* dirs than QSIPrep sessions."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject = "sub-0001"
+    derivatives_root = tmp_path / "derivatives"
+    for ses in ("ses-01", "ses-02"):
+        (derivatives_root / "qsiprep" / subject / ses).mkdir(parents=True)
+
+    qsirecon_subject = derivatives_root / "qsirecon-MRtrix3_act-HSVS" / subject
+    (qsirecon_subject / "ses-01").mkdir(parents=True)
+    (qsirecon_subject / "ses-01" / "report.html").touch()
+
+    assert is_complete(qsirecon, qsirecon_subject, derivatives_root=derivatives_root, subject=subject) is False
+
+
+def test_qsirecon_fallback_nonempty(tmp_path):
+    """Without kwargs, qsirecon falls back to dir-nonempty check."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject_dir = tmp_path / "qsirecon-MRtrix3_act-HSVS" / "sub-0001"
+    (subject_dir / "ses-01").mkdir(parents=True)
+    (subject_dir / "ses-01" / "report.html").touch()
+
+    assert is_complete(qsirecon, subject_dir) is True
+
+
+# ---------------------------------------------------------------------------
+# Legacy qsiprep/qsirecon nonempty tests (kept for backward compat coverage)
+# ---------------------------------------------------------------------------
 
 def test_qsiprep_complete_nonempty(tmp_path):
     """qsiprep uses completion_marker=None → non-empty directory."""

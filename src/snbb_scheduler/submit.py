@@ -48,16 +48,18 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     if config.slurm_partition:
         cmd.append(f"--partition={config.slurm_partition}")
     cmd.append(f"--account={config.slurm_account}")
-    cmd.append(f"--job-name={row['procedure']}_{row['subject']}_{row['session']}")
+    if proc.scope == "subject":
+        cmd.append(f"--job-name={row['procedure']}_{row['subject']}")
+    else:
+        cmd.append(f"--job-name={row['procedure']}_{row['subject']}_{row['session']}")
     if config.slurm_mem:
         cmd.append(f"--mem={config.slurm_mem}")
     if config.slurm_cpus_per_task:
         cmd.append(f"--cpus-per-task={config.slurm_cpus_per_task}")
-    cmd += [
-        proc.script,
-        row["subject"],
-        row["session"],
-    ]
+    cmd.append(proc.script)
+    cmd.append(row["subject"])
+    if proc.scope != "subject":
+        cmd.append(row["session"])
 
     if dry_run:
         print(f"[DRY RUN] Would submit: {' '.join(cmd)}")

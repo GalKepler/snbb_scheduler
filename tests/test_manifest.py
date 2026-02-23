@@ -130,12 +130,16 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     sessions = make_sessions(cfg, tmp_path)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
     mark_bids_complete(tmp_path, "sub-0002", "ses-01")
-    # Also create qsiprep and freesurfer outputs
     for sub in ("sub-0001", "sub-0002"):
+        # qsiprep: subject-scoped, session subdir matches BIDS DWI sessions
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
         qp.mkdir(parents=True)
         (qp / "out.nii.gz").touch()
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
+        # qsirecon: session subdir count must match qsiprep
+        qr = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / sub / "ses-01"
+        qr.mkdir(parents=True)
+        (qr / "report.html").touch()
     sessions = make_sessions(cfg, tmp_path)
     manifest = build_manifest(sessions, cfg)
     assert manifest.empty

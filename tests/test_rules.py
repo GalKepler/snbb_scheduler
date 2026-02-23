@@ -63,8 +63,22 @@ def mark_bids_complete(row: dict) -> None:
 
 
 def mark_qsiprep_complete(row: dict) -> None:
-    row["qsiprep_path"].mkdir(parents=True, exist_ok=True)
-    (row["qsiprep_path"] / "dwi.nii.gz").touch()
+    """Create qsiprep ses-* output dirs matching the BIDS DWI sessions."""
+    subject_bids = row["bids_path"].parent  # bids_root/subject
+    for ses_dir in subject_bids.iterdir():
+        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
+            out = row["qsiprep_path"] / ses_dir.name
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "dwi.nii.gz").touch()
+
+
+def mark_qsirecon_complete(row: dict) -> None:
+    """Create qsirecon ses-* output dirs matching the qsiprep sessions."""
+    for ses_dir in row["qsiprep_path"].iterdir():
+        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
+            out = row["qsirecon_path"] / ses_dir.name
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "report.html").touch()
 
 
 def mark_freesurfer_complete(row: dict) -> None:
@@ -211,9 +225,54 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_bids_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
     rules = build_rules(cfg)
     for name, rule in rules.items():
         assert rule(pd.Series(row)) is False, f"{name} fired when already complete"
+
+
+# ---------------------------------------------------------------------------
+# qsirecon rule — depends on qsiprep + freesurfer, subject-scoped
+# ---------------------------------------------------------------------------
+
+def test_qsirecon_not_needed_when_qsiprep_incomplete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    # qsiprep NOT complete
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
+
+
+def test_qsirecon_not_needed_when_freesurfer_incomplete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    # freesurfer NOT complete
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
+
+
+def test_qsirecon_needed_when_deps_complete_qsirecon_absent(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is True
+
+
+def test_qsirecon_not_needed_when_already_complete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
 
 
 # ---------------------------------------------------------------------------

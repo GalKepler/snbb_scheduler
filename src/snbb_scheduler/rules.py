@@ -32,8 +32,10 @@ def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig)
     This helper centralises that mapping so that ``_make_rule`` stays clean.
     """
     subject = row["subject"]
-    if proc.name == "freesurfer":
+    if proc.name in ("freesurfer", "qsiprep"):
         return {"bids_root": config.bids_root, "subject": subject}
+    if proc.name == "qsirecon":
+        return {"derivatives_root": config.derivatives_root, "subject": subject}
     return {}
 
 

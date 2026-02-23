@@ -88,6 +88,42 @@ def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     return used == available
 
 
+@_register_check("qsiprep")
+def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """QSIPrep (subject-scoped) is complete when a processed ``ses-*`` subdirectory
+    exists for every BIDS session that has DWI data.
+
+    Falls back to ``_dir_nonempty`` when ``bids_root``/``subject`` are absent.
+    """
+    bids_root = kwargs.get("bids_root")
+    subject = kwargs.get("subject")
+    if bids_root is None or subject is None:
+        return _dir_nonempty(output_path)
+
+    qsiprep_sessions = _count_subject_ses_dirs(output_path)
+    dwi_sessions = _count_bids_dwi_sessions(Path(bids_root), subject)
+    return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
+
+
+@_register_check("qsirecon")
+def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """QSIRecon (subject-scoped) is complete when its ``ses-*`` subdirectory count
+    matches the number of processed QSIPrep sessions for the same subject.
+
+    Falls back to ``_dir_nonempty`` when ``derivatives_root``/``subject`` are absent.
+    """
+    derivatives_root = kwargs.get("derivatives_root")
+    subject = kwargs.get("subject")
+    if derivatives_root is None or subject is None:
+        return _dir_nonempty(output_path)
+
+    qsirecon_sessions = _count_subject_ses_dirs(output_path)
+    qsiprep_sessions = _count_subject_ses_dirs(
+        Path(derivatives_root) / "qsiprep" / subject
+    )
+    return qsirecon_sessions > 0 and qsirecon_sessions == qsiprep_sessions
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -129,3 +165,28 @@ def _count_available_t1w(bids_root: Path, subject: str) -> int:
     if not subject_dir.exists():
         return 0
     return len(list(subject_dir.glob("ses-*/anat/*_T1w.nii.gz")))
+
+
+def _count_subject_ses_dirs(subject_dir: Path) -> int:
+    """Count ``ses-*`` subdirectories inside *subject_dir*."""
+    if not subject_dir.exists():
+        return 0
+    return sum(1 for d in subject_dir.iterdir() if d.is_dir() and d.name.startswith("ses-"))
+
+
+def _count_bids_dwi_sessions(bids_root: Path, subject: str) -> int:
+    """Count BIDS sessions for *subject* that contain at least one DWI NIfTI.
+
+    A session qualifies when ``ses-*/dwi/*_dwi.nii.gz`` matches inside
+    ``<bids_root>/<subject>``.
+    """
+    subject_dir = bids_root / subject
+    if not subject_dir.exists():
+        return 0
+    return sum(
+        1
+        for ses_dir in subject_dir.iterdir()
+        if ses_dir.is_dir()
+        and ses_dir.name.startswith("ses-")
+        and any((ses_dir / "dwi").glob("*_dwi.nii.gz"))
+    )

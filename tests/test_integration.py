@@ -64,9 +64,17 @@ def add_bids(tmp_path, subject, session):
 
 
 def add_qsiprep(tmp_path, subject, session):
+    """Create qsiprep ses-* output dir for one session (subject-scoped layout)."""
     out = tmp_path / "derivatives" / "qsiprep" / subject / session
     out.mkdir(parents=True, exist_ok=True)
     (out / "dwi.nii.gz").touch()
+
+
+def add_qsirecon(tmp_path, subject, session):
+    """Create qsirecon ses-* output dir matching the qsiprep session."""
+    out = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / subject / session
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "report.html").touch()
 
 
 def add_freesurfer(tmp_path, subject):
@@ -196,6 +204,7 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_bids(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
+    add_qsirecon(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
@@ -216,8 +225,8 @@ def test_two_sessions_same_subject_share_freesurfer_path(tmp_path):
 
     # freesurfer should not appear — already done for this subject
     assert "freesurfer" not in set(manifest["procedure"])
-    # qsiprep should appear for both sessions
-    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 2
+    # qsiprep is subject-scoped: one row per subject (not per session)
+    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 1
 
 
 # ---------------------------------------------------------------------------

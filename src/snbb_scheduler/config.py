@@ -49,7 +49,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         name="qsiprep",
         output_dir="qsiprep",
         script="snbb_run_qsiprep.sh",
-        scope="session",
+        scope="subject",
         depends_on=["bids"],
         completion_marker=None,
     ),
@@ -60,6 +60,14 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         scope="subject",
         depends_on=["bids"],
         completion_marker="scripts/recon-all.done",
+    ),
+    Procedure(
+        name="qsirecon",
+        output_dir="qsirecon-MRtrix3_act-HSVS",
+        script="snbb_run_qsirecon.sh",
+        scope="subject",
+        depends_on=["qsiprep", "freesurfer"],
+        completion_marker=None,
     ),
 ]
 
