@@ -22,13 +22,36 @@ from snbb_scheduler.submit import submit_manifest
     metavar="PATH",
     help="Path to YAML config file. Uses built-in defaults if omitted.",
 )
+@click.option(
+    "--slurm-mem",
+    "slurm_mem",
+    default=None,
+    metavar="MEM",
+    help="Memory limit for Slurm jobs (e.g. 32G). Overrides config file.",
+)
+@click.option(
+    "--slurm-cpus",
+    "slurm_cpus",
+    default=None,
+    type=int,
+    metavar="N",
+    help="CPUs per task for Slurm jobs. Overrides config file.",
+)
 @click.pass_context
-def main(ctx: click.Context, config_path: str | None) -> None:
+def main(
+    ctx: click.Context,
+    config_path: str | None,
+    slurm_mem: str | None,
+    slurm_cpus: int | None,
+) -> None:
     """snbb-scheduler: rule-based scheduler for the SNBB neuroimaging pipeline."""
     ctx.ensure_object(dict)
-    ctx.obj["config"] = (
-        SchedulerConfig.from_yaml(config_path) if config_path else SchedulerConfig()
-    )
+    config = SchedulerConfig.from_yaml(config_path) if config_path else SchedulerConfig()
+    if slurm_mem is not None:
+        config.slurm_mem = slurm_mem
+    if slurm_cpus is not None:
+        config.slurm_cpus_per_task = slurm_cpus
+    ctx.obj["config"] = config
 
 
 @main.command()

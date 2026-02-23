@@ -20,8 +20,10 @@ sessions_file: /home/galkepler/Downloads/linked_sessions.csv
 # ---------------------------------------------------------------------------
 # Slurm settings
 # ---------------------------------------------------------------------------
-slurm_partition: normal
-slurm_account:   slurm
+slurm_partition:     debug
+slurm_account:       slurm
+# slurm_mem:          32G    # passed as --mem to sbatch; omit to let Slurm use the cluster default
+# slurm_cpus_per_task: 8     # passed as --cpus-per-task; omit for the cluster default
 
 # ---------------------------------------------------------------------------
 # Processing procedures — in dependency order
@@ -37,23 +39,23 @@ procedures:
     depends_on: []
     completion_marker: "**/*.nii.gz"
 
-  # # DWI preprocessing
-  # # Completion: output directory is non-empty
-  # - name: qsiprep
-  #   output_dir: qsiprep
-  #   script: /opt/snbb_scheduler/scripts/snbb_run_qsiprep.sh
-  #   scope: session
-  #   depends_on: [bids]
-  #   completion_marker: null
+  # DWI preprocessing
+  # Completion: output directory is non-empty
+  - name: qsiprep
+    output_dir: qsiprep
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsiprep.sh
+    scope: session
+    depends_on: [bids]
+    completion_marker: null
 
-  # # Cortical reconstruction (one run covers all sessions for a subject)
-  # # Completion: recon-all writes this marker file when it finishes
-  # - name: freesurfer
-  #   output_dir: freesurfer
-  #   script: /opt/snbb_scheduler/scripts/snbb_run_freesurfer.sh
-  #   scope: subject
-  #   depends_on: [bids]
-  #   completion_marker: "scripts/recon-all.done"
+  # Cortical reconstruction (one run covers all sessions for a subject)
+  # Completion: recon-all writes this marker file when it finishes
+  - name: freesurfer
+    output_dir: freesurfer
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
+    scope: subject
+    depends_on: [bids]
+    completion_marker: "scripts/recon-all.done"
 
   # # DWI reconstruction (requires qsiprep output)
   # - name: qsirecon

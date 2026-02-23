@@ -58,7 +58,7 @@ class SchedulerConfig:
     freesurfer_dir: str = "freesurfer"
 
     # Slurm settings
-    slurm_partition: str = "normal"
+    slurm_partition: str = "debug"
     slurm_account: str = "snbb"
 
     # State tracking

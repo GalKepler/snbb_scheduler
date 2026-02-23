@@ -20,7 +20,7 @@ def cfg(tmp_path):
         bids_root=tmp_path / "bids",
         derivatives_root=tmp_path / "derivatives",
         state_file=tmp_path / "state.parquet",
-        slurm_partition="normal",
+        slurm_partition="debug",
         slurm_account="snbb",
     )
 
@@ -65,7 +65,7 @@ def test_submit_task_partition_flag(cfg):
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(make_row(), cfg)
     cmd = mock_run.call_args[0][0]
-    assert "--partition=normal" in cmd
+    assert "--partition=debug" in cmd
 
 
 def test_submit_task_account_flag(cfg):
@@ -143,6 +143,52 @@ def test_submit_task_raises_on_unexpected_sbatch_output(cfg):
     with patch("subprocess.run", return_value=bad_mock):
         with pytest.raises(RuntimeError, match="Unexpected sbatch output"):
             submit_task(make_row(), cfg)
+
+
+def test_submit_task_mem_flag(tmp_path):
+    """--mem flag included when slurm_mem is set."""
+    cfg_mem = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_mem="32G",
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg_mem)
+    cmd = mock_run.call_args[0][0]
+    assert "--mem=32G" in cmd
+
+
+def test_submit_task_cpus_flag(tmp_path):
+    """--cpus-per-task flag included when slurm_cpus_per_task is set."""
+    cfg_cpus = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_cpus_per_task=8,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg_cpus)
+    cmd = mock_run.call_args[0][0]
+    assert "--cpus-per-task=8" in cmd
+
+
+def test_submit_task_no_mem_when_none(cfg):
+    """--mem flag absent when slurm_mem is None."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert not any(arg.startswith("--mem") for arg in cmd)
+
+
+def test_submit_task_no_cpus_when_none(cfg):
+    """--cpus-per-task flag absent when slurm_cpus_per_task is None."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert not any(arg.startswith("--cpus-per-task") for arg in cmd)
 
 
 def test_submit_task_no_partition_when_empty(tmp_path):
