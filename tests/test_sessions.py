@@ -255,7 +255,8 @@ def test_file_discovery_bids_prefix_added(fake_sessions_config):
     assert all(s.startswith("ses-") for s in df["session"])
 
 
-def test_file_discovery_dicom_path_is_flat(fake_sessions_config, fake_sessions_csv):
+def test_file_discovery_dicom_path_from_csv(fake_sessions_config, fake_sessions_csv):
+    """dicom_path is taken directly from the sessions CSV, not reconstructed."""
     df = discover_sessions(fake_sessions_config)
     row = df[df["subject"] == "sub-0001"].iloc[0]
     assert row["dicom_path"] == fake_sessions_csv / "dicom" / "SCAN001"
@@ -266,20 +267,22 @@ def test_file_discovery_dicom_exists_true_when_dir_present(fake_sessions_config)
     assert df["dicom_exists"].all()
 
 
-def test_file_discovery_dicom_exists_false_when_dir_missing(fake_sessions_csv):
+def test_file_discovery_dicom_exists_false_from_nan_in_csv(tmp_path):
+    """A NaN dicom_path in the sessions file sets dicom_exists=False (no filesystem check)."""
+    csv = tmp_path / "sessions.csv"
+    import math
+    pd.DataFrame([
+        {"subject_code": "0001", "session_id": "01", "dicom_path": math.nan},
+    ]).to_csv(csv, index=False)
     cfg = SchedulerConfig(
-        dicom_root=fake_sessions_csv / "dicom",
-        bids_root=fake_sessions_csv / "bids",
-        derivatives_root=fake_sessions_csv / "derivatives",
-        state_file=fake_sessions_csv / "state.parquet",
-        sessions_file=fake_sessions_csv / "sessions.csv",
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=csv,
     )
-    # Remove one DICOM dir
-    import shutil
-    shutil.rmtree(fake_sessions_csv / "dicom" / "SCAN001")
     df = discover_sessions(cfg)
-    row = df[df["subject"] == "sub-0001"].iloc[0]
-    assert row["dicom_exists"] is False or row["dicom_exists"] == False
+    assert not df.iloc[0]["dicom_exists"]
 
 
 def test_file_discovery_procedure_columns_present(fake_sessions_config):
@@ -316,7 +319,7 @@ def test_file_discovery_missing_csv_raises(tmp_path):
 
 def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame(columns=["subject_code", "session_id", "ScanID"]).to_csv(csv, index=False)
+    pd.DataFrame(columns=["subject_code", "session_id", "dicom_path"]).to_csv(csv, index=False)
     (tmp_path / "dicom").mkdir()
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -372,7 +375,7 @@ def test_load_sessions_all_required_columns_present_does_not_raise(tmp_path):
 def test_sessions_file_missing_column_raises_value_error(tmp_path):
     """discover_sessions raises ValueError when the sessions file is missing a column."""
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame([{"subject_code": "0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
+    pd.DataFrame([{"subject_code": "0001", "dicom_path": "/data/SCAN001"}]).to_csv(csv, index=False)
     # 'session_id' column is missing
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",

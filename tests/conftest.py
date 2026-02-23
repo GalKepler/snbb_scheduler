@@ -62,14 +62,20 @@ def fake_config(fake_data_dir):
 
 @pytest.fixture
 def fake_sessions_csv(tmp_path):
-    """Minimal CSV with two sessions and matching flat DICOM directories."""
+    """Minimal CSV with two sessions and matching flat DICOM directories.
+
+    The CSV uses the pre-sanitized format expected by _discover_from_file:
+    columns subject_code, session_id, and dicom_path (path to DICOM dir).
+    """
+    dicom1 = tmp_path / "dicom" / "SCAN001"
+    dicom2 = tmp_path / "dicom" / "SCAN002"
+    dicom1.mkdir(parents=True)
+    dicom2.mkdir(parents=True)
     csv = tmp_path / "sessions.csv"
     pd.DataFrame([
-        {"subject_code": "0001", "session_id": "01", "ScanID": "SCAN001"},
-        {"subject_code": "0002", "session_id": "01", "ScanID": "SCAN002"},
+        {"subject_code": "0001", "session_id": "01", "dicom_path": str(dicom1)},
+        {"subject_code": "0002", "session_id": "01", "dicom_path": str(dicom2)},
     ]).to_csv(csv, index=False)
-    (tmp_path / "dicom" / "SCAN001").mkdir(parents=True)
-    (tmp_path / "dicom" / "SCAN002").mkdir(parents=True)
     return tmp_path
 
 
