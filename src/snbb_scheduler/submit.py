@@ -62,7 +62,8 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     if dry_run:
         print(f"[DRY RUN] Would submit: {' '.join(cmd)}")
         return None
-
+    else:
+        print(f"Submitting: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     # sbatch stdout: "Submitted batch job 12345"
     output = result.stdout.strip()

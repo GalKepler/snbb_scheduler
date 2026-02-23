@@ -118,7 +118,7 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
         If ``config.sessions_file`` does not exist.
     """
     # dtype=str preserves zero-padded values (e.g. "0001" → "0001", not 1)
-    df_csv = pd.read_csv(config.sessions_file, dtype=str)
+    df_csv = load_sessions(config.sessions_file)
     missing = _SESSION_FILE_COLUMNS - set(df_csv.columns)
     if missing:
         raise ValueError(
