@@ -5,10 +5,14 @@ __all__ = ["submit_task", "submit_manifest"]
 import logging
 import subprocess
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from snbb_scheduler.config import SchedulerConfig
+
+if TYPE_CHECKING:
+    from snbb_scheduler.audit import AuditLogger
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +24,12 @@ def _build_job_name(row: pd.Series, proc_scope: str) -> str:
     return f"{row['procedure']}_{row['subject']}_{row['session']}"
 
 
-def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) -> str | None:
+def submit_task(
+    row: pd.Series,
+    config: SchedulerConfig,
+    dry_run: bool = False,
+    audit: "AuditLogger | None" = None,
+) -> str | None:
     """Submit a single task to Slurm via sbatch.
 
     Builds the sbatch command from the procedure's script and the row's
@@ -77,10 +86,29 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     if dry_run:
         logger.info("[DRY RUN] Would submit: %s", " ".join(cmd))
         print(f"[DRY RUN] Would submit: {' '.join(cmd)}")
+        if audit is not None:
+            audit.log(
+                "dry_run",
+                subject=row["subject"],
+                session=row.get("session", ""),
+                procedure=row["procedure"],
+                detail=" ".join(cmd),
+            )
         return None
     logger.info("Submitting: %s", " ".join(cmd))
     print(f"Submitting: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as exc:
+        if audit is not None:
+            audit.log(
+                "error",
+                subject=row["subject"],
+                session=row.get("session", ""),
+                procedure=row["procedure"],
+                detail=str(exc),
+            )
+        raise
     # sbatch stdout: "Submitted batch job 12345"
     output = result.stdout.strip()
     if not output.startswith("Submitted batch job "):
@@ -88,13 +116,23 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
             f"Unexpected sbatch output: {output!r}. "
             "Expected format: 'Submitted batch job <ID>'"
         )
-    return output.split()[-1]
+    job_id = output.split()[-1]
+    if audit is not None:
+        audit.log(
+            "submitted",
+            subject=row["subject"],
+            session=row.get("session", ""),
+            procedure=row["procedure"],
+            job_id=job_id,
+        )
+    return job_id
 
 
 def submit_manifest(
     manifest: pd.DataFrame,
     config: SchedulerConfig,
     dry_run: bool = False,
+    audit: "AuditLogger | None" = None,
 ) -> pd.DataFrame:
     """Submit all tasks in the manifest.
 
@@ -105,7 +143,7 @@ def submit_manifest(
     now = datetime.now(tz=timezone.utc)
 
     for _, row in manifest.iterrows():
-        job_id = submit_task(row, config, dry_run=dry_run)
+        job_id = submit_task(row, config, dry_run=dry_run, audit=audit)
         new_rows.append({
             "subject": row["subject"],
             "session": row["session"],

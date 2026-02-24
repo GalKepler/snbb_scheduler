@@ -12,6 +12,7 @@ from snbb_scheduler.manifest import (
     load_state,
     save_state,
 )
+from snbb_scheduler.audit import get_logger
 from snbb_scheduler.sessions import discover_sessions
 from snbb_scheduler.submit import submit_manifest
 
@@ -104,7 +105,8 @@ def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -
         click.echo("Nothing to submit.")
         return
 
-    new_state = submit_manifest(manifest, config, dry_run=dry_run)
+    audit = get_logger(config)
+    new_state = submit_manifest(manifest, config, dry_run=dry_run, audit=audit)
 
     if not dry_run:
         parts = [df for df in (state, new_state) if not df.empty]
@@ -169,6 +171,18 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
         click.echo("No matching failed entries found.")
         return
 
+    cleared_rows = state[mask]
     state = state[~mask].reset_index(drop=True)
     save_state(state, config)
+
+    audit = get_logger(config)
+    for _, row in cleared_rows.iterrows():
+        audit.log(
+            "retry_cleared",
+            subject=row["subject"],
+            session=row.get("session", ""),
+            procedure=row["procedure"],
+            job_id=str(row.get("job_id", "")),
+        )
+
     click.echo(f"Cleared {n} failed entry/entries. They will be retried on the next run.")
