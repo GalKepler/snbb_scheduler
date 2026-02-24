@@ -277,6 +277,30 @@ def test_force_procedure_limits_forced_procedure(runner, cfg_with_bids_complete)
     assert "[DRY RUN]" in result.output
 
 
+def test_slurm_log_dir_in_help(runner):
+    """--slurm-log-dir appears in the main group help text."""
+    result = runner.invoke(main, ["--help"])
+    assert result.exit_code == 0
+    assert "--slurm-log-dir" in result.output
+
+
+def test_slurm_log_dir_cli_overrides_config(runner, cfg_with_sessions, tmp_path):
+    """--slurm-log-dir on the CLI overrides config and reaches sbatch as --output/--error."""
+    log_dir = tmp_path / "slurm_logs"
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "Submitted batch job 3\n"
+        runner.invoke(
+            main,
+            ["--config", str(cfg_with_sessions), "--slurm-log-dir", str(log_dir), "run"],
+        )
+    calls = mock_run.call_args_list
+    assert calls, "sbatch was never called"
+    for c in calls:
+        cmd = c[0][0]
+        assert any(a.startswith("--output=") for a in cmd)
+        assert any(a.startswith("--error=") for a in cmd)
+
+
 def test_retry_filter_by_subject(runner, cfg_path, tmp_path):
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",

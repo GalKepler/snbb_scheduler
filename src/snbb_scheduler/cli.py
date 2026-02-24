@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import click
 import pandas as pd
 
@@ -37,20 +39,32 @@ from snbb_scheduler.submit import submit_manifest
     metavar="N",
     help="CPUs per task for Slurm jobs. Overrides config file.",
 )
+@click.option(
+    "--slurm-log-dir",
+    "slurm_log_dir",
+    default=None,
+    metavar="DIR",
+    help="Directory for Slurm stdout/stderr logs. Overrides config file.",
+)
 @click.pass_context
 def main(
     ctx: click.Context,
     config_path: str | None,
     slurm_mem: str | None,
     slurm_cpus: int | None,
+    slurm_log_dir: str | None,
 ) -> None:
     """snbb-scheduler: rule-based scheduler for the SNBB neuroimaging pipeline."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     ctx.ensure_object(dict)
     config = SchedulerConfig.from_yaml(config_path) if config_path else SchedulerConfig()
     if slurm_mem is not None:
         config.slurm_mem = slurm_mem
     if slurm_cpus is not None:
         config.slurm_cpus_per_task = slurm_cpus
+    if slurm_log_dir is not None:
+        from pathlib import Path
+        config.slurm_log_dir = Path(slurm_log_dir)
     ctx.obj["config"] = config
 
 

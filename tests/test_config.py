@@ -260,3 +260,51 @@ def test_from_yaml_malformed_error_includes_path(tmp_path):
     yaml_file.write_text(": bad:\n  - [broken")
     with pytest.raises(ValueError, match=str(yaml_file)):
         SchedulerConfig.from_yaml(yaml_file)
+
+
+# ---------------------------------------------------------------------------
+# slurm_log_dir and log_file fields
+# ---------------------------------------------------------------------------
+
+
+def test_slurm_log_dir_default_is_none():
+    cfg = SchedulerConfig()
+    assert cfg.slurm_log_dir is None
+
+
+def test_log_file_default_is_none():
+    cfg = SchedulerConfig()
+    assert cfg.log_file is None
+
+
+def test_slurm_log_dir_can_be_set():
+    cfg = SchedulerConfig(slurm_log_dir=Path("/data/logs/slurm"))
+    assert cfg.slurm_log_dir == Path("/data/logs/slurm")
+
+
+def test_log_file_can_be_set():
+    cfg = SchedulerConfig(log_file=Path("/data/logs/audit.jsonl"))
+    assert cfg.log_file == Path("/data/logs/audit.jsonl")
+
+
+def test_from_yaml_slurm_log_dir_becomes_path(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text("slurm_log_dir: /data/logs/slurm\n")
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    assert isinstance(cfg.slurm_log_dir, Path)
+    assert cfg.slurm_log_dir == Path("/data/logs/slurm")
+
+
+def test_from_yaml_log_file_becomes_path(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text("log_file: /data/logs/audit.jsonl\n")
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    assert isinstance(cfg.log_file, Path)
+    assert cfg.log_file == Path("/data/logs/audit.jsonl")
+
+
+def test_from_yaml_slurm_log_dir_none_stays_none(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text("slurm_log_dir: null\n")
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    assert cfg.slurm_log_dir is None

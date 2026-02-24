@@ -2,12 +2,22 @@ from __future__ import annotations
 
 __all__ = ["submit_task", "submit_manifest"]
 
+import logging
 import subprocess
 from datetime import datetime, timezone
 
 import pandas as pd
 
 from snbb_scheduler.config import SchedulerConfig
+
+logger = logging.getLogger(__name__)
+
+
+def _build_job_name(row: pd.Series, proc_scope: str) -> str:
+    """Return the Slurm job name for a manifest row."""
+    if proc_scope == "subject":
+        return f"{row['procedure']}_{row['subject']}"
+    return f"{row['procedure']}_{row['subject']}_{row['session']}"
 
 
 def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) -> str | None:
@@ -44,28 +54,32 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
         If sbatch exits with a non-zero status.
     """
     proc = config.get_procedure(row["procedure"])
+    job_name = _build_job_name(row, proc.scope)
     cmd = ["sbatch"]
     if config.slurm_partition:
         cmd.append(f"--partition={config.slurm_partition}")
     cmd.append(f"--account={config.slurm_account}")
-    if proc.scope == "subject":
-        cmd.append(f"--job-name={row['procedure']}_{row['subject']}")
-    else:
-        cmd.append(f"--job-name={row['procedure']}_{row['subject']}_{row['session']}")
+    cmd.append(f"--job-name={job_name}")
     if config.slurm_mem:
         cmd.append(f"--mem={config.slurm_mem}")
     if config.slurm_cpus_per_task:
         cmd.append(f"--cpus-per-task={config.slurm_cpus_per_task}")
+    if config.slurm_log_dir is not None:
+        log_subdir = config.slurm_log_dir / row["procedure"]
+        log_subdir.mkdir(parents=True, exist_ok=True)
+        cmd.append(f"--output={log_subdir}/{job_name}_%j.out")
+        cmd.append(f"--error={log_subdir}/{job_name}_%j.err")
     cmd.append(proc.script)
     cmd.append(row["subject"])
     if proc.scope != "subject":
         cmd.append(row["session"])
 
     if dry_run:
+        logger.info("[DRY RUN] Would submit: %s", " ".join(cmd))
         print(f"[DRY RUN] Would submit: {' '.join(cmd)}")
         return None
-    else:
-        print(f"Submitting: {' '.join(cmd)}")
+    logger.info("Submitting: %s", " ".join(cmd))
+    print(f"Submitting: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     # sbatch stdout: "Submitted batch job 12345"
     output = result.stdout.strip()
