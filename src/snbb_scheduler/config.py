@@ -90,6 +90,13 @@ class SchedulerConfig:
     # State tracking
     state_file: Path = field(default_factory=lambda: Path("/data/snbb/.scheduler_state.parquet"))
 
+    # Slurm log directory — when set, --output / --error are added to sbatch commands.
+    # Subdirectories are created per procedure: <slurm_log_dir>/<procedure>/
+    slurm_log_dir: Path | None = None
+
+    # JSONL audit log path. Defaults to <state_file parent>/scheduler_audit.jsonl at runtime.
+    log_file: Path | None = None
+
     # Optional CSV for session discovery (subject_code, session_id, ScanID).
     # When set, filesystem scanning is skipped.
     sessions_file: Path | None = field(default=None)
@@ -145,7 +152,10 @@ class SchedulerConfig:
             except yaml.YAMLError as exc:
                 raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
 
-        path_fields = {"dicom_root", "bids_root", "derivatives_root", "state_file", "sessions_file"}
+        path_fields = {
+            "dicom_root", "bids_root", "derivatives_root",
+            "state_file", "sessions_file", "slurm_log_dir", "log_file",
+        }
         for key in path_fields:
             if data.get(key) is not None:
                 data[key] = Path(data[key])

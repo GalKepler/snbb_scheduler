@@ -318,3 +318,97 @@ def test_submit_manifest_one_row_per_task(cfg):
     with patch("subprocess.run", return_value=mock_sbatch()):
         result = submit_manifest(manifest, cfg)
     assert len(result) == 3
+
+
+# ---------------------------------------------------------------------------
+# submit_task — slurm_log_dir / --output / --error flags
+# ---------------------------------------------------------------------------
+
+def test_submit_task_output_flag_when_log_dir_set(tmp_path):
+    """--output flag added when slurm_log_dir is configured."""
+    log_dir = tmp_path / "slurm_logs"
+    cfg_log = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_log)
+    cmd = mock_run.call_args[0][0]
+    assert any(arg.startswith("--output=") for arg in cmd)
+
+
+def test_submit_task_error_flag_when_log_dir_set(tmp_path):
+    """--error flag added when slurm_log_dir is configured."""
+    log_dir = tmp_path / "slurm_logs"
+    cfg_log = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_log)
+    cmd = mock_run.call_args[0][0]
+    assert any(arg.startswith("--error=") for arg in cmd)
+
+
+def test_submit_task_no_log_flags_when_log_dir_none(cfg):
+    """--output and --error absent when slurm_log_dir is None."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert not any(arg.startswith("--output=") for arg in cmd)
+    assert not any(arg.startswith("--error=") for arg in cmd)
+
+
+def test_submit_task_log_dir_contains_procedure_subdir(tmp_path):
+    """Log paths include procedure-specific subdirectory."""
+    log_dir = tmp_path / "slurm_logs"
+    cfg_log = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_log)
+    cmd = mock_run.call_args[0][0]
+    output_flag = next(a for a in cmd if a.startswith("--output="))
+    assert "/bids/" in output_flag
+
+
+def test_submit_task_log_dir_subdir_created(tmp_path):
+    """Log subdirectory is created on disk before sbatch is called."""
+    log_dir = tmp_path / "slurm_logs"
+    cfg_log = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()):
+        submit_task(make_row(procedure="bids"), cfg_log)
+    assert (log_dir / "bids").is_dir()
+
+
+def test_submit_task_log_filenames_contain_job_name(tmp_path):
+    """Log file names embed the Slurm job name."""
+    log_dir = tmp_path / "slurm_logs"
+    cfg_log = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(subject="sub-0001", session="ses-01", procedure="bids"), cfg_log)
+    cmd = mock_run.call_args[0][0]
+    output_flag = next(a for a in cmd if a.startswith("--output="))
+    assert "bids_sub-0001_ses-01" in output_flag
