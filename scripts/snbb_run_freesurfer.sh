@@ -2,15 +2,15 @@
 # snbb_run_freesurfer.sh — FreeSurfer recon-all wrapper
 # Called by the snbb_scheduler as:  sbatch ... snbb_run_freesurfer.sh sub-XXXX ses-YY
 #
+# Requires FreeSurfer to be available on PATH (e.g. via `module load freesurfer`
+# or by setting FREESURFER_HOME).
+#
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
-SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
-SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
-SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
-SNBB_LOG_DIR="${SNBB_LOG_DIR:-/media/storage/yalab-dev/snbb_scheduler/logs/freesurfer}"
-SNBB_RUNNERS_DIR="${SNBB_RUNNERS_DIR:-/home/galkepler/Projects/snbb_scheduler/examples/runners}"
-SNBB_VENV="${SNBB_VENV:-/home/galkepler/Projects/snbb_scheduler/.venv}"
-SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/freesurfer/debug_submit.log}"
+SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/data/snbb/bids}"
+SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/data/snbb/derivatives/freesurfer}"
+SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/data/snbb/freesurfer/license.txt}"
+SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/freesurfer/debug_submit.log}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=24:00:00
@@ -20,30 +20,23 @@ SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/f
 set -euo pipefail
 
 SUBJECT="$1"          # e.g. sub-0001  ($2 = session, ignored — FreeSurfer is subject-scoped)
-PARTICIPANT="${SUBJECT#sub-}"
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 {
     echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ==="
-    echo "SNBB_VENV:        ${SNBB_VENV}"
     echo "SNBB_BIDS_ROOT:   ${SNBB_BIDS_ROOT}"
     echo "SNBB_FS_OUTPUT:   ${SNBB_FS_OUTPUT}"
     echo "SNBB_FS_LICENSE:  ${SNBB_FS_LICENSE}"
-    echo "SNBB_RUNNERS_DIR: ${SNBB_RUNNERS_DIR}"
-    echo "python binary:    ${SNBB_VENV}/bin/python"
-    echo "python exists:    $(test -x "${SNBB_VENV}/bin/python" && echo yes || echo NO)"
-    echo "voxelops:         $("${SNBB_VENV}/bin/python" -c 'import voxelops; print(voxelops.__file__)' 2>&1)"
+    echo "recon-all:        $(command -v recon-all 2>&1 || echo NOT FOUND)"
     echo "PATH:             ${PATH}"
 } >> "${SNBB_DEBUG_LOG}" 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 
-. "${SNBB_VENV}/bin/activate"
+export FS_LICENSE="${SNBB_FS_LICENSE}"
 
-"${SNBB_VENV}/bin/python" "${SNBB_RUNNERS_DIR}/run_freesurfer.py" \
-    --bids-dir     "${SNBB_BIDS_ROOT}" \
-    --output-dir   "${SNBB_FS_OUTPUT}" \
-    --participants "${PARTICIPANT}" \
-    --fs-license   "${SNBB_FS_LICENSE}" \
-    --workers      1 \
-    --log-dir      "${SNBB_LOG_DIR}"
+python3 "$(dirname "$0")/snbb_recon_all_helper.py" \
+    --bids-dir    "${SNBB_BIDS_ROOT}" \
+    --output-dir  "${SNBB_FS_OUTPUT}" \
+    --subject     "${SUBJECT}" \
+    --threads     "${SLURM_CPUS_PER_TASK:-8}"
