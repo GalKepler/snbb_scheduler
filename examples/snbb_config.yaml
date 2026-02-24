@@ -25,12 +25,35 @@ slurm_account:       slurm
 # slurm_mem:          32G    # passed as --mem to sbatch; omit to let Slurm use the cluster default
 # slurm_cpus_per_task: 8     # passed as --cpus-per-task; omit for the cluster default
 
+# Directory for Slurm stdout/stderr logs. When set, sbatch is called with
+# --output=<slurm_log_dir>/<procedure>/<job-name>_%j.out
+# --error=<slurm_log_dir>/<procedure>/<job-name>_%j.err
+# Subdirectories are created automatically. Omit or set to null to skip.
+slurm_log_dir: /media/storage/yalab-dev/snbb_scheduler/logs/slurm
+
+# JSONL audit log. One JSON object per line; all submit/retry/status events
+# are appended here. Defaults to <state_file parent>/scheduler_audit.jsonl.
+log_file: /media/storage/yalab-dev/snbb_scheduler/.scheduler_audit.jsonl
+
+# ---------------------------------------------------------------------------
+# Container image paths (used by scripts/snbb_run_*.sh via env vars)
+# ---------------------------------------------------------------------------
+# These are set as environment variables before sbatch; the values below are
+# for documentation purposes — configure them in your cluster environment or
+# in a site-specific wrapper script.
+#
+# SNBB_HEUDICONV_SIF=/data/containers/heudiconv_latest.sif
+# SNBB_QSIPREP_SIF=/data/containers/qsiprep_0.23.0.sif
+# SNBB_QSIRECON_SIF=/data/containers/qsirecon_0.3.0.sif
+# SNBB_FS_LICENSE=/data/freesurfer/license.txt
+# SNBB_WORK_DIR=/scratch/snbb/work
+
 # ---------------------------------------------------------------------------
 # Processing procedures — in dependency order
 # ---------------------------------------------------------------------------
 procedures:
 
-  # BIDS conversion (heudiconv / dcm2bids)
+  # BIDS conversion via heudiconv (Apptainer container)
   # Completion: all 8 required modality files must be present
   - name: bids
     output_dir: ""              # lives in bids_root, not derivatives_root
@@ -47,7 +70,8 @@ procedures:
       - "fmap/*acq-func_dir-PA*epi.nii.gz"
       - "func/*task-rest_bold.nii.gz"
 
-  # DWI preprocessing (subject-scoped: one run covers all sessions)
+  # DWI preprocessing via QSIPrep (Apptainer container)
+  # Subject-scoped: one run covers all sessions for the subject
   # Completion: ses-* output dirs match BIDS DWI session count
   - name: qsiprep
     output_dir: qsiprep
@@ -56,7 +80,8 @@ procedures:
     depends_on: [bids]
     completion_marker: null
 
-  # Cortical reconstruction (one run covers all sessions for a subject)
+  # Cortical reconstruction via FreeSurfer recon-all
+  # Subject-scoped; calls scripts/snbb_recon_all_helper.py which globs T1w/T2w
   # Completion: recon-all writes this marker file when it finishes
   - name: freesurfer
     output_dir: freesurfer
@@ -65,7 +90,8 @@ procedures:
     depends_on: [bids]
     completion_marker: "scripts/recon-all.done"
 
-  # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
+  # DWI tractography reconstruction via QSIRecon (Apptainer container)
+  # Subject-scoped; requires both qsiprep and freesurfer to be complete
   # Completion: ses-* output dirs match qsiprep session count
   - name: qsirecon
     output_dir: qsirecon-MRtrix3_act-HSVS
@@ -74,8 +100,7 @@ procedures:
     depends_on: [qsiprep, freesurfer]
     completion_marker: null
 
-  # fMRI preprocessing
-  # Completion: fmriprep writes an HTML report on success
+  # fMRI preprocessing (disabled by default)
   # - name: fmriprep
   #   output_dir: fmriprep
   #   script: snbb_run_fmriprep.sh
