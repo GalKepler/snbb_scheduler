@@ -301,6 +301,84 @@ def test_slurm_log_dir_cli_overrides_config(runner, cfg_with_sessions, tmp_path)
         assert any(a.startswith("--error=") for a in cmd)
 
 
+# ---------------------------------------------------------------------------
+# monitor command
+# ---------------------------------------------------------------------------
+
+
+def test_monitor_help(runner):
+    result = runner.invoke(main, ["monitor", "--help"])
+    assert result.exit_code == 0
+
+
+def test_monitor_no_state(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+    assert "No state recorded" in result.output
+
+
+def test_monitor_no_in_flight(runner, cfg_path, tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "1",
+    }])
+    save_state(state, cfg)
+    result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+    assert "No in-flight" in result.output
+
+
+def test_monitor_polls_and_saves(runner, cfg_path, tmp_path):
+    from snbb_scheduler.manifest import load_state
+
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "42",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.monitor.poll_jobs", return_value={"42": "complete"}):
+        result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+
+    updated = load_state(cfg)
+    assert updated.iloc[0]["status"] == "complete"
+
+
+# ---------------------------------------------------------------------------
+# run --skip-monitor
+# ---------------------------------------------------------------------------
+
+
+def test_run_skip_monitor_in_help(runner):
+    result = runner.invoke(main, ["run", "--help"])
+    assert "--skip-monitor" in result.output
+
+
+def test_run_skip_monitor_bypasses_sacct(runner, cfg_with_sessions):
+    """When --skip-monitor is passed, sacct/poll_jobs is never called."""
+    with patch("snbb_scheduler.monitor.poll_jobs") as mock_poll:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = "Submitted batch job 10\n"
+            runner.invoke(
+                main,
+                ["--config", str(cfg_with_sessions), "run", "--skip-monitor", "--dry-run"],
+            )
+    mock_poll.assert_not_called()
+
+
 def test_retry_filter_by_subject(runner, cfg_path, tmp_path):
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",

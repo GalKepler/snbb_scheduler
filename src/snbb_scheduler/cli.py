@@ -13,6 +13,7 @@ from snbb_scheduler.manifest import (
     save_state,
 )
 from snbb_scheduler.audit import get_logger
+from snbb_scheduler.monitor import update_state_from_sacct
 from snbb_scheduler.sessions import discover_sessions
 from snbb_scheduler.submit import submit_manifest
 
@@ -84,8 +85,20 @@ def main(
     metavar="NAME",
     help="Limit --force to a single procedure (e.g. bids). Ignored without --force.",
 )
+@click.option(
+    "--skip-monitor",
+    is_flag=True,
+    default=False,
+    help="Skip the pre-run sacct state refresh (useful when sacct is unavailable).",
+)
 @click.pass_context
-def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -> None:
+def run(
+    ctx: click.Context,
+    dry_run: bool,
+    force: bool,
+    procedure: str | None,
+    skip_monitor: bool,
+) -> None:
     """Discover sessions, evaluate rules, and submit jobs to Slurm."""
     config: SchedulerConfig = ctx.obj["config"]
 
@@ -93,11 +106,21 @@ def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -
     sessions = discover_sessions(config)
     click.echo(f"  Found {len(sessions)} session(s).")
 
+    state = load_state(config)
+
+    if not skip_monitor and not dry_run:
+        try:
+            audit = get_logger(config)
+            state = update_state_from_sacct(state, audit=audit)
+            save_state(state, config)
+        except Exception as exc:  # pragma: no cover — sacct unavailable in CI
+            logger_cli = logging.getLogger(__name__)
+            logger_cli.warning("sacct refresh failed (use --skip-monitor to suppress): %s", exc)
+
     force_procedures = [procedure] if (force and procedure) else None
     manifest = build_manifest(sessions, config, force=force, force_procedures=force_procedures)
     click.echo(f"  {len(manifest)} task(s) need processing.")
 
-    state = load_state(config)
     manifest = filter_in_flight(manifest, state)
     click.echo(f"  {len(manifest)} task(s) after filtering in-flight jobs.")
 
@@ -186,3 +209,28 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
         )
 
     click.echo(f"Cleared {n} failed entry/entries. They will be retried on the next run.")
+
+
+@main.command()
+@click.pass_context
+def monitor(ctx: click.Context) -> None:
+    """Poll sacct to refresh in-flight job states and update the state file."""
+    config: SchedulerConfig = ctx.obj["config"]
+    state = load_state(config)
+
+    if state.empty:
+        click.echo("No state recorded yet.")
+        return
+
+    in_flight = state["status"].isin({"pending", "running"}).sum()
+    if in_flight == 0:
+        click.echo("No in-flight jobs to poll.")
+        return
+
+    click.echo(f"Polling sacct for {in_flight} in-flight job(s)…")
+    audit = get_logger(config)
+    updated = update_state_from_sacct(state, audit=audit)
+    save_state(updated, config)
+
+    changed = (updated["status"] != state["status"]).sum()
+    click.echo(f"Done. {changed} status change(s) recorded.")
