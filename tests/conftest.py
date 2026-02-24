@@ -5,6 +5,33 @@ from snbb_scheduler.config import SchedulerConfig
 
 
 # ---------------------------------------------------------------------------
+# Shared BIDS file creation helper
+# ---------------------------------------------------------------------------
+
+def _create_bids_session_files(bids_session_dir) -> None:
+    """Create all 8 required BIDS modality files inside *bids_session_dir*.
+
+    The filenames are chosen to match the 8 glob patterns in the BIDS
+    Procedure's completion_marker list.
+    """
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_session_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
+
+
+# ---------------------------------------------------------------------------
 # Generic config fixture (used in test_rules, test_manifest, and others)
 # ---------------------------------------------------------------------------
 
@@ -36,10 +63,9 @@ def fake_data_dir(tmp_path):
     dicom1.mkdir(parents=True)
     (dicom1 / "file.dcm").touch()
 
-    # BIDS complete for sub-0001/ses-01
-    bids1 = tmp_path / "bids" / "sub-0001" / "ses-01" / "anat"
-    bids1.mkdir(parents=True)
-    (bids1 / "sub-0001_ses-01_T1w.nii.gz").touch()
+    # BIDS complete for sub-0001/ses-01 — all 8 required modality files
+    bids1_root = tmp_path / "bids" / "sub-0001" / "ses-01"
+    _create_bids_session_files(bids1_root)
 
     # DICOM for sub-0002/ses-01 — no BIDS output
     dicom2 = tmp_path / "dicom" / "sub-0002" / "ses-01"
@@ -62,14 +88,20 @@ def fake_config(fake_data_dir):
 
 @pytest.fixture
 def fake_sessions_csv(tmp_path):
-    """Minimal CSV with two sessions and matching flat DICOM directories."""
+    """Minimal CSV with two sessions and matching flat DICOM directories.
+
+    The CSV uses the pre-sanitized format expected by _discover_from_file:
+    columns subject_code, session_id, and dicom_path (path to DICOM dir).
+    """
+    dicom1 = tmp_path / "dicom" / "SCAN001"
+    dicom2 = tmp_path / "dicom" / "SCAN002"
+    dicom1.mkdir(parents=True)
+    dicom2.mkdir(parents=True)
     csv = tmp_path / "sessions.csv"
     pd.DataFrame([
-        {"subject_code": "0001", "session_id": "01", "ScanID": "SCAN001"},
-        {"subject_code": "0002", "session_id": "01", "ScanID": "SCAN002"},
+        {"subject_code": "0001", "session_id": "01", "dicom_path": str(dicom1)},
+        {"subject_code": "0002", "session_id": "01", "dicom_path": str(dicom2)},
     ]).to_csv(csv, index=False)
-    (tmp_path / "dicom" / "SCAN001").mkdir(parents=True)
-    (tmp_path / "dicom" / "SCAN002").mkdir(parents=True)
     return tmp_path
 
 

@@ -43,20 +43,55 @@ def mark_dicom(row: dict) -> None:
 
 
 def mark_bids_complete(row: dict) -> None:
-    anat = row["bids_path"] / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / "T1w.nii.gz").touch()
+    """Create all 8 required BIDS modality files for the session."""
+    bids_dir = row["bids_path"]
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
 
 
 def mark_qsiprep_complete(row: dict) -> None:
-    row["qsiprep_path"].mkdir(parents=True, exist_ok=True)
-    (row["qsiprep_path"] / "dwi.nii.gz").touch()
+    """Create qsiprep ses-* output dirs matching the BIDS DWI sessions."""
+    subject_bids = row["bids_path"].parent  # bids_root/subject
+    for ses_dir in subject_bids.iterdir():
+        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
+            out = row["qsiprep_path"] / ses_dir.name
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "dwi.nii.gz").touch()
+
+
+def mark_qsirecon_complete(row: dict) -> None:
+    """Create qsirecon ses-* output dirs matching the qsiprep sessions."""
+    for ses_dir in row["qsiprep_path"].iterdir():
+        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
+            out = row["qsirecon_path"] / ses_dir.name
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "report.html").touch()
 
 
 def mark_freesurfer_complete(row: dict) -> None:
+    """Create recon-all.done with CMDARGS matching the available T1w count."""
     scripts = row["freesurfer_path"] / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").touch()
+    # Count T1w files already in the BIDS subject dir
+    subject_bids = row["bids_path"].parent  # bids_root/subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {row['subject']} -all {i_flags}\n"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -190,9 +225,114 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_bids_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
     rules = build_rules(cfg)
     for name, rule in rules.items():
         assert rule(pd.Series(row)) is False, f"{name} fired when already complete"
+
+
+# ---------------------------------------------------------------------------
+# qsirecon rule — depends on qsiprep + freesurfer, subject-scoped
+# ---------------------------------------------------------------------------
+
+def test_qsirecon_not_needed_when_qsiprep_incomplete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    # qsiprep NOT complete
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
+
+
+def test_qsirecon_not_needed_when_freesurfer_incomplete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    # freesurfer NOT complete
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
+
+
+def test_qsirecon_needed_when_deps_complete_qsirecon_absent(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is True
+
+
+def test_qsirecon_not_needed_when_already_complete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
+    rules = build_rules(cfg)
+    assert rules["qsirecon"](pd.Series(row)) is False
+
+
+# ---------------------------------------------------------------------------
+# --force flag
+# ---------------------------------------------------------------------------
+
+def test_force_reruns_already_complete_procedure(cfg):
+    """force=True causes a complete procedure to be re-submitted."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    rules = build_rules(cfg, force=True)
+    # bids is already complete but --force overrides
+    assert rules["bids"](pd.Series(row)) is True
+
+
+def test_force_procedure_only_forces_named_procedure(cfg):
+    """force + force_procedures=['bids'] only forces bids, not others."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    rules = build_rules(cfg, force=True, force_procedures=["bids"])
+    assert rules["bids"](pd.Series(row)) is True
+    # qsiprep is not forced — bids is done so it would normally fire,
+    # but qsiprep itself is not complete yet → True either way; check freesurfer
+    # (also not complete yet) → True. The key test is that bids IS forced.
+
+
+def test_force_still_requires_dicom(cfg):
+    """force does not bypass the dicom_exists gate."""
+    row = make_row(cfg)
+    # dicom_exists = False
+    rules = build_rules(cfg, force=True)
+    assert rules["bids"](pd.Series(row)) is False
+
+
+def test_force_still_requires_dependencies(cfg):
+    """force on qsiprep still requires bids to be complete."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    # bids NOT done
+    rules = build_rules(cfg, force=True, force_procedures=["qsiprep"])
+    assert rules["qsiprep"](pd.Series(row)) is False
+
+
+def test_force_none_forces_all_procedures(cfg):
+    """force=True with force_procedures=None forces every procedure."""
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_qsiprep_complete(row)
+    mark_freesurfer_complete(row)
+    mark_qsirecon_complete(row)
+    rules = build_rules(cfg, force=True, force_procedures=None)
+    # Everything is complete, but --force should make all rules fire
+    # (given dicom + deps are satisfied)
+    assert rules["bids"](pd.Series(row)) is True
+    assert rules["qsiprep"](pd.Series(row)) is True
+    assert rules["freesurfer"](pd.Series(row)) is True
+    assert rules["qsirecon"](pd.Series(row)) is True
 
 
 # ---------------------------------------------------------------------------

@@ -40,21 +40,53 @@ def add_dicom(tmp_path, subject, session):
 
 
 def add_bids(tmp_path, subject, session):
-    anat = tmp_path / "bids" / subject / session / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
+    """Create all 8 required BIDS modality files for the session."""
+    bids_dir = tmp_path / "bids" / subject / session
+    files = {
+        "anat": [f"{subject}_{session}_T1w.nii.gz"],
+        "dwi": [
+            f"{subject}_{session}_dir-AP_dwi.nii.gz",
+            f"{subject}_{session}_dir-AP_dwi.bvec",
+            f"{subject}_{session}_dir-AP_dwi.bval",
+        ],
+        "fmap": [
+            f"{subject}_{session}_acq-dwi_dir-AP_epi.nii.gz",
+            f"{subject}_{session}_acq-func_dir-AP_epi.nii.gz",
+            f"{subject}_{session}_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": [f"{subject}_{session}_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
 
 
 def add_qsiprep(tmp_path, subject, session):
+    """Create qsiprep ses-* output dir for one session (subject-scoped layout)."""
     out = tmp_path / "derivatives" / "qsiprep" / subject / session
     out.mkdir(parents=True, exist_ok=True)
     (out / "dwi.nii.gz").touch()
 
 
+def add_qsirecon(tmp_path, subject, session):
+    """Create qsirecon ses-* output dir matching the qsiprep session."""
+    out = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / subject / session
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "report.html").touch()
+
+
 def add_freesurfer(tmp_path, subject):
+    """Create recon-all.done with CMDARGS matching T1w files in BIDS."""
     scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").touch()
+    subject_bids = tmp_path / "bids" / subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+    )
 
 
 def mock_sbatch(job_id="1"):
@@ -172,6 +204,7 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_bids(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
+    add_qsirecon(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
@@ -192,8 +225,8 @@ def test_two_sessions_same_subject_share_freesurfer_path(tmp_path):
 
     # freesurfer should not appear — already done for this subject
     assert "freesurfer" not in set(manifest["procedure"])
-    # qsiprep should appear for both sessions
-    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 2
+    # qsiprep is subject-scoped: one row per subject (not per session)
+    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 1
 
 
 # ---------------------------------------------------------------------------

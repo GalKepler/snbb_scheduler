@@ -56,8 +56,21 @@ def main(
 
 @main.command()
 @click.option("--dry-run", is_flag=True, help="Print what would be submitted without submitting.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Force re-submission even for already-complete procedures.",
+)
+@click.option(
+    "--procedure",
+    "procedure",
+    default=None,
+    metavar="NAME",
+    help="Limit --force to a single procedure (e.g. bids). Ignored without --force.",
+)
 @click.pass_context
-def run(ctx: click.Context, dry_run: bool) -> None:
+def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -> None:
     """Discover sessions, evaluate rules, and submit jobs to Slurm."""
     config: SchedulerConfig = ctx.obj["config"]
 
@@ -65,7 +78,8 @@ def run(ctx: click.Context, dry_run: bool) -> None:
     sessions = discover_sessions(config)
     click.echo(f"  Found {len(sessions)} session(s).")
 
-    manifest = build_manifest(sessions, config)
+    force_procedures = [procedure] if (force and procedure) else None
+    manifest = build_manifest(sessions, config, force=force, force_procedures=force_procedures)
     click.echo(f"  {len(manifest)} task(s) need processing.")
 
     state = load_state(config)

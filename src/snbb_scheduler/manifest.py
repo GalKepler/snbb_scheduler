@@ -20,7 +20,12 @@ _STATE_COLUMNS = {
 }
 
 
-def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFrame:
+def build_manifest(
+    sessions: pd.DataFrame,
+    config: SchedulerConfig,
+    force: bool = False,
+    force_procedures: list[str] | None = None,
+) -> pd.DataFrame:
     """Evaluate rules against all sessions and return a task manifest.
 
     Returns a DataFrame with columns:
@@ -28,24 +33,40 @@ def build_manifest(sessions: pd.DataFrame, config: SchedulerConfig) -> pd.DataFr
 
     priority reflects the order of procedures in config.procedures
     (lower index = higher priority = submitted first).
+
+    When *force* is True, the self-completion check is skipped for all
+    procedures (or only those in *force_procedures* when provided), so
+    already-complete procedures are resubmitted.
     """
     if sessions.empty:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
 
-    rules = build_rules(config)
+    rules = build_rules(config, force=force, force_procedures=force_procedures)
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
+    subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
 
     rows = []
+    seen_subject_procs: set[tuple[str, str]] = set()
     for _, session_row in sessions.iterrows():
         for proc_name, rule in rules.items():
-            if rule(session_row):
-                rows.append({
-                    "subject": session_row["subject"],
-                    "session": session_row["session"],
-                    "procedure": proc_name,
-                    "dicom_path": session_row["dicom_path"],
-                    "priority": priority[proc_name],
-                })
+            if not rule(session_row):
+                continue
+            subject = session_row["subject"]
+            if proc_name in subject_scoped:
+                key = (subject, proc_name)
+                if key in seen_subject_procs:
+                    continue
+                seen_subject_procs.add(key)
+                session = ""
+            else:
+                session = session_row["session"]
+            rows.append({
+                "subject": subject,
+                "session": session,
+                "procedure": proc_name,
+                "dicom_path": session_row["dicom_path"],
+                "priority": priority[proc_name],
+            })
 
     if not rows:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])

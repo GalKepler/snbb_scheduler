@@ -27,9 +27,23 @@ def make_sessions(cfg: SchedulerConfig, tmp_path: Path) -> pd.DataFrame:
 
 
 def mark_bids_complete(tmp_path: Path, subject: str, session: str) -> None:
-    anat = tmp_path / "bids" / subject / session / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / "T1w.nii.gz").touch()
+    """Create all 8 required BIDS modality files for the session."""
+    bids_dir = tmp_path / "bids" / subject / session
+    files = {
+        "anat": ["sub_T1w.nii.gz"],
+        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "fmap": [
+            "sub_acq-dwi_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-AP_epi.nii.gz",
+            "sub_acq-func_dir-PA_epi.nii.gz",
+        ],
+        "func": ["sub_task-rest_bold.nii.gz"],
+    }
+    for subdir, names in files.items():
+        d = bids_dir / subdir
+        d.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (d / name).touch()
 
 
 def make_state_row(subject, session, procedure, status, job_id="12345") -> dict:
@@ -100,18 +114,32 @@ def test_build_manifest_sorted_by_priority(cfg, tmp_path):
     assert list(manifest["priority"]) == sorted(manifest["priority"].tolist())
 
 
+def mark_freesurfer_complete(tmp_path: Path, subject: str, session: str) -> None:
+    """Create recon-all.done with CMDARGS matching available T1w count."""
+    scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    subject_bids = tmp_path / "bids" / subject
+    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    (scripts / "recon-all.done").write_text(
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+    )
+
+
 def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     sessions = make_sessions(cfg, tmp_path)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
     mark_bids_complete(tmp_path, "sub-0002", "ses-01")
-    # Also create qsiprep and freesurfer outputs
     for sub in ("sub-0001", "sub-0002"):
+        # qsiprep: subject-scoped, session subdir matches BIDS DWI sessions
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
         qp.mkdir(parents=True)
         (qp / "out.nii.gz").touch()
-        fs = tmp_path / "derivatives" / "freesurfer" / sub / "scripts"
-        fs.mkdir(parents=True)
-        (fs / "recon-all.done").touch()
+        mark_freesurfer_complete(tmp_path, sub, "ses-01")
+        # qsirecon: session subdir count must match qsiprep
+        qr = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / sub / "ses-01"
+        qr.mkdir(parents=True)
+        (qr / "report.html").touch()
     sessions = make_sessions(cfg, tmp_path)
     manifest = build_manifest(sessions, cfg)
     assert manifest.empty

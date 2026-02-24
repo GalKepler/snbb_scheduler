@@ -75,11 +75,21 @@ def test_submit_task_account_flag(cfg):
     assert "--account=snbb" in cmd
 
 
-def test_submit_task_job_name(cfg):
+def test_submit_task_job_name_session_scoped(cfg):
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
-        submit_task(make_row(procedure="qsiprep"), cfg)
+        submit_task(make_row(procedure="bids"), cfg)
     cmd = mock_run.call_args[0][0]
-    assert "--job-name=qsiprep_sub-0001_ses-01" in cmd
+    assert "--job-name=bids_sub-0001_ses-01" in cmd
+
+
+def test_submit_task_job_name_subject_scoped(cfg):
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="freesurfer", session=""), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert "--job-name=freesurfer_sub-0001" in cmd
+    # session must NOT be passed as a script argument
+    assert cmd[-1] == "snbb_run_freesurfer.sh" or cmd[-1] == "sub-0001"
+    assert "ses-" not in cmd[-1]
 
 
 def test_submit_task_uses_procedure_script(cfg):

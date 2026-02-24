@@ -42,7 +42,7 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 
 "${SNBB_VENV}/bin/python" "${SNBB_RUNNERS_DIR}/run_qsiprep.py" \
     --bids-dir     "${SNBB_BIDS_ROOT}" \
-    --output-dir   "${SNBB_DERIVATIVES}" \
+    --output-dir   "${SNBB_DERIVATIVES}/qsiprep" \
     --participants "${PARTICIPANT}" \
     --fs-license   "${SNBB_FS_LICENSE}" \
     --workers      1 \
