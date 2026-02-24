@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# snbb_run_freesurfer.sh — FreeSurfer recon-all wrapper
+# snbb_run_freesurfer.sh — FreeSurfer recon-all via Apptainer container
 # Called by the snbb_scheduler as:  sbatch ... snbb_run_freesurfer.sh sub-XXXX ses-YY
 #
-# Requires FreeSurfer to be available on PATH (e.g. via `module load freesurfer`
-# or by setting FREESURFER_HOME).
+# Runs recon-all inside a FreeSurfer Apptainer container. The helper script
+# snbb_recon_all_helper.py globbs all T1w (and T2w) NIfTI files for the
+# subject across all BIDS sessions and builds the -i argument list.
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/data/snbb/bids}"
 SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/data/snbb/derivatives/freesurfer}"
 SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/data/snbb/freesurfer/license.txt}"
+SNBB_FREESURFER_SIF="${SNBB_FREESURFER_SIF:-/data/containers/freesurfer.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/freesurfer/debug_submit.log}"
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -25,18 +27,20 @@ SUBJECT="$1"          # e.g. sub-0001  ($2 = session, ignored — FreeSurfer is 
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 {
     echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ==="
-    echo "SNBB_BIDS_ROOT:   ${SNBB_BIDS_ROOT}"
-    echo "SNBB_FS_OUTPUT:   ${SNBB_FS_OUTPUT}"
-    echo "SNBB_FS_LICENSE:  ${SNBB_FS_LICENSE}"
-    echo "recon-all:        $(command -v recon-all 2>&1 || echo NOT FOUND)"
-    echo "PATH:             ${PATH}"
+    echo "SNBB_BIDS_ROOT:      ${SNBB_BIDS_ROOT}"
+    echo "SNBB_FS_OUTPUT:      ${SNBB_FS_OUTPUT}"
+    echo "SNBB_FS_LICENSE:     ${SNBB_FS_LICENSE}"
+    echo "SNBB_FREESURFER_SIF: ${SNBB_FREESURFER_SIF}"
+    echo "PATH:                ${PATH}"
 } >> "${SNBB_DEBUG_LOG}" 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 
-export FS_LICENSE="${SNBB_FS_LICENSE}"
+mkdir -p "${SNBB_FS_OUTPUT}"
 
 python3 "$(dirname "$0")/snbb_recon_all_helper.py" \
     --bids-dir    "${SNBB_BIDS_ROOT}" \
     --output-dir  "${SNBB_FS_OUTPUT}" \
     --subject     "${SUBJECT}" \
-    --threads     "${SLURM_CPUS_PER_TASK:-8}"
+    --threads     "${SLURM_CPUS_PER_TASK:-8}" \
+    --sif         "${SNBB_FREESURFER_SIF}" \
+    --fs-license  "${SNBB_FS_LICENSE}"
