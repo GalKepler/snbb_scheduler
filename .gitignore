@@ -32,3 +32,4 @@ Thumbs.db
 *.parquet
 *slurm-*.out
 plans/
+examples/linked_sessions.csv

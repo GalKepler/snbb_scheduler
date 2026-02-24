@@ -73,6 +73,9 @@ def submit_task(row: pd.Series, config: SchedulerConfig, dry_run: bool = False) 
     cmd.append(row["subject"])
     if proc.scope != "subject":
         cmd.append(row["session"])
+        dicom_path = row.get("dicom_path")
+        if dicom_path is not None and not (isinstance(dicom_path, float) and pd.isna(dicom_path)):
+            cmd.append(str(dicom_path))
 
     if dry_run:
         logger.info("[DRY RUN] Would submit: %s", " ".join(cmd))

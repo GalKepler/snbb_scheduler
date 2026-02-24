@@ -74,7 +74,7 @@ def main(
     "--force",
     is_flag=True,
     default=False,
-    help="Force re-submission even for already-complete procedures.",
+    help="Re-queue all procedures regardless of status (skips completion check and in-flight filter).",
 )
 @click.option(
     "--procedure",
@@ -97,8 +97,11 @@ def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -
     click.echo(f"  {len(manifest)} task(s) need processing.")
 
     state = load_state(config)
-    manifest = filter_in_flight(manifest, state)
-    click.echo(f"  {len(manifest)} task(s) after filtering in-flight jobs.")
+    if force:
+        click.echo("  --force: skipping in-flight filter.")
+    else:
+        manifest = filter_in_flight(manifest, state)
+        click.echo(f"  {len(manifest)} task(s) after filtering in-flight jobs.")
 
     if manifest.empty:
         click.echo("Nothing to submit.")

@@ -5,10 +5,10 @@
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_DICOM_ROOT="${SNBB_DICOM_ROOT:-/data/snbb/dicom}"
-SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/data/snbb/bids}"
-SNBB_HEURISTIC="${SNBB_HEURISTIC:-/data/snbb/heuristic.py}"
-SNBB_HEUDICONV_SIF="${SNBB_HEUDICONV_SIF:-/data/containers/heudiconv.sif}"
-SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/bids/debug_submit.log}"
+SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
+SNBB_HEURISTIC="${SNBB_HEURISTIC:-/home/galkepler/Projects/snbb_scheduler/scripts/heuristic.py}"
+SNBB_HEUDICONV_SIF="${SNBB_HEUDICONV_SIF:-/media/storage/apptainer/images/heudiconv-1.3.4.sif}"
+SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/bids/debug_submit.log}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=4:00:00
@@ -19,12 +19,18 @@ set -euo pipefail
 
 SUBJECT="$1"                   # e.g. sub-0001
 SESSION="$2"                   # e.g. ses-202602161208
+DICOM_PATH_ARG="${3:-}"        # optional: explicit DICOM path from scheduler
 PARTICIPANT="${SUBJECT#sub-}"  # strip prefix → 0001
 SESSION_ID="${SESSION#ses-}"   # strip prefix → 202602161208
 
-# Session-specific DICOM directory. Defaults to <dicom_root>/<session_id>
-# (the flat layout used at SNBB where scans are stored by scan-date ID).
-SNBB_DICOM_SESSION_DIR="${SNBB_DICOM_SESSION_DIR:-${SNBB_DICOM_ROOT}/${SESSION_ID}}"
+# Session-specific DICOM directory. Uses the explicit path passed by the
+# scheduler (from the sessions CSV's dicom_path column) when provided;
+# falls back to SNBB_DICOM_SESSION_DIR env var, then <dicom_root>/<session_id>.
+if [[ -n "${DICOM_PATH_ARG}" ]]; then
+    SNBB_DICOM_SESSION_DIR="${DICOM_PATH_ARG}"
+else
+    SNBB_DICOM_SESSION_DIR="${SNBB_DICOM_SESSION_DIR:-${SNBB_DICOM_ROOT}/${SESSION_ID}}"
+fi
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
@@ -50,4 +56,5 @@ apptainer run --cleanenv \
     --ses "${SESSION_ID}" \
     --converter dcm2niix \
     --bids notop \
-    --grouping all
+    --grouping all \
+    --overwrite

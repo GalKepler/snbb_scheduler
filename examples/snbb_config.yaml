@@ -15,7 +15,8 @@ state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parqu
 # Path to the daily-updated sessions CSV (columns: subject_code, session_id, ScanID).
 # When set, the DICOM filesystem scan is skipped and ScanID is resolved as a
 # flat subdirectory under dicom_root.  Remove or set to null to use filesystem scanning.
-sessions_file: /home/galkepler/Downloads/linked_sessions.csv
+# sessions_file: /home/galkepler/Downloads/linked_sessions.csv
+sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/linked_sessions.csv
 
 # ---------------------------------------------------------------------------
 # Slurm settings

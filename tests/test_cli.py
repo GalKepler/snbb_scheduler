@@ -264,6 +264,30 @@ def test_force_resubmits_complete_procedure(runner, cfg_with_bids_complete):
     assert "bids" in result.output
 
 
+def test_force_bypasses_in_flight_filter(runner, cfg_with_sessions, tmp_path):
+    """--force submits tasks even when they are already pending/running in state."""
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    # Mark sub-0001/ses-01/bids as already running
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "running", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "7",
+    }])
+    save_state(state, cfg)
+
+    result = runner.invoke(
+        main,
+        ["--config", str(cfg_with_sessions), "run", "--force", "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert "--force: skipping in-flight filter" in result.output
+    assert "[DRY RUN]" in result.output
+
+
 def test_force_procedure_limits_forced_procedure(runner, cfg_with_bids_complete):
     """--force --procedure bids only forces bids, not other procedures."""
     result = runner.invoke(

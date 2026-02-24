@@ -107,6 +107,44 @@ def test_submit_task_passes_subject_and_session(cfg):
     assert "ses-02" in cmd
 
 
+def test_submit_task_passes_dicom_path_for_session_scoped(cfg):
+    """dicom_path is appended as a 3rd script arg for session-scoped procedures."""
+    dicom = Path("/data/dicom/session_dir")
+    row = pd.Series({
+        "subject": "sub-0001", "session": "ses-01",
+        "procedure": "bids", "dicom_path": dicom, "priority": 0,
+    })
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(row, cfg)
+    cmd = mock_run.call_args[0][0]
+    assert str(dicom) in cmd
+
+
+def test_submit_task_no_dicom_path_when_none(cfg):
+    """When dicom_path is None, no extra arg is appended for session-scoped procedures."""
+    row = pd.Series({
+        "subject": "sub-0001", "session": "ses-01",
+        "procedure": "bids", "dicom_path": None, "priority": 0,
+    })
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(row, cfg)
+    cmd = mock_run.call_args[0][0]
+    assert cmd[-1] == "ses-01"
+
+
+def test_submit_task_no_dicom_path_for_subject_scoped(cfg):
+    """dicom_path is never appended for subject-scoped procedures."""
+    dicom = Path("/data/dicom/session_dir")
+    row = pd.Series({
+        "subject": "sub-0001", "session": "",
+        "procedure": "freesurfer", "dicom_path": dicom, "priority": 0,
+    })
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(row, cfg)
+    cmd = mock_run.call_args[0][0]
+    assert str(dicom) not in cmd
+
+
 def test_submit_task_script_from_procedure_registry(cfg):
     """Each procedure uses its own script, not a hardcoded map."""
     for proc_name, expected_script in [
