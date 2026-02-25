@@ -9,6 +9,7 @@ from snbb_scheduler.manifest import (
     build_manifest,
     filter_in_flight,
     load_state,
+    reconcile_with_filesystem,
     save_state,
 )
 
@@ -292,3 +293,96 @@ def test_filter_in_flight_different_procedures_not_removed(cfg):
     state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
     result = filter_in_flight(manifest, state)
     assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# reconcile_with_filesystem
+# ---------------------------------------------------------------------------
+
+def test_reconcile_empty_state(cfg):
+    state = pd.DataFrame(
+        columns=["subject", "session", "procedure", "status", "submitted_at", "job_id"]
+    )
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.empty
+
+
+def test_reconcile_no_in_flight(cfg):
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "complete")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
+
+
+def test_reconcile_pending_output_missing(cfg, tmp_path):
+    """Output does not exist on disk → stays pending."""
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "pending"
+
+
+def test_reconcile_pending_bids_output_present(cfg, tmp_path):
+    """bids output exists on disk → flipped to complete."""
+    mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
+
+
+def test_reconcile_running_bids_output_present(cfg, tmp_path):
+    """running status also gets resolved when output exists."""
+    mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "running")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
+
+
+def test_reconcile_original_unchanged(cfg, tmp_path):
+    """Original state DataFrame is not mutated."""
+    mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    reconcile_with_filesystem(state, cfg)
+    assert state.iloc[0]["status"] == "pending"
+
+
+def test_reconcile_unknown_procedure_skipped(cfg):
+    """Rows with an unknown procedure name are skipped without error."""
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "nonexistent", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "pending"
+
+
+def test_reconcile_logs_transition(cfg, tmp_path):
+    from unittest.mock import MagicMock
+    mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    audit = MagicMock()
+    reconcile_with_filesystem(state, cfg, audit=audit)
+    audit.log.assert_called_once_with(
+        "status_change",
+        subject="sub-0001",
+        session="ses-01",
+        procedure="bids",
+        job_id="12345",
+        old_status="pending",
+        new_status="complete",
+    )
+
+
+def test_reconcile_no_log_when_incomplete(cfg, tmp_path):
+    from unittest.mock import MagicMock
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    audit = MagicMock()
+    reconcile_with_filesystem(state, cfg, audit=audit)
+    audit.log.assert_not_called()
+
+
+def test_reconcile_partial_resolution(cfg, tmp_path):
+    """Only the session with output on disk is resolved."""
+    mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    state = pd.DataFrame([
+        make_state_row("sub-0001", "ses-01", "bids", "pending"),
+        make_state_row("sub-0002", "ses-01", "bids", "pending"),
+    ])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
+    assert result.iloc[1]["status"] == "pending"

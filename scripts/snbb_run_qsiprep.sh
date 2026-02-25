@@ -19,6 +19,7 @@ SNBB_ANATOMICAL_TEMPLATE="${SNBB_ANATOMICAL_TEMPLATE:-MNI152NLin2009cAsym}"
 SNBB_SUBJECT_ANAT_REF="${SNBB_SUBJECT_ANAT_REF:-unbiased}"
 # Optional BIDS filter file — set to restrict which runs QSIPrep processes
 SNBB_BIDS_FILTER_FILE="${SNBB_BIDS_FILTER_FILE:-/home/galkepler/Projects/snbb_scheduler/examples/bids_filters.json}"
+SNBB_TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME:-/media/storage/yalab-dev/snbb_scheduler/templateflow}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=12:00:00
@@ -56,11 +57,13 @@ if [[ -n "${SNBB_BIDS_FILTER_FILE}" ]]; then
     EXTRA_ARGS+=(--bids-filter-file "${SNBB_BIDS_FILTER_FILE}")
 fi
 
-apptainer run --cleanenv \
+apptainer run --no-home --writable-tmpfs --containall --cleanenv \
     --bind "${SNBB_BIDS_ROOT}":"${SNBB_BIDS_ROOT}":ro \
     --bind "${SNBB_DERIVATIVES}":"${SNBB_DERIVATIVES}" \
     --bind "${SNBB_FS_LICENSE}":"${SNBB_FS_LICENSE}":ro \
     --bind "${SNBB_WORK_DIR}":"${SNBB_WORK_DIR}" \
+    --bind "${SNBB_TEMPLATEFLOW_HOME}":"${SNBB_TEMPLATEFLOW_HOME}" \
+    --env TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME}" \
     "${EXTRA_BINDS[@]}" \
     "${SNBB_QSIPREP_SIF}" \
     "${SNBB_BIDS_ROOT}" \

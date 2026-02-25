@@ -16,9 +16,13 @@ def _create_bids_session_files(bids_session_dir) -> None:
     """
     files = {
         "anat": ["sub_T1w.nii.gz"],
-        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "dwi": [
+            "sub_dir-AP_dwi.nii.gz",
+            "sub_dir-AP_dwi.bvec",
+            "sub_dir-AP_dwi.bval",
+            "sub_dir-PA_dwi.nii.gz",
+        ],
         "fmap": [
-            "sub_acq-dwi_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-PA_epi.nii.gz",
         ],

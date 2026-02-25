@@ -1,0 +1,134 @@
+anatomical:
+- mrtrix_5tt_hsvs
+name: mrtrix_multishell_msmt_hsvs
+nodes:
+-   action: csd
+    input: qsirecon
+    name: msmt_csd
+    parameters:
+        fod:
+            algorithm: msmt_csd
+            max_sh:
+            - 8
+            - 8
+            - 8
+        mtnormalize: true
+        response:
+            algorithm: precomputed
+            wm_txt: /responses/median_response_wm_balanced_1426.txt
+            gm_txt: /responses/median_response_gm_balanced_1426.txt
+            csf_txt: /responses/median_response_csf_balanced_1426.txt
+
+    qsirecon_suffix: MRtrix3_act-HSVS
+    software: MRTrix3
+
+-   action: tractography
+    input: msmt_csd
+    name: track_ifod2
+    parameters:
+        sift2: {}
+        tckgen:
+            algorithm: iFOD2
+            max_length: 250
+            min_length: 30
+            power: 0.33
+            quiet: true
+            select: 100000.0
+        use_5tt: true
+        use_sift2: true
+    qsirecon_suffix: MRtrix3_act-HSVS
+    software: MRTrix3
+
+-   action: tractography
+    name: track_sdstream
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: msmt_csd
+    parameters:
+      method_5tt: hsvs
+      use_5tt: true
+      use_sift2: true
+      sift2: {}
+      tckgen:
+        algorithm: SD_Stream
+        crop_at_gmwmi: true
+        max_length: 250
+        min_length: 30
+        power: 0.33
+        quiet: true
+        select: 100000
+
+-   action: connectivity
+    name: mrtrix_prob_conn
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: track_ifod2
+    parameters:
+      tck2connectome:
+        - measure: sift_invnodevol_radius2_count
+          scale_invnodevol: true
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+        - measure: radius2_meanlength
+          length_scale: length
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: mean
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: sift_radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+
+-   action: connectivity
+    name: mrtrix_det_conn
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: track_sdstream
+    parameters:
+      tck2connectome:
+        - measure: sift_invnodevol_radius2_count
+          scale_invnodevol: true
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+        - measure: radius2_meanlength
+          length_scale: length
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: mean
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: sift_radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+space: T1w

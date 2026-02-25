@@ -4,20 +4,20 @@
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
-SNBB_QSIPREP_DIR="${SNBB_QSIPREP_DIR:-/data/snbb/derivatives/qsiprep}"
-SNBB_QSIRECON_OUTPUT_DIR="${SNBB_QSIRECON_OUTPUT_DIR:-/data/snbb/derivatives/qsirecon}"
-SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/data/snbb/freesurfer/license.txt}"
-SNBB_FS_SUBJECTS_DIR="${SNBB_FS_SUBJECTS_DIR:-/data/snbb/derivatives/freesurfer}"
-SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/data/snbb/recon_spec.yaml}"
-SNBB_WORK_DIR="${SNBB_WORK_DIR:-/data/snbb/work/qsirecon}"
-SNBB_QSIRECON_SIF="${SNBB_QSIRECON_SIF:-/data/containers/qsirecon.sif}"
-SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/qsirecon/debug_submit.log}"
+SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
+SNBB_QSIRECON_OUTPUT_DIR="${SNBB_QSIRECON_OUTPUT_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsirecon}"
+SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
+SNBB_FS_SUBJECTS_DIR="${SNBB_FS_SUBJECTS_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
+SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/home/galkepler/Projects/snbb_scheduler/scripts/mrtrix_tractography.yaml}"
+SNBB_WORK_DIR="${SNBB_WORK_DIR:-/media/storage/yalab-dev/snbb_scheduler/work/qsirecon}"
+SNBB_QSIRECON_SIF="${SNBB_QSIRECON_SIF:-/media/storage/apptainer/images/qsirecon-1.2.0.sif}"
+SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/qsirecon/debug_submit.log}"
 # Optional: directory of pre-computed response functions (--recon-spec-aux-files)
-SNBB_RESPONSES_DIR="${SNBB_RESPONSES_DIR:-}"
+SNBB_RESPONSES_DIR="${SNBB_RESPONSES_DIR:-/media/storage/yalab-dev/qsiprep_test/derivatives/responses}"
 # Optional: atlas dataset directory and space-separated atlas names
 # Example: SNBB_ATLASES_DIR=/data/atlases  SNBB_ATLASES="4S156Parcels Schaefer2018N100n7Tian2020S1"
-SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-}"
-SNBB_ATLASES="${SNBB_ATLASES:-}"
+SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/yalab-dev/voxelops/Schaefer2018Tian2020_atlases}"
+SNBB_ATLASES="${SNBB_ATLASES:-4S156Parcels Schaefer2018N100n7Tian2020S1}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=12:00:00

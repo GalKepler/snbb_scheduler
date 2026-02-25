@@ -3,9 +3,10 @@
 
 For a given subject/session this script:
 
-1. Verifies that expected fieldmap EPI files (*acq-dwi*_epi.nii.gz / .json) exist.
+1. Derives the fmap EPI from the PA DWI: globs dwi/*_dir-PA_dwi.nii.gz, computes
+   the mean b0, and writes fmap/*_acq-dwi_dir-PA_epi.nii.gz + JSON sidecar.
 2. Adds IntendedFor fields to all fmap JSON sidecars:
-     acq-dwi  fmaps → dwi/*_dwi.nii.gz
+     acq-dwi  fmaps → dwi/*_dir-AP_dwi.nii.gz  (AP only; PA is the fmap source)
      acq-func fmaps → func/*_bold.nii.gz
 3. Hides spurious .bvec/.bval files in fmap/ by renaming them with a leading dot.
 
@@ -17,10 +18,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import stat
 import sys
 from pathlib import Path
 from typing import Any
+
+import nibabel as nib
+import numpy as np
 
 
 # ---------------------------------------------------------------------------
@@ -50,47 +55,122 @@ def _run_step(
 
 
 # ---------------------------------------------------------------------------
-# Step 1: verify fieldmap EPI files
+# Step 1: derive fmap EPI from dir-PA DWI
 # ---------------------------------------------------------------------------
 
 
-def verify_fmap_epi_files(
+def _pa_dwi_to_fmap_stem(pa_stem: str) -> str:
+    """Transform ``*_dir-PA_dwi`` stem → ``*_acq-dwi_dir-PA_epi`` stem."""
+    return pa_stem.replace("_dir-PA_dwi", "_acq-dwi_dir-PA_epi")
+
+
+def derive_fmap_from_dwi_pa(
     participant_dir: Path,
     session: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Verify that expected fieldmap EPI files exist in fmap/.
+    """Derive fmap/*_acq-dwi_dir-PA_epi.nii.gz from dwi/*_dir-PA_dwi.nii.gz.
 
-    Checks for *acq-dwi*_epi.nii.gz and *acq-dwi*_epi.json.
+    For each PA DWI NIfTI found in dwi/:
+    - Reads companion .bval to identify b0 volumes (bval < 100 s/mm²).
+    - Computes the mean b0 image (3-D).
+    - Writes the result to fmap/*_acq-dwi_dir-PA_epi.nii.gz.
+    - Copies the companion .json sidecar to fmap/*_acq-dwi_dir-PA_epi.json.
     """
     results: dict[str, Any] = {
         "success": True,
-        "found_files": [],
-        "missing_files": [],
+        "derived_files": [],
         "errors": [],
+        "dry_run": dry_run,
     }
 
-    fmap_dir = participant_dir / "fmap"
-    if not fmap_dir.exists():
+    dwi_dir = participant_dir / "dwi"
+    if not dwi_dir.exists():
         results["success"] = False
-        results["errors"].append(f"Fieldmap directory not found: {fmap_dir}")
+        results["errors"].append(f"DWI directory not found: {dwi_dir}")
         return results
 
-    dwi_epi_nii = list(fmap_dir.glob("*acq-dwi*_epi.nii.gz"))
-    dwi_epi_json = list(fmap_dir.glob("*acq-dwi*_epi.json"))
-
-    if dwi_epi_nii:
-        results["found_files"].extend(f.name for f in dwi_epi_nii)
-    else:
-        results["missing_files"].append("*acq-dwi*_epi.nii.gz")
-        results["errors"].append("No DWI fieldmap NIfTI files found")
+    pa_niftis = list(dwi_dir.glob("*_dir-PA_dwi.nii.gz"))
+    if not pa_niftis:
         results["success"] = False
+        results["errors"].append("No *_dir-PA_dwi.nii.gz files found in dwi/")
+        return results
 
-    if dwi_epi_json:
-        results["found_files"].extend(f.name for f in dwi_epi_json)
-    else:
-        results["missing_files"].append("*acq-dwi*_epi.json")
-        results["errors"].append("No DWI fieldmap JSON files found")
-        results["success"] = False
+    fmap_dir = participant_dir / "fmap"
+
+    for pa_nii in pa_niftis:
+        stem = pa_nii.name.replace(".nii.gz", "")
+        fmap_stem = _pa_dwi_to_fmap_stem(stem)
+        fmap_nii = fmap_dir / f"{fmap_stem}.nii.gz"
+        fmap_json = fmap_dir / f"{fmap_stem}.json"
+
+        # Locate companion files
+        bval_path = dwi_dir / f"{stem}.bval"
+        json_path = dwi_dir / f"{stem}.json"
+
+        if dry_run:
+            results["derived_files"].append(
+                {"source": pa_nii.name, "output": fmap_nii.name, "note": "dry-run"}
+            )
+            continue
+
+        # Load NIfTI
+        try:
+            img = nib.load(pa_nii)
+        except Exception as e:
+            results["errors"].append(f"Failed to load {pa_nii.name}: {e}")
+            results["success"] = False
+            continue
+
+        data = np.asarray(img.dataobj)
+
+        # Identify b0 volumes
+        if bval_path.exists():
+            bvals = np.fromstring(bval_path.read_text(), sep=" ")
+            b0_mask = bvals < 100
+        else:
+            # No bval — treat all volumes as b0
+            b0_mask = np.ones(data.shape[-1], dtype=bool) if data.ndim == 4 else np.array([True])
+
+        if data.ndim == 4 and b0_mask.any():
+            mean_b0 = np.mean(data[..., b0_mask], axis=3)
+        elif data.ndim == 3:
+            mean_b0 = data
+        else:
+            results["errors"].append(f"No b0 volumes found in {pa_nii.name}")
+            results["success"] = False
+            continue
+
+        # Write derived fmap NIfTI
+        fmap_dir.mkdir(parents=True, exist_ok=True)
+        out_img = nib.Nifti1Image(mean_b0, img.affine, img.header)
+        try:
+            nib.save(out_img, fmap_nii)
+        except Exception as e:
+            results["errors"].append(f"Failed to write {fmap_nii.name}: {e}")
+            results["success"] = False
+            continue
+
+        # Copy JSON sidecar
+        if json_path.exists():
+            try:
+                shutil.copy2(json_path, fmap_json)
+            except Exception as e:
+                results["errors"].append(f"Failed to copy JSON sidecar for {pa_nii.name}: {e}")
+                results["success"] = False
+                continue
+        else:
+            # Write a minimal JSON so IntendedFor can be added in Step 2
+            try:
+                fmap_json.write_text("{}\n")
+            except Exception as e:
+                results["errors"].append(f"Failed to create JSON for {fmap_nii.name}: {e}")
+                results["success"] = False
+                continue
+
+        results["derived_files"].append(
+            {"source": pa_nii.name, "output": fmap_nii.name}
+        )
 
     return results
 
@@ -102,7 +182,10 @@ def verify_fmap_epi_files(
 
 def _find_dwi_targets(participant_dir: Path) -> list[Path]:
     dwi_dir = participant_dir / "dwi"
-    return list(dwi_dir.glob("*_dwi.nii.gz")) if dwi_dir.exists() else []
+    if not dwi_dir.exists():
+        return []
+    # AP only — PA is the source of the fmap, not a target
+    return [f for f in dwi_dir.glob("*_dwi.nii.gz") if "dir-PA" not in f.name]
 
 
 def _find_func_targets(participant_dir: Path) -> list[Path]:
@@ -299,7 +382,7 @@ def post_process_heudiconv_output(
     results: dict[str, Any] = {
         "success": True,
         "errors": [],
-        "verification": {},
+        "derive_fmap": {},
         "intended_for": {},
         "cleanup": {},
     }
@@ -313,7 +396,7 @@ def post_process_heudiconv_output(
         results["errors"].append(f"Participant directory not found: {participant_dir}")
         return results
 
-    _run_step(verify_fmap_epi_files, "verification", results, participant_dir, session)
+    _run_step(derive_fmap_from_dwi_pa, "derive_fmap", results, participant_dir, session, dry_run)
     _run_step(add_intended_for_to_fmaps, "intended_for", results, participant_dir, session, dry_run)
     _run_step(remove_bval_bvec_from_fmaps, "cleanup", results, participant_dir, session, dry_run)
 
@@ -326,14 +409,13 @@ def post_process_heudiconv_output(
 
 
 def _print_results(results: dict[str, Any]) -> None:
-    verification = results.get("verification", {})
-    if verification:
-        found = verification.get("found_files", [])
-        missing = verification.get("missing_files", [])
-        if found:
-            print(f"  Found:   {', '.join(found)}")
-        if missing:
-            print(f"  Missing: {', '.join(missing)}")
+    derive_fmap = results.get("derive_fmap", {})
+    if derive_fmap:
+        for entry in derive_fmap.get("derived_files", []):
+            note = f" [{entry['note']}]" if "note" in entry else ""
+            print(f"  Derived: {entry['source']} → fmap/{entry['output']}{note}")
+        for err in derive_fmap.get("errors", []):
+            print(f"  WARNING: {err}")
 
     intended = results.get("intended_for", {})
     if intended:
@@ -381,7 +463,7 @@ def main() -> None:
     if args.dry_run:
         print("  (dry-run mode)")
 
-    print("Step 1: Verifying fieldmap EPI files …")
+    print("Step 1: Derive fmap EPI from dir-PA DWI …")
     print("Step 2: Adding IntendedFor to fmap JSONs …")
     print("Step 3: Hiding spurious bvec/bval in fmap/ …")
 

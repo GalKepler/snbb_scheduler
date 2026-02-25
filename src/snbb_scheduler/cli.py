@@ -11,6 +11,7 @@ from snbb_scheduler.manifest import (
     build_manifest,
     filter_in_flight,
     load_state,
+    reconcile_with_filesystem,
     save_state,
 )
 from snbb_scheduler.monitor import update_state_from_sacct
@@ -116,6 +117,7 @@ def run(
     if not skip_monitor and not state.empty:
         try:
             updated = update_state_from_sacct(state, audit)
+            updated = reconcile_with_filesystem(updated, config, audit)
             if not updated.equals(state):
                 save_state(updated, config)
                 state = updated
@@ -212,6 +214,7 @@ def monitor(ctx: click.Context) -> None:
         return
 
     updated = update_state_from_sacct(state, audit)
+    updated = reconcile_with_filesystem(updated, config, audit)
 
     # Count transitions
     transitions = 0

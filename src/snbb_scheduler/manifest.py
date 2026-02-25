@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-__all__ = ["build_manifest", "load_state", "save_state", "filter_in_flight"]
+__all__ = ["build_manifest", "load_state", "save_state", "filter_in_flight", "reconcile_with_filesystem"]
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from snbb_scheduler.checks import is_complete
 from snbb_scheduler.config import SchedulerConfig
 from snbb_scheduler.rules import build_rules
+
+if TYPE_CHECKING:
+    from snbb_scheduler.audit import AuditLogger
 
 # Columns and dtypes for the state parquet file
 _STATE_COLUMNS = {
@@ -109,6 +114,61 @@ def filter_in_flight(manifest: pd.DataFrame, state: pd.DataFrame) -> pd.DataFram
         .drop(columns="_merge")
         .reset_index(drop=True)
     )
+
+
+def reconcile_with_filesystem(
+    state: pd.DataFrame,
+    config: SchedulerConfig,
+    audit: AuditLogger | None = None,
+) -> pd.DataFrame:
+    """Mark pending/running tasks as complete when their output exists on disk.
+
+    This handles the case where sacct no longer tracks a completed job
+    (e.g. job purged from retention window, or sacct unavailable), causing
+    the state file to lag behind the actual filesystem.
+    """
+    if state.empty:
+        return state.copy()
+
+    in_flight_mask = state["status"].isin(["pending", "running"])
+    if not in_flight_mask.any():
+        return state.copy()
+
+    updated = state.copy()
+    for idx in state[in_flight_mask].index:
+        row = state.loc[idx]
+        proc_name = row["procedure"]
+        subject = row["subject"]
+        session = row["session"]
+        try:
+            proc = config.get_procedure(proc_name)
+        except KeyError:
+            continue
+
+        root = config.get_procedure_root(proc)
+        output_path = root / subject if proc.scope == "subject" else root / subject / session
+
+        kwargs: dict = {}
+        if proc_name in ("freesurfer", "qsiprep"):
+            kwargs = {"bids_root": config.bids_root, "subject": subject}
+        elif proc_name == "qsirecon":
+            kwargs = {"derivatives_root": config.derivatives_root, "subject": subject}
+
+        if is_complete(proc, output_path, **kwargs):
+            old_status = str(updated.at[idx, "status"])
+            updated.at[idx, "status"] = "complete"
+            if audit is not None:
+                audit.log(
+                    "status_change",
+                    subject=subject,
+                    session=session,
+                    procedure=proc_name,
+                    job_id=str(row["job_id"] or ""),
+                    old_status=old_status,
+                    new_status="complete",
+                )
+
+    return updated
 
 
 def _empty_state() -> pd.DataFrame:

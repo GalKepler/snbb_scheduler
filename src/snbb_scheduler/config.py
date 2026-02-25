@@ -53,7 +53,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_bids_post.sh",
         scope="session",
         depends_on=["bids"],
-        # Completion marker: the derived DWI EPI fieldmap created by the script.
+        # Completion marker: the derived DWI fmap NIfTI written by bids_post.
         completion_marker="fmap/*acq-dwi*_epi.nii.gz",
     ),
     Procedure(
@@ -65,20 +65,17 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         completion_marker="anat/*desc-defaced*_T1w.nii.gz",
     ),
     Procedure(
-        name="defacing_fsl",
-        output_dir="",          # in-place in bids_root, same as defacing
-        script="snbb_run_defacing_fsl.sh",
-        scope="session",
-        depends_on=["bids_post"],
-        completion_marker="anat/*desc-defaced*_T1w.nii.gz",
-    ),
-    Procedure(
         name="qsiprep",
         output_dir="qsiprep",
         script="snbb_run_qsiprep.sh",
         scope="subject",
         depends_on=["bids_post"],
-        completion_marker=None,
+        completion_marker=[
+            "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz",
+            "ses-*/dwi/*dir-AP*_dwi_preproc.bvec",
+            "ses-*/dwi/*dir-AP*_dwi_preproc.bval",
+            "ses-*/dwi/*dir-AP*desc-image_qc.tsv",
+        ],
     ),
     Procedure(
         name="freesurfer",

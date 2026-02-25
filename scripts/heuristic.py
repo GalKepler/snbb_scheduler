@@ -72,13 +72,13 @@ def infotodict(
     )
 
     # ── Diffusion ─────────────────────────────────────────────────────────────
-    # The short reverse-PE DWI (6 dirs PA) is placed in fmap/ per BIDS
-    # convention — it serves as a fieldmap for DWI distortion correction.
+    # The short reverse-PE DWI (6 dirs PA) is stored as real DWI in dwi/;
+    # bids_post derives the fmap EPI from it via mean-b0 extraction.
     dwi_ap = create_key(
         "{bids_subject_session_dir}/dwi/{bids_subject_session_prefix}_dir-AP_dwi"
     )
     dwi_pa = create_key(
-        "{bids_subject_session_dir}/fmap/{bids_subject_session_prefix}_acq-dwi_dir-PA_epi"
+        "{bids_subject_session_dir}/dwi/{bids_subject_session_prefix}_dir-PA_dwi"
     )
     dwi_ap_sbref = create_key(
         "{bids_subject_session_dir}/dwi/{bids_subject_session_prefix}_dir-AP_sbref"
