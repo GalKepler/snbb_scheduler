@@ -93,6 +93,15 @@ def mark_qsirecon_complete(row: dict) -> None:
             (out / "report.html").touch()
 
 
+def mark_defacing_complete(row: dict) -> None:
+    """Create a desc-defaced T1w file that marks defacing as complete."""
+    anat_dir = row["defacing_path"] / "anat"
+    anat_dir.mkdir(parents=True, exist_ok=True)
+    subject = row["subject"]
+    session = row["session"]
+    (anat_dir / f"{subject}_{session}_desc-defaced_T1w.nii.gz").touch()
+
+
 def mark_freesurfer_complete(row: dict) -> None:
     """Create recon-all.done with CMDARGS matching the available T1w count."""
     scripts = row["freesurfer_path"] / "scripts"
@@ -149,6 +158,38 @@ def test_bids_not_needed_when_already_complete(cfg):
     mark_bids_complete(row)
     rules = build_rules(cfg)
     assert rules["bids"](pd.Series(row)) is False
+
+
+# ---------------------------------------------------------------------------
+# defacing rule — depends on bids_post, session-scoped
+# ---------------------------------------------------------------------------
+
+def test_defacing_not_needed_when_bids_post_incomplete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    # bids_post NOT complete
+    rules = build_rules(cfg)
+    assert rules["defacing"](pd.Series(row)) is False
+
+
+def test_defacing_needed_when_bids_post_complete_defacing_absent(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    rules = build_rules(cfg)
+    assert rules["defacing"](pd.Series(row)) is True
+
+
+def test_defacing_not_needed_when_already_complete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    mark_defacing_complete(row)
+    rules = build_rules(cfg)
+    assert rules["defacing"](pd.Series(row)) is False
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +272,7 @@ def test_downstream_fire_once_bids_post_done(cfg):
     rules = build_rules(cfg)
     assert rules["bids"](pd.Series(row)) is False
     assert rules["bids_post"](pd.Series(row)) is False
+    assert rules["defacing"](pd.Series(row)) is True
     assert rules["qsiprep"](pd.Series(row)) is True
     assert rules["freesurfer"](pd.Series(row)) is True
 
@@ -240,6 +282,7 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_dicom(row)
     mark_bids_complete(row)
     mark_bids_post_complete(row)
+    mark_defacing_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
     mark_qsirecon_complete(row)
@@ -341,6 +384,7 @@ def test_force_none_forces_all_procedures(cfg):
     mark_dicom(row)
     mark_bids_complete(row)
     mark_bids_post_complete(row)
+    mark_defacing_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
     mark_qsirecon_complete(row)
@@ -349,6 +393,7 @@ def test_force_none_forces_all_procedures(cfg):
     # (given dicom + deps are satisfied)
     assert rules["bids"](pd.Series(row)) is True
     assert rules["bids_post"](pd.Series(row)) is True
+    assert rules["defacing"](pd.Series(row)) is True
     assert rules["qsiprep"](pd.Series(row)) is True
     assert rules["freesurfer"](pd.Series(row)) is True
     assert rules["qsirecon"](pd.Series(row)) is True

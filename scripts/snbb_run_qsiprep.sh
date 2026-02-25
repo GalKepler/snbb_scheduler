@@ -8,17 +8,17 @@
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
-SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/data/snbb/bids}"
-SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/data/snbb/derivatives}"
-SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/data/snbb/freesurfer/license.txt}"
-SNBB_WORK_DIR="${SNBB_WORK_DIR:-/data/snbb/work/qsiprep}"
-SNBB_QSIPREP_SIF="${SNBB_QSIPREP_SIF:-/data/containers/qsiprep.sif}"
-SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/qsiprep/debug_submit.log}"
+SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
+SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
+SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
+SNBB_WORK_DIR="${SNBB_WORK_DIR:-/media/storage/yalab-dev/snbb_scheduler/work/qsiprep}"
+SNBB_QSIPREP_SIF="${SNBB_QSIPREP_SIF:-/media/storage/apptainer/images/qsiprep-1.1.1.sif}"
+SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/qsiprep/debug_submit.log}"
 # Anatomical template and reference (override if your site uses a different space)
 SNBB_ANATOMICAL_TEMPLATE="${SNBB_ANATOMICAL_TEMPLATE:-MNI152NLin2009cAsym}"
 SNBB_SUBJECT_ANAT_REF="${SNBB_SUBJECT_ANAT_REF:-unbiased}"
 # Optional BIDS filter file — set to restrict which runs QSIPrep processes
-SNBB_BIDS_FILTER_FILE="${SNBB_BIDS_FILTER_FILE:-}"
+SNBB_BIDS_FILTER_FILE="${SNBB_BIDS_FILTER_FILE:-/home/galkepler/Projects/snbb_scheduler/examples/bids_filters.json}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=12:00:00

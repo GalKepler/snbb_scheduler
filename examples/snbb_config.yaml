@@ -41,9 +41,9 @@ procedures:
     completion_marker:
       - "anat/*_T1w.nii.gz"
       - "dwi/*dir-AP*_dwi.nii.gz"
-      - "dwi/*dir-AP*_dwi.bvec"
-      - "dwi/*dir-AP*_dwi.bval"
-      - "dwi/*dir-PA*_dwi.nii.gz"
+      # - "dwi/*dir-AP*_dwi.bvec"
+      # - "dwi/*dir-AP*_dwi.bval"
+      - "fmap/*acq-dwi_dir-PA*epi.nii.gz"
       - "fmap/*acq-func_dir-AP*epi.nii.gz"
       - "fmap/*acq-func_dir-PA*epi.nii.gz"
       - "func/*task-rest_bold.nii.gz"
@@ -54,7 +54,26 @@ procedures:
     scope: session
     depends_on: [bids]
     completion_marker:
-      - "fmap/*acq-dwi_dir-PA*epi.nii.gz"
+      - "fmap/.*acq-dwi_dir-PA*epi.bvec"
+
+  - name: defacing
+    output_dir: ""              # lives in bids_root, not derivatives_root
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_defacing.sh
+    scope: session
+    depends_on: [bids]
+    completion_marker:
+      - "anat/*desc-defaced*T1w.nii.gz"
+      - "anat/*desc-defaced*T2w.nii.gz"
+
+  # Alternative: use fsl_deface (FSL, no container) instead of bidsonym.
+  # Replace the defacing entry with defacing_fsl, or include both —
+  # only one will run per session (whichever completes first wins).
+  # - name: defacing_fsl
+  #   output_dir: ""
+  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_defacing_fsl.sh
+  #   scope: session
+  #   depends_on: [bids]
+  #   completion_marker: "anat/*desc-defaced*_T1w.nii.gz"
 
   # DWI preprocessing (subject-scoped: one run covers all sessions)
   # Completion: ses-* output dirs match BIDS DWI session count

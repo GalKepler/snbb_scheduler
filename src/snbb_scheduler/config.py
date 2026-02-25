@@ -57,6 +57,22 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         completion_marker="fmap/*acq-dwi*_epi.nii.gz",
     ),
     Procedure(
+        name="defacing",
+        output_dir="",  # in-place in bids_root, using desc-defaced BIDS entity
+        script="snbb_run_defacing.sh",
+        scope="session",
+        depends_on=["bids_post"],
+        completion_marker="anat/*desc-defaced*_T1w.nii.gz",
+    ),
+    Procedure(
+        name="defacing_fsl",
+        output_dir="",          # in-place in bids_root, same as defacing
+        script="snbb_run_defacing_fsl.sh",
+        scope="session",
+        depends_on=["bids_post"],
+        completion_marker="anat/*desc-defaced*_T1w.nii.gz",
+    ),
+    Procedure(
         name="qsiprep",
         output_dir="qsiprep",
         script="snbb_run_qsiprep.sh",

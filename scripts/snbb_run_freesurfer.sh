@@ -37,7 +37,7 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 
 mkdir -p "${SNBB_FS_OUTPUT}"
 
-python3 "$(dirname "$0")/snbb_recon_all_helper.py" \
+python3 "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
     --bids-dir    "${SNBB_BIDS_ROOT}" \
     --output-dir  "${SNBB_FS_OUTPUT}" \
     --subject     "${SUBJECT}" \

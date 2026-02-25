@@ -85,6 +85,13 @@ def add_qsirecon(tmp_path, subject, session):
     (out / "report.html").touch()
 
 
+def add_defacing(tmp_path, subject, session):
+    """Create a desc-defaced T1w file that marks defacing as complete."""
+    anat_dir = tmp_path / "bids" / subject / session / "anat"
+    anat_dir.mkdir(parents=True, exist_ok=True)
+    (anat_dir / f"{subject}_{session}_desc-defaced_T1w.nii.gz").touch()
+
+
 def add_freesurfer(tmp_path, subject):
     """Create recon-all.done with CMDARGS matching T1w files in BIDS."""
     scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
@@ -213,6 +220,7 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
     add_bids_post(tmp_path, "sub-0001", "ses-01")
+    add_defacing(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
     add_qsirecon(tmp_path, "sub-0001", "ses-01")
