@@ -145,11 +145,29 @@ def test_submit_task_no_dicom_path_for_subject_scoped(cfg):
     assert str(dicom) not in cmd
 
 
+def test_submit_task_defacing_job_name(cfg):
+    """Defacing is session-scoped → job name includes session."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(subject="sub-0001", session="ses-01", procedure="defacing"), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert "--job-name=defacing_sub-0001_ses-01" in cmd
+
+
+def test_submit_task_defacing_passes_subject_and_session(cfg):
+    """Defacing script receives subject and session as positional args."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(subject="sub-0003", session="ses-02", procedure="defacing"), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert "sub-0003" in cmd
+    assert "ses-02" in cmd
+
+
 def test_submit_task_script_from_procedure_registry(cfg):
     """Each procedure uses its own script, not a hardcoded map."""
     for proc_name, expected_script in [
         ("bids", "snbb_run_bids.sh"),
         ("bids_post", "snbb_run_bids_post.sh"),
+        ("defacing", "snbb_run_defacing.sh"),
         ("qsiprep", "snbb_run_qsiprep.sh"),
         ("freesurfer", "snbb_run_freesurfer.sh"),
     ]:

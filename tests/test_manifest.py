@@ -127,6 +127,13 @@ def test_build_manifest_sorted_by_priority(cfg, tmp_path):
     assert list(manifest["priority"]) == sorted(manifest["priority"].tolist())
 
 
+def mark_defacing_complete(tmp_path: Path, subject: str, session: str) -> None:
+    """Create a desc-defaced T1w file that marks defacing as complete."""
+    anat_dir = tmp_path / "bids" / subject / session / "anat"
+    anat_dir.mkdir(parents=True, exist_ok=True)
+    (anat_dir / f"{subject}_{session}_desc-defaced_T1w.nii.gz").touch()
+
+
 def mark_freesurfer_complete(tmp_path: Path, subject: str, session: str) -> None:
     """Create recon-all.done with CMDARGS matching available T1w count."""
     scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
@@ -146,6 +153,7 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     mark_bids_post_complete(tmp_path, "sub-0001", "ses-01")
     mark_bids_post_complete(tmp_path, "sub-0002", "ses-01")
     for sub in ("sub-0001", "sub-0002"):
+        mark_defacing_complete(tmp_path, sub, "ses-01")
         # qsiprep: subject-scoped, session subdir matches BIDS DWI sessions
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
         qp.mkdir(parents=True)

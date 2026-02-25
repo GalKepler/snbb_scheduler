@@ -25,8 +25,31 @@ def test_default_procedures_present():
     names = [p.name for p in cfg.procedures]
     assert "bids" in names
     assert "bids_post" in names
+    assert "defacing" in names
     assert "qsiprep" in names
     assert "freesurfer" in names
+
+
+def test_defacing_procedure_attributes():
+    cfg = SchedulerConfig()
+    defacing = cfg.get_procedure("defacing")
+    assert defacing.output_dir == ""
+    assert defacing.script == "snbb_run_defacing.sh"
+    assert defacing.scope == "session"
+    assert defacing.depends_on == ["bids_post"]
+    assert defacing.completion_marker == "anat/*desc-defaced*_T1w.nii.gz"
+
+
+def test_defacing_uses_bids_root():
+    cfg = SchedulerConfig(bids_root=Path("/data/bids"))
+    defacing = cfg.get_procedure("defacing")
+    assert cfg.get_procedure_root(defacing) == Path("/data/bids")
+
+
+def test_defacing_comes_after_bids_post_in_order():
+    cfg = SchedulerConfig()
+    names = [p.name for p in cfg.procedures]
+    assert names.index("defacing") > names.index("bids_post")
 
 
 # ---------------------------------------------------------------------------
