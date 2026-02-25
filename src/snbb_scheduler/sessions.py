@@ -16,8 +16,12 @@ _REQUIRED_CSV_COLUMNS = {"SubjectCode", "ScanID", "dicom_path"}
 _SESSION_FILE_COLUMNS = {"subject_code", "session_id", "dicom_path"}
 
 
-def sanitize_subject_code(subject_code: str) -> str:
+def sanitize_subject_code(subject_code: str | int | float) -> str:
     """Remove special characters and zero-pad to 4 digits."""
+    if isinstance(subject_code, float):
+        subject_code = str(int(subject_code))
+    else:
+        subject_code = str(subject_code)
     return subject_code.replace("-", "").replace("_", "").replace(" ", "").zfill(4)
 
 

@@ -8,11 +8,11 @@
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
-SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/data/snbb/bids}"
-SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/data/snbb/derivatives/freesurfer}"
-SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/data/snbb/freesurfer/license.txt}"
-SNBB_FREESURFER_SIF="${SNBB_FREESURFER_SIF:-/data/containers/freesurfer.sif}"
-SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/data/snbb/logs/freesurfer/debug_submit.log}"
+SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
+SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
+SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
+SNBB_FREESURFER_SIF="${SNBB_FREESURFER_SIF:-/media/storage/apptainer/images/freesurfer-8.1.0.sif}"
+SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/freesurfer/debug_submit.log}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=24:00:00

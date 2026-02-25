@@ -43,10 +43,18 @@ procedures:
       - "dwi/*dir-AP*_dwi.nii.gz"
       - "dwi/*dir-AP*_dwi.bvec"
       - "dwi/*dir-AP*_dwi.bval"
-      - "fmap/*acq-dwi_dir-AP*epi.nii.gz"
+      - "dwi/*dir-PA*_dwi.nii.gz"
       - "fmap/*acq-func_dir-AP*epi.nii.gz"
       - "fmap/*acq-func_dir-PA*epi.nii.gz"
       - "func/*task-rest_bold.nii.gz"
+
+  - name: post-bids
+    output_dir: ""              # lives in bids_root, not derivatives_root
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_bids_post.sh
+    scope: session
+    depends_on: [bids]
+    completion_marker:
+      - "fmap/*acq-dwi_dir-PA*epi.nii.gz"
 
   # DWI preprocessing (subject-scoped: one run covers all sessions)
   # Completion: ses-* output dirs match BIDS DWI session count
@@ -54,7 +62,7 @@ procedures:
     output_dir: qsiprep
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsiprep.sh
     scope: subject
-    depends_on: [bids]
+    depends_on: [post-bids]
     completion_marker: null
 
   # Cortical reconstruction (one run covers all sessions for a subject)

@@ -225,13 +225,18 @@ def test_retry_clears_failed_entries(runner, cfg_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def _add_bids(tmp_path, subject, session):
-    """Create all 8 BIDS modality files for a session."""
+    """Create BIDS modality files matching the bids completion_marker."""
     bids_dir = tmp_path / "bids" / subject / session
     files = {
         "anat": ["sub_T1w.nii.gz"],
-        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "dwi": [
+            "sub_dir-AP_dwi.nii.gz",
+            "sub_dir-AP_dwi.bvec",
+            "sub_dir-AP_dwi.bval",
+            # Short reverse-PE DWI; heudiconv places it in dwi/ (not fmap/)
+            "sub_dir-PA_dwi.nii.gz",
+        ],
         "fmap": [
-            "sub_acq-dwi_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-PA_epi.nii.gz",
         ],
@@ -323,6 +328,264 @@ def test_slurm_log_dir_cli_overrides_config(runner, cfg_with_sessions, tmp_path)
         cmd = c[0][0]
         assert any(a.startswith("--output=") for a in cmd)
         assert any(a.startswith("--error=") for a in cmd)
+
+
+# ---------------------------------------------------------------------------
+# monitor command
+# ---------------------------------------------------------------------------
+
+def test_monitor_help(runner):
+    result = runner.invoke(main, ["monitor", "--help"])
+    assert result.exit_code == 0
+
+
+def test_monitor_no_state(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+    assert "No state recorded" in result.output
+
+
+def test_monitor_with_in_flight_jobs(runner, cfg_path, tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "99",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.monitor.poll_jobs", return_value={"99": "complete"}):
+        result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+
+    from snbb_scheduler.manifest import load_state
+    updated = load_state(cfg)
+    assert updated.iloc[0]["status"] == "complete"
+
+
+def test_monitor_no_transitions_exits_ok(runner, cfg_path, tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "100",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.monitor.poll_jobs", return_value={"100": "pending"}):
+        result = runner.invoke(main, ["--config", str(cfg_path), "monitor"])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# run --skip-monitor
+# ---------------------------------------------------------------------------
+
+def test_run_skip_monitor_no_sacct_called(runner, cfg_with_sessions, tmp_path):
+    """--skip-monitor means poll_jobs is never called."""
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "7",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.monitor.poll_jobs") as mock_poll, \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "Submitted batch job 1\n"
+        runner.invoke(
+            main,
+            ["--config", str(cfg_with_sessions), "run", "--skip-monitor", "--dry-run"],
+        )
+    mock_poll.assert_not_called()
+
+
+def test_run_skip_monitor_in_help(runner):
+    result = runner.invoke(main, ["run", "--help"])
+    assert "--skip-monitor" in result.output
+
+
+# ---------------------------------------------------------------------------
+# enhanced status
+# ---------------------------------------------------------------------------
+
+def test_status_shows_summary_section(runner, cfg_path, tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([
+        {"subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+         "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "1"},
+        {"subject": "sub-0002", "session": "ses-01", "procedure": "bids",
+         "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "2"},
+    ])
+    save_state(state, cfg)
+    result = runner.invoke(main, ["--config", str(cfg_path), "status"])
+    assert result.exit_code == 0
+    assert "Summary" in result.output
+    assert "procedure" in result.output or "bids" in result.output
+    assert "count" in result.output or "1" in result.output
+
+
+def test_status_with_slurm_log_dir(runner, tmp_path):
+    log_dir = tmp_path / "slurm_logs"
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"slurm_log_dir: {log_dir}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "11",
+    }])
+    save_state(state, cfg)
+    result = runner.invoke(main, ["--config", str(yaml_file), "status"])
+    assert result.exit_code == 0
+    assert "log_path" in result.output
+
+
+# ---------------------------------------------------------------------------
+# retry audit
+# ---------------------------------------------------------------------------
+
+def test_retry_writes_audit_log(runner, cfg_path, tmp_path):
+    log_file = tmp_path / "audit.jsonl"
+    yaml_file = tmp_path / "config_audit.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"log_file: {log_file}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "failed", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "5",
+    }])
+    save_state(state, cfg)
+    result = runner.invoke(main, ["--config", str(yaml_file), "retry", "--procedure", "bids"])
+    assert result.exit_code == 0
+    import json
+    record = json.loads(log_file.read_text())
+    assert record["event"] == "retry_cleared"
+
+
+def test_run_monitor_updates_state(runner, tmp_path):
+    """run without --skip-monitor calls monitor and saves updated state."""
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "77",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.monitor.poll_jobs", return_value={"77": "complete"}), \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value.stdout = "Submitted batch job 1\n"
+        result = runner.invoke(main, ["--config", str(yaml_file), "run", "--dry-run"])
+    assert result.exit_code == 0
+
+    from snbb_scheduler.manifest import load_state
+    updated = load_state(cfg)
+    assert updated.iloc[0]["status"] == "complete"
+
+
+def test_run_monitor_exception_handled_gracefully(runner, tmp_path):
+    """If monitor raises, run continues without crashing."""
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "78",
+    }])
+    save_state(state, cfg)
+
+    with patch("snbb_scheduler.cli.update_state_from_sacct", side_effect=RuntimeError("oops")):
+        result = runner.invoke(main, ["--config", str(yaml_file), "run", "--dry-run"])
+    assert result.exit_code == 0
+
+
+def test_status_log_path_unknown_procedure(runner, tmp_path):
+    """status with slurm_log_dir + unknown procedure name uses fallback job_name."""
+    log_dir = tmp_path / "slurm_logs"
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"slurm_log_dir: {log_dir}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "unknown_proc",
+        "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "99",
+    }])
+    save_state(state, cfg)
+    result = runner.invoke(main, ["--config", str(yaml_file), "status"])
+    assert result.exit_code == 0
+    assert "log_path" in result.output
 
 
 def test_retry_filter_by_subject(runner, cfg_path, tmp_path):

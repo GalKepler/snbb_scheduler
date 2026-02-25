@@ -180,12 +180,17 @@ def test_list_marker_nonexistent_path(tmp_path):
 # ---------------------------------------------------------------------------
 
 def _create_bids_session_files(bids_session_dir) -> None:
-    """Create all 8 required BIDS modality files."""
+    """Create all required BIDS modality files matching the bids completion_marker."""
     files = {
         "anat": ["sub_T1w.nii.gz"],
-        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "dwi": [
+            "sub_dir-AP_dwi.nii.gz",
+            "sub_dir-AP_dwi.bvec",
+            "sub_dir-AP_dwi.bval",
+            # Short reverse-PE DWI lives in dwi/ (bids_post derives the fmap from it)
+            "sub_dir-PA_dwi.nii.gz",
+        ],
         "fmap": [
-            "sub_acq-dwi_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-PA_epi.nii.gz",
         ],

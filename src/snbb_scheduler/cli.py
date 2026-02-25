@@ -5,6 +5,7 @@ import logging
 import click
 import pandas as pd
 
+from snbb_scheduler.audit import get_logger
 from snbb_scheduler.config import SchedulerConfig
 from snbb_scheduler.manifest import (
     build_manifest,
@@ -12,6 +13,7 @@ from snbb_scheduler.manifest import (
     load_state,
     save_state,
 )
+from snbb_scheduler.monitor import update_state_from_sacct
 from snbb_scheduler.sessions import discover_sessions
 from snbb_scheduler.submit import submit_manifest
 
@@ -83,10 +85,23 @@ def main(
     metavar="NAME",
     help="Limit --force to a single procedure (e.g. bids). Ignored without --force.",
 )
+@click.option(
+    "--skip-monitor",
+    is_flag=True,
+    default=False,
+    help="Skip the pre-run sacct status update.",
+)
 @click.pass_context
-def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -> None:
+def run(
+    ctx: click.Context,
+    dry_run: bool,
+    force: bool,
+    procedure: str | None,
+    skip_monitor: bool,
+) -> None:
     """Discover sessions, evaluate rules, and submit jobs to Slurm."""
     config: SchedulerConfig = ctx.obj["config"]
+    audit = get_logger(config)
 
     click.echo("Discovering sessions…")
     sessions = discover_sessions(config)
@@ -97,6 +112,16 @@ def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -
     click.echo(f"  {len(manifest)} task(s) need processing.")
 
     state = load_state(config)
+
+    if not skip_monitor and not state.empty:
+        try:
+            updated = update_state_from_sacct(state, audit)
+            if not updated.equals(state):
+                save_state(updated, config)
+                state = updated
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger(__name__).warning("Monitor update failed: %s", exc)
+
     if force:
         click.echo("  --force: skipping in-flight filter.")
     else:
@@ -107,7 +132,7 @@ def run(ctx: click.Context, dry_run: bool, force: bool, procedure: str | None) -
         click.echo("Nothing to submit.")
         return
 
-    new_state = submit_manifest(manifest, config, dry_run=dry_run)
+    new_state = submit_manifest(manifest, config, dry_run=dry_run, audit=audit)
 
     if not dry_run:
         parts = [df for df in (state, new_state) if not df.empty]
@@ -145,7 +170,68 @@ def status(ctx: click.Context) -> None:
         click.echo("No state recorded yet.")
         return
 
-    click.echo(state.to_string(index=False))
+    # Summary table: procedure | status | count
+    summary = (
+        state.groupby(["procedure", "status"], sort=False)
+        .size()
+        .reset_index(name="count")
+    )
+    click.echo("Summary:")
+    click.echo(summary.to_string(index=False))
+    click.echo("")
+
+    # Full details table, optionally with log_path column
+    details = state.copy()
+    if config.slurm_log_dir is not None:
+        from snbb_scheduler.submit import _build_job_name
+        def _log_path(row: pd.Series) -> str:
+            try:
+                proc = config.get_procedure(row["procedure"])
+                job_name = _build_job_name(row, proc.scope)
+            except KeyError:
+                job_name = f"{row['procedure']}_{row['subject']}"
+            log_subdir = config.slurm_log_dir / row["procedure"]
+            job_id = row.get("job_id") or ""
+            return str(log_subdir / f"{job_name}_{job_id}.out")
+
+        details["log_path"] = details.apply(_log_path, axis=1)
+
+    click.echo(details.to_string(index=False))
+
+
+@main.command()
+@click.pass_context
+def monitor(ctx: click.Context) -> None:
+    """Poll sacct for in-flight job statuses and update the state file."""
+    config: SchedulerConfig = ctx.obj["config"]
+    audit = get_logger(config)
+    state = load_state(config)
+
+    if state.empty:
+        click.echo("No state recorded yet.")
+        return
+
+    updated = update_state_from_sacct(state, audit)
+
+    # Count transitions
+    transitions = 0
+    for idx in state.index:
+        if idx < len(updated) and state.at[idx, "status"] != updated.at[idx, "status"]:
+            transitions += 1
+
+    if not updated.equals(state):
+        save_state(updated, config)
+        click.echo(f"Updated {transitions} job status(es).")
+    else:
+        click.echo("No status changes.")
+
+    # Current status breakdown by procedure
+    summary = (
+        updated.groupby(["procedure", "status"], sort=False)
+        .size()
+        .reset_index(name="count")
+    )
+    click.echo(summary.to_string(index=False))
 
 
 @main.command()
@@ -155,6 +241,7 @@ def status(ctx: click.Context) -> None:
 def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> None:
     """Remove failed state entries so they are retried on the next run."""
     config: SchedulerConfig = ctx.obj["config"]
+    audit = get_logger(config)
     state = load_state(config)
 
     if state.empty:
@@ -171,6 +258,17 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
     if n == 0:
         click.echo("No matching failed entries found.")
         return
+
+    cleared = state[mask]
+    for _, row in cleared.iterrows():
+        audit.log(
+            "retry_cleared",
+            subject=row["subject"],
+            session=row["session"],
+            procedure=row["procedure"],
+            job_id=row.get("job_id"),
+            old_status="failed",
+        )
 
     state = state[~mask].reset_index(drop=True)
     save_state(state, config)

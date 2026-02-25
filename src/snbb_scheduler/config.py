@@ -39,18 +39,29 @@ DEFAULT_PROCEDURES: list[Procedure] = [
             "dwi/*dir-AP*_dwi.nii.gz",
             "dwi/*dir-AP*_dwi.bvec",
             "dwi/*dir-AP*_dwi.bval",
-            "fmap/*acq-dwi_dir-AP*epi.nii.gz",
+            # Short reverse-PE DWI (6 dirs PA) lives in dwi/ per heuristic;
+            # bids_post derives the fmap EPI from it.
+            "dwi/*dir-PA*_dwi.nii.gz",
             "fmap/*acq-func_dir-AP*epi.nii.gz",
             "fmap/*acq-func_dir-PA*epi.nii.gz",
             "func/*task-rest_bold.nii.gz",
         ],
     ),
     Procedure(
+        name="bids_post",
+        output_dir="",  # operates on bids_root (same as bids)
+        script="snbb_run_bids_post.sh",
+        scope="session",
+        depends_on=["bids"],
+        # Completion marker: the derived DWI EPI fieldmap created by the script.
+        completion_marker="fmap/*acq-dwi*_epi.nii.gz",
+    ),
+    Procedure(
         name="qsiprep",
         output_dir="qsiprep",
         script="snbb_run_qsiprep.sh",
         scope="subject",
-        depends_on=["bids"],
+        depends_on=["bids_post"],
         completion_marker=None,
     ),
     Procedure(
@@ -58,7 +69,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         output_dir="freesurfer",
         script="snbb_run_freesurfer.sh",
         scope="subject",
-        depends_on=["bids"],
+        depends_on=["bids_post"],
         completion_marker="scripts/recon-all.done",
     ),
     Procedure(
@@ -123,8 +134,12 @@ class SchedulerConfig:
                     )
 
     def get_procedure_root(self, proc: Procedure) -> Path:
-        """Return the base output root for a procedure."""
-        if proc.name == "bids":
+        """Return the base output root for a procedure.
+
+        Procedures with an empty ``output_dir`` (e.g. ``bids``, ``bids_post``)
+        write directly into ``bids_root``; all others use ``derivatives_root``.
+        """
+        if not proc.output_dir:
             return self.bids_root
         return self.derivatives_root / proc.output_dir
 

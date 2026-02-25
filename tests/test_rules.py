@@ -43,13 +43,18 @@ def mark_dicom(row: dict) -> None:
 
 
 def mark_bids_complete(row: dict) -> None:
-    """Create all 8 required BIDS modality files for the session."""
+    """Create BIDS modality files matching the bids completion_marker."""
     bids_dir = row["bids_path"]
     files = {
         "anat": ["sub_T1w.nii.gz"],
-        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "dwi": [
+            "sub_dir-AP_dwi.nii.gz",
+            "sub_dir-AP_dwi.bvec",
+            "sub_dir-AP_dwi.bval",
+            # Short reverse-PE DWI; bids_post derives the fmap EPI from this
+            "sub_dir-PA_dwi.nii.gz",
+        ],
         "fmap": [
-            "sub_acq-dwi_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-PA_epi.nii.gz",
         ],
@@ -60,6 +65,13 @@ def mark_bids_complete(row: dict) -> None:
         d.mkdir(parents=True, exist_ok=True)
         for name in names:
             (d / name).touch()
+
+
+def mark_bids_post_complete(row: dict) -> None:
+    """Create the derived DWI EPI fieldmap that marks bids_post as complete."""
+    fmap_dir = row["bids_post_path"] / "fmap"
+    fmap_dir.mkdir(parents=True, exist_ok=True)
+    (fmap_dir / "sub_acq-dwi_dir-PA_epi.nii.gz").touch()
 
 
 def mark_qsiprep_complete(row: dict) -> None:
@@ -155,6 +167,7 @@ def test_qsiprep_needed_when_bids_complete_qsiprep_absent(cfg):
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
+    mark_bids_post_complete(row)
     rules = build_rules(cfg)
     assert rules["qsiprep"](pd.Series(row)) is True
 
@@ -183,6 +196,7 @@ def test_freesurfer_needed_when_bids_complete_fs_absent(cfg):
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
+    mark_bids_post_complete(row)
     rules = build_rules(cfg)
     assert rules["freesurfer"](pd.Series(row)) is True
 
@@ -209,12 +223,14 @@ def test_only_bids_fires_when_nothing_done(cfg):
     assert rules["freesurfer"](pd.Series(row)) is False
 
 
-def test_downstream_fire_once_bids_done(cfg):
+def test_downstream_fire_once_bids_post_done(cfg):
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
+    mark_bids_post_complete(row)
     rules = build_rules(cfg)
     assert rules["bids"](pd.Series(row)) is False
+    assert rules["bids_post"](pd.Series(row)) is False
     assert rules["qsiprep"](pd.Series(row)) is True
     assert rules["freesurfer"](pd.Series(row)) is True
 
@@ -223,6 +239,7 @@ def test_nothing_fires_when_all_complete(cfg):
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
+    mark_bids_post_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
     mark_qsirecon_complete(row)
@@ -323,6 +340,7 @@ def test_force_none_forces_all_procedures(cfg):
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
+    mark_bids_post_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
     mark_qsirecon_complete(row)
@@ -330,6 +348,7 @@ def test_force_none_forces_all_procedures(cfg):
     # Everything is complete, but --force should make all rules fire
     # (given dicom + deps are satisfied)
     assert rules["bids"](pd.Series(row)) is True
+    assert rules["bids_post"](pd.Series(row)) is True
     assert rules["qsiprep"](pd.Series(row)) is True
     assert rules["freesurfer"](pd.Series(row)) is True
     assert rules["qsirecon"](pd.Series(row)) is True

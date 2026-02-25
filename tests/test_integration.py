@@ -1,4 +1,4 @@
-"""End-to-end integration tests.
+"""End-to-end integration tests, including audit/monitor lifecycle.
 
 These tests exercise the full pipeline — discover → manifest → filter →
 submit → save state — against a real fake filesystem, with only
@@ -40,7 +40,7 @@ def add_dicom(tmp_path, subject, session):
 
 
 def add_bids(tmp_path, subject, session):
-    """Create all 8 required BIDS modality files for the session."""
+    """Create BIDS modality files matching the bids completion_marker."""
     bids_dir = tmp_path / "bids" / subject / session
     files = {
         "anat": [f"{subject}_{session}_T1w.nii.gz"],
@@ -48,9 +48,10 @@ def add_bids(tmp_path, subject, session):
             f"{subject}_{session}_dir-AP_dwi.nii.gz",
             f"{subject}_{session}_dir-AP_dwi.bvec",
             f"{subject}_{session}_dir-AP_dwi.bval",
+            # Short reverse-PE DWI; bids_post derives the fmap EPI from this
+            f"{subject}_{session}_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            f"{subject}_{session}_acq-dwi_dir-AP_epi.nii.gz",
             f"{subject}_{session}_acq-func_dir-AP_epi.nii.gz",
             f"{subject}_{session}_acq-func_dir-PA_epi.nii.gz",
         ],
@@ -61,6 +62,13 @@ def add_bids(tmp_path, subject, session):
         d.mkdir(parents=True, exist_ok=True)
         for name in names:
             (d / name).touch()
+
+
+def add_bids_post(tmp_path, subject, session):
+    """Create the derived DWI EPI fieldmap that marks bids_post as complete."""
+    fmap_dir = tmp_path / "bids" / subject / session / "fmap"
+    fmap_dir.mkdir(parents=True, exist_ok=True)
+    (fmap_dir / f"{subject}_{session}_acq-dwi_dir-PA_epi.nii.gz").touch()
 
 
 def add_qsiprep(tmp_path, subject, session):
@@ -187,13 +195,15 @@ def test_failed_job_is_resubmitted(tmp_path):
 def test_pipeline_advances_after_bids_complete(tmp_path):
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
-    add_bids(tmp_path, "sub-0001", "ses-01")  # BIDS already done
+    add_bids(tmp_path, "sub-0001", "ses-01")
+    add_bids_post(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
     procedures = set(manifest["procedure"])
     assert "bids" not in procedures
+    assert "bids_post" not in procedures
     assert "qsiprep" in procedures
     assert "freesurfer" in procedures
 
@@ -202,6 +212,7 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
+    add_bids_post(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
     add_qsirecon(tmp_path, "sub-0001", "ses-01")
@@ -218,6 +229,8 @@ def test_two_sessions_same_subject_share_freesurfer_path(tmp_path):
     add_dicom(tmp_path, "sub-0001", "ses-02")
     add_bids(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-02")
+    add_bids_post(tmp_path, "sub-0001", "ses-01")
+    add_bids_post(tmp_path, "sub-0001", "ses-02")
     add_freesurfer(tmp_path, "sub-0001")
 
     sessions = discover_sessions(cfg)
@@ -257,3 +270,50 @@ def test_second_run_submits_nothing_when_all_in_flight(tmp_path):
     with patch("subprocess.run") as mock_run:
         submit_manifest(manifest, cfg)
     mock_run.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle: submit → poll sacct → state transitions → next step unlocked
+# ---------------------------------------------------------------------------
+
+def test_lifecycle_submit_poll_and_advance(tmp_path):
+    """Submit bids → sacct reports COMPLETED → state shows complete → bids_post unlocked."""
+    from snbb_scheduler.monitor import update_state_from_sacct
+
+    cfg = make_config(tmp_path)
+    add_dicom(tmp_path, "sub-0001", "ses-01")
+
+    # Step 1: submit bids
+    sessions = discover_sessions(cfg)
+    manifest = build_manifest(sessions, cfg)
+    state = load_state(cfg)
+    manifest = filter_in_flight(manifest, state)
+
+    with patch("subprocess.run", return_value=mock_sbatch("200")):
+        new_state = submit_manifest(manifest, cfg)
+    save_state(new_state, cfg)
+
+    assert new_state.iloc[0]["procedure"] == "bids"
+    assert new_state.iloc[0]["status"] == "pending"
+    assert new_state.iloc[0]["job_id"] == "200"
+
+    # Step 2: sacct reports COMPLETED → update state
+    state = load_state(cfg)
+    with patch("snbb_scheduler.monitor.poll_jobs", return_value={"200": "complete"}):
+        updated = update_state_from_sacct(state)
+    save_state(updated, cfg)
+
+    state = load_state(cfg)
+    assert state.iloc[0]["status"] == "complete"
+
+    # Step 3: add BIDS files so bids_post check passes, then build manifest
+    # (bids_complete → bids_post eligible)
+    add_bids(tmp_path, "sub-0001", "ses-01")
+    sessions = discover_sessions(cfg)
+    manifest2 = build_manifest(sessions, cfg)
+    state = load_state(cfg)
+    manifest2 = filter_in_flight(manifest2, state)
+
+    # bids is complete on disk → bids_post should appear
+    assert "bids_post" in set(manifest2["procedure"])
+    assert "bids" not in set(manifest2["procedure"])

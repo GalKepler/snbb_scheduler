@@ -248,7 +248,7 @@ def test_custom_procedure_path_value(tmp_path):
 def test_file_discovery_subject_session_values(fake_sessions_config):
     df = discover_sessions(fake_sessions_config)
     assert set(df["subject"]) == {"sub-0001", "sub-0002"}
-    assert list(df["session"]) == ["ses-01", "ses-01"]
+    assert list(df["session"]) == ["ses-000000000001", "ses-000000000001"]
 
 
 def test_file_discovery_bids_prefix_added(fake_sessions_config):
@@ -274,7 +274,7 @@ def test_file_discovery_dicom_exists_false_from_nan_in_csv(tmp_path):
     csv = tmp_path / "sessions.csv"
     import math
     pd.DataFrame([
-        {"subject_code": "0001", "session_id": "01", "dicom_path": math.nan},
+        {"SubjectCode": "0001", "ScanID": "01", "dicom_path": math.nan},
     ]).to_csv(csv, index=False)
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -298,7 +298,7 @@ def test_file_discovery_session_scoped_procedure_path(fake_sessions_config, fake
     df = discover_sessions(fake_sessions_config)
     row = df[df["subject"] == "sub-0001"].iloc[0]
     # bids is session-scoped
-    assert row["bids_path"] == fake_sessions_csv / "bids" / "sub-0001" / "ses-01"
+    assert row["bids_path"] == fake_sessions_csv / "bids" / "sub-0001" / "ses-000000000001"
     # qsiprep is subject-scoped — path ends at subject, no session component
     assert row["qsiprep_path"] == fake_sessions_csv / "derivatives" / "qsiprep" / "sub-0001"
 
@@ -323,7 +323,7 @@ def test_file_discovery_missing_csv_raises(tmp_path):
 
 def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame(columns=["subject_code", "session_id", "dicom_path"]).to_csv(csv, index=False)
+    pd.DataFrame(columns=["SubjectCode", "ScanID", "dicom_path"]).to_csv(csv, index=False)
     (tmp_path / "dicom").mkdir()
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -372,15 +372,15 @@ def test_load_sessions_all_required_columns_present_does_not_raise(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# CSV validation — _discover_from_file (pre-sanitized sessions file)
+# CSV validation — _discover_from_file (sessions file via load_sessions)
 # ---------------------------------------------------------------------------
 
 
 def test_sessions_file_missing_column_raises_value_error(tmp_path):
     """discover_sessions raises ValueError when the sessions file is missing a column."""
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame([{"subject_code": "0001", "dicom_path": "/data/SCAN001"}]).to_csv(csv, index=False)
-    # 'session_id' column is missing
+    pd.DataFrame([{"SubjectCode": "0001", "dicom_path": "/data/SCAN001"}]).to_csv(csv, index=False)
+    # 'ScanID' column is missing
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
         bids_root=tmp_path / "bids",
@@ -388,5 +388,5 @@ def test_sessions_file_missing_column_raises_value_error(tmp_path):
         state_file=tmp_path / "state.parquet",
         sessions_file=csv,
     )
-    with pytest.raises(ValueError, match="session_id"):
+    with pytest.raises(ValueError, match="ScanID"):
         discover_sessions(cfg)

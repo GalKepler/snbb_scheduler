@@ -27,13 +27,17 @@ def make_sessions(cfg: SchedulerConfig, tmp_path: Path) -> pd.DataFrame:
 
 
 def mark_bids_complete(tmp_path: Path, subject: str, session: str) -> None:
-    """Create all 8 required BIDS modality files for the session."""
+    """Create BIDS modality files matching the bids completion_marker."""
     bids_dir = tmp_path / "bids" / subject / session
     files = {
         "anat": ["sub_T1w.nii.gz"],
-        "dwi": ["sub_dir-AP_dwi.nii.gz", "sub_dir-AP_dwi.bvec", "sub_dir-AP_dwi.bval"],
+        "dwi": [
+            "sub_dir-AP_dwi.nii.gz",
+            "sub_dir-AP_dwi.bvec",
+            "sub_dir-AP_dwi.bval",
+            "sub_dir-PA_dwi.nii.gz",
+        ],
         "fmap": [
-            "sub_acq-dwi_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-AP_epi.nii.gz",
             "sub_acq-func_dir-PA_epi.nii.gz",
         ],
@@ -44,6 +48,13 @@ def mark_bids_complete(tmp_path: Path, subject: str, session: str) -> None:
         d.mkdir(parents=True, exist_ok=True)
         for name in names:
             (d / name).touch()
+
+
+def mark_bids_post_complete(tmp_path: Path, subject: str, session: str) -> None:
+    """Create the derived DWI EPI fieldmap that marks bids_post as complete."""
+    fmap_dir = tmp_path / "bids" / subject / session / "fmap"
+    fmap_dir.mkdir(parents=True, exist_ok=True)
+    (fmap_dir / "sub_acq-dwi_dir-PA_epi.nii.gz").touch()
 
 
 def make_state_row(subject, session, procedure, status, job_id="12345") -> dict:
@@ -95,15 +106,17 @@ def test_build_manifest_both_subjects_need_bids(cfg, tmp_path):
 
 
 def test_build_manifest_downstream_after_bids(cfg, tmp_path):
-    """Once BIDS is done for sub-0001, qsiprep and freesurfer should appear."""
+    """Once BIDS and bids_post are done for sub-0001, qsiprep/freesurfer appear."""
     sessions = make_sessions(cfg, tmp_path)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
+    mark_bids_post_complete(tmp_path, "sub-0001", "ses-01")
     sessions = make_sessions(cfg, tmp_path)  # re-discover with updated FS
     manifest = build_manifest(sessions, cfg)
     sub01 = manifest[manifest["subject"] == "sub-0001"]["procedure"].tolist()
     assert "qsiprep" in sub01
     assert "freesurfer" in sub01
     assert "bids" not in sub01
+    assert "bids_post" not in sub01
 
 
 def test_build_manifest_sorted_by_priority(cfg, tmp_path):
@@ -130,6 +143,8 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     sessions = make_sessions(cfg, tmp_path)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
     mark_bids_complete(tmp_path, "sub-0002", "ses-01")
+    mark_bids_post_complete(tmp_path, "sub-0001", "ses-01")
+    mark_bids_post_complete(tmp_path, "sub-0002", "ses-01")
     for sub in ("sub-0001", "sub-0002"):
         # qsiprep: subject-scoped, session subdir matches BIDS DWI sessions
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"

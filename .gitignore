@@ -33,3 +33,4 @@ Thumbs.db
 *slurm-*.out
 plans/
 examples/linked_sessions.csv
+logs

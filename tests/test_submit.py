@@ -149,6 +149,7 @@ def test_submit_task_script_from_procedure_registry(cfg):
     """Each procedure uses its own script, not a hardcoded map."""
     for proc_name, expected_script in [
         ("bids", "snbb_run_bids.sh"),
+        ("bids_post", "snbb_run_bids_post.sh"),
         ("qsiprep", "snbb_run_qsiprep.sh"),
         ("freesurfer", "snbb_run_freesurfer.sh"),
     ]:
@@ -433,6 +434,77 @@ def test_submit_task_log_dir_subdir_created(tmp_path):
     with patch("subprocess.run", return_value=mock_sbatch()):
         submit_task(make_row(procedure="bids"), cfg_log)
     assert (log_dir / "bids").is_dir()
+
+
+# ---------------------------------------------------------------------------
+# submit_task — audit logging
+# ---------------------------------------------------------------------------
+
+def test_submit_task_audit_submitted(cfg):
+    from unittest.mock import MagicMock
+    audit = MagicMock()
+    with patch("subprocess.run", return_value=mock_sbatch("555")):
+        submit_task(make_row(subject="sub-0001", session="ses-01", procedure="bids"), cfg, audit=audit)
+    audit.log.assert_called_once_with(
+        "submitted",
+        subject="sub-0001",
+        session="ses-01",
+        procedure="bids",
+        job_id="555",
+    )
+
+
+def test_submit_task_audit_dry_run(cfg):
+    from unittest.mock import MagicMock
+    audit = MagicMock()
+    submit_task(make_row(subject="sub-0001", session="ses-01", procedure="bids"), cfg, dry_run=True, audit=audit)
+    audit.log.assert_called_once()
+    args, kwargs = audit.log.call_args
+    assert args[0] == "dry_run"
+    assert kwargs["subject"] == "sub-0001"
+    assert "detail" in kwargs
+
+
+def test_submit_task_no_audit_no_error(cfg):
+    """audit=None still works — no AttributeError."""
+    with patch("subprocess.run", return_value=mock_sbatch("1")):
+        submit_task(make_row(), cfg, audit=None)
+
+
+def test_submit_manifest_audit_passed_through(cfg):
+    """submit_manifest passes audit to each submit_task call."""
+    from unittest.mock import MagicMock
+    audit = MagicMock()
+    manifest = make_manifest(
+        ("sub-0001", "ses-01", "bids"),
+        ("sub-0002", "ses-01", "bids"),
+    )
+    with patch("subprocess.run", return_value=mock_sbatch("10")):
+        submit_manifest(manifest, cfg, audit=audit)
+    assert audit.log.call_count == 2
+
+
+def test_submit_task_audit_error_on_called_process_error(cfg):
+    """audit.log('error', ...) called when sbatch raises CalledProcessError."""
+    import subprocess
+    from unittest.mock import MagicMock
+    audit = MagicMock()
+    exc = subprocess.CalledProcessError(1, "sbatch")
+    with patch("subprocess.run", side_effect=exc):
+        with pytest.raises(subprocess.CalledProcessError):
+            submit_task(make_row(), cfg, audit=audit)
+    audit.log.assert_called_once()
+    args, kwargs = audit.log.call_args
+    assert args[0] == "error"
+
+
+def test_submit_task_no_audit_on_called_process_error_no_crash(cfg):
+    """audit=None doesn't crash when CalledProcessError is raised."""
+    import subprocess
+    exc = subprocess.CalledProcessError(1, "sbatch")
+    with patch("subprocess.run", side_effect=exc):
+        with pytest.raises(subprocess.CalledProcessError):
+            submit_task(make_row(), cfg, audit=None)
 
 
 def test_submit_task_log_filenames_contain_job_name(tmp_path):

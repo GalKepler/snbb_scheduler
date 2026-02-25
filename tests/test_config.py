@@ -24,6 +24,7 @@ def test_default_procedures_present():
     cfg = SchedulerConfig()
     names = [p.name for p in cfg.procedures]
     assert "bids" in names
+    assert "bids_post" in names
     assert "qsiprep" in names
     assert "freesurfer" in names
 
@@ -63,6 +64,12 @@ def test_get_procedure_root_bids_uses_bids_root():
     cfg = SchedulerConfig(bids_root=Path("/data/bids"))
     bids = cfg.get_procedure("bids")
     assert cfg.get_procedure_root(bids) == Path("/data/bids")
+
+
+def test_get_procedure_root_bids_post_uses_bids_root():
+    cfg = SchedulerConfig(bids_root=Path("/data/bids"))
+    bids_post = cfg.get_procedure("bids_post")
+    assert cfg.get_procedure_root(bids_post) == Path("/data/bids")
 
 
 def test_get_procedure_root_derivatives_procedures():
@@ -183,7 +190,7 @@ def test_procedures_list_independent_per_instance():
     cfg1.procedures.append(
         Procedure(name="extra", output_dir="extra", script="extra.sh")
     )
-    assert len(cfg2.procedures) == len(DEFAULT_PROCEDURES)
+    assert len(cfg2.procedures) == len(DEFAULT_PROCEDURES)  # 5 default procedures
 
 
 # ---------------------------------------------------------------------------

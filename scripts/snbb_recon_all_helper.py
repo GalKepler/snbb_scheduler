@@ -46,7 +46,15 @@ def collect_images(bids_dir: Path, subject: str) -> tuple[list[Path], list[Path]
     the ``*_T1w.nii.gz`` pattern.
     """
     t1w = sorted(bids_dir.glob(f"{subject}/ses-*/anat/*_T1w.nii.gz"))
+    # search for rec-norm t1w, but fall back to any t1w if not found
+    t1w_rec = [f for f in t1w if "rec-norm" in f.name]
+    if t1w_rec:
+        t1w = t1w_rec
     t2w = sorted(bids_dir.glob(f"{subject}/ses-*/anat/*_T2w.nii.gz"))
+    # search for rec-norm t2w, but fall back to any t2w if not found
+    t2w_rec = [f for f in t2w if "rec-norm" in f.name]
+    if t2w_rec:
+        t2w = t2w_rec
     return t1w, t2w
 
 

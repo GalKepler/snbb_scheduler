@@ -239,29 +239,33 @@ def infotodict(
         # ── DWI SBRef — must come before generic AP/PA checks ─────────────────
         # "dMRI_MB4_185dirs_d15D45_AP" is a substring of "…_AP_SBRef", so the
         # SBRef-specific pattern must be tested first.
-        elif "dMRI_MB4_185dirs_d15D45_AP_SBRef" in p:
-            info[dwi_ap_sbref].append(s.series_id)
-
-        elif "dMRI_MB4_6dirs_d15D45_PA_SBRef" in p:
-            info[dwi_pa_sbref].append(s.series_id)
+        elif "sbref" in p.lower() and (
+            "dmri" in p.lower() or "ep2d_d15.5d60_mb3" in p.lower()
+        ):
+            if "_ap" in p.lower():
+                info[dwi_ap_sbref].append(s.series_id)
+            elif "_pa" in p.lower():
+                info[dwi_pa_sbref].append(s.series_id)
 
         # ── DWI main volumes ──────────────────────────────────────────────────
+        elif (
+            ("dMRI_MB4_185dirs_d15D45_AP" in p
+             or "ep2d_d15.5D60_MB3_AP" in p)
+            and "sbref" not in p.lower()
+        ):
+            info[dwi_ap].append(s.series_id)
+
         # For the legacy 64-dir protocol the scanner also writes derived maps
         # (ADC, FA, ColFA) with the same protocol name.  Restrict to ORIGINAL
         # volumes to skip those derived reconstructions.
-        elif "dMRI_MB4_185dirs_d15D45_AP" in p:
-            info[dwi_ap].append(s.series_id)
-
-        elif "ep2d_d15.5D60_MB3_AP" in p and "SBRef" not in p:
-            info[dwi_ap].append(s.series_id)
-
         elif "ep2d_diff_64dir" in p and "ORIGINAL" in s.image_type:
             info[dwi_ap].append(s.series_id)
 
-        elif "dMRI_MB4_6dirs_d15D45_PA" in p:
-            info[dwi_pa].append(s.series_id)
-
-        elif "ep2d_d15.5D60_MB3_PA" in p and "SBRef" not in p:
+        elif (
+            ("dMRI_MB4_6dirs_d15D45_PA" in p
+             or "ep2d_d15.5D60_MB3_PA" in p)
+            and "sbref" not in p.lower()
+        ):
             info[dwi_pa].append(s.series_id)
 
         # ── Field maps (spin-echo EPI) ─────────────────────────────────────────
@@ -272,73 +276,67 @@ def infotodict(
             info[fmap_pa].append(s.series_id)
 
         # ── Resting-state fMRI — SBRef before generic ─────────────────────────
-        elif "rsfMRI_AP_SBRef" in p:
-            info[rest_sbref].append(s.series_id)
-
-        elif "rsfMRI_AP" in p:
-            info[rest].append(s.series_id)
-
-        # ── Task fMRI — SBRef patterns tested before their generic counterparts ─
-        elif "fMRI_BJJ1_AP_SBRef" in p:
-            info[bjj1_sbref].append(s.series_id)
-        elif "fMRI_BJJ1_AP" in p:
-            info[bjj1].append(s.series_id)
-
-        elif "fMRI_BJJ2_AP_SBRef" in p:
-            info[bjj2_sbref].append(s.series_id)
-        elif "fMRI_BJJ2_AP" in p:
-            info[bjj2].append(s.series_id)
-
-        elif "fMRI_BJJ3_AP_SBRef" in p:
-            info[bjj3_sbref].append(s.series_id)
-        elif "fMRI_BJJ3_AP" in p:
-            info[bjj3].append(s.series_id)
-
-        elif "fMRI_Climbing1_AP_SBRef" in p:
-            info[climbing1_sbref].append(s.series_id)
-        elif "fMRI_Climbing1_AP" in p:
-            info[climbing1].append(s.series_id)
-
-        elif "fMRI_Climbing2_AP_SBRef" in p:
-            info[climbing2_sbref].append(s.series_id)
-        elif "fMRI_Climbing2_AP" in p:
-            info[climbing2].append(s.series_id)
-
-        elif "fMRI_Climbing3_AP_SBRef" in p:
-            info[climbing3_sbref].append(s.series_id)
-        elif "fMRI_Climbing3_AP" in p:
-            info[climbing3].append(s.series_id)
-
-        elif "fMRI_Music1_AP_SBRef" in p:
-            info[music1_sbref].append(s.series_id)
-        elif "fMRI_Music1_AP" in p:
-            info[music1].append(s.series_id)
-
-        elif "fMRI_Music2_AP_SBRef" in p:
-            info[music2_sbref].append(s.series_id)
-        elif "fMRI_Music2_AP" in p:
-            info[music2].append(s.series_id)
-
-        elif "fMRI_Music3_AP_SBRef" in p:
-            info[music3_sbref].append(s.series_id)
-        elif "fMRI_Music3_AP" in p:
-            info[music3].append(s.series_id)
-
-        elif "fMRI_Music_Movement1_AP_SBRef" in p:
-            info[movement1_sbref].append(s.series_id)
-        elif "fMRI_Music_Movement1_AP" in p:
-            info[movement1].append(s.series_id)
-
-        elif "fMRI_Music_Movement2_AP_SBRef" in p:
-            info[movement2_sbref].append(s.series_id)
-        elif "fMRI_Music_Movement2_AP" in p:
-            info[movement2].append(s.series_id)
-
-        # Emotional N-Back: accept both 'fMRI_' (old) and 'tfMRI_' (new) prefixes.
-        elif "fMRI_EmotionalNBack_AP_SBRef" in p or "tfMRI_EmotionalNBack_AP_SBRef" in p:
-            info[emotionalnback_sbref].append(s.series_id)
-        elif "fMRI_EmotionalNBack_AP" in p or "tfMRI_EmotionalNBack_AP" in p:
-            info[emotionalnback].append(s.series_id)
+        elif "sbref" in p.lower():
+            if "rsfMRI_AP" in p:
+                info[rest_sbref].append(s.series_id)
+            elif "fMRI_BJJ1_AP" in p:
+                info[bjj1_sbref].append(s.series_id)
+            elif "fMRI_BJJ2_AP" in p:
+                info[bjj2_sbref].append(s.series_id)
+            elif "fMRI_BJJ3_AP" in p:
+                info[bjj3_sbref].append(s.series_id)
+            elif "fMRI_Climbing1_AP" in p:
+                info[climbing1_sbref].append(s.series_id)
+            elif "fMRI_Climbing2_AP" in p:
+                info[climbing2_sbref].append(s.series_id)
+            elif "fMRI_Climbing3_AP" in p:
+                info[climbing3_sbref].append(s.series_id)
+            elif "fMRI_Music1_AP" in p:
+                info[music1_sbref].append(s.series_id)
+            elif "fMRI_Music2_AP" in p:
+                info[music2_sbref].append(s.series_id)
+            elif "fMRI_Music3_AP" in p:
+                info[music3_sbref].append(s.series_id)
+            elif "fMRI_Music_Movement1_AP" in p:
+                info[movement1_sbref].append(s.series_id)
+            elif "fMRI_Music_Movement2_AP" in p:
+                info[movement2_sbref].append(s.series_id)
+            elif "fMRI_EmotionalNBack_AP" in p:
+                info[emotionalnback_sbref].append(s.series_id)
+            elif ("dmri" in p.lower() or "ep2d_d15.5d60_mb3" in p.lower()) and "_ap" in p.lower():
+                info[dwi_ap_sbref].append(s.series_id)
+            elif ("dmri" in p.lower() or "ep2d_d15.5d60_mb3" in p.lower()) and "_pa" in p.lower():
+                info[dwi_pa_sbref].append(s.series_id)
+        # ── fMRI BOLD (non-SBRef) ─────────────────────────────────────────────
+        # "fMRI_X" in p intentionally matches both "fMRI_X" and "tfMRI_X"
+        # (new scanner prefixes task fMRI with "t").
+        else:
+            if "rsfMRI_AP" in p:
+                info[rest].append(s.series_id)
+            elif "fMRI_BJJ1_AP" in p:
+                info[bjj1].append(s.series_id)
+            elif "fMRI_BJJ2_AP" in p:
+                info[bjj2].append(s.series_id)
+            elif "fMRI_BJJ3_AP" in p:
+                info[bjj3].append(s.series_id)
+            elif "fMRI_Climbing1_AP" in p:
+                info[climbing1].append(s.series_id)
+            elif "fMRI_Climbing2_AP" in p:
+                info[climbing2].append(s.series_id)
+            elif "fMRI_Climbing3_AP" in p:
+                info[climbing3].append(s.series_id)
+            elif "fMRI_Music1_AP" in p:
+                info[music1].append(s.series_id)
+            elif "fMRI_Music2_AP" in p:
+                info[music2].append(s.series_id)
+            elif "fMRI_Music3_AP" in p:
+                info[music3].append(s.series_id)
+            elif "fMRI_Music_Movement1_AP" in p:
+                info[movement1].append(s.series_id)
+            elif "fMRI_Music_Movement2_AP" in p:
+                info[movement2].append(s.series_id)
+            elif "fMRI_EmotionalNBack_AP" in p:
+                info[emotionalnback].append(s.series_id)
 
         # Everything else (localizer, IR-EPI TI series, derived DWI maps) is
         # intentionally not matched and will be ignored by heudiconv.
