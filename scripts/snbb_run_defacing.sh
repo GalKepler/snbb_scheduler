@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# snbb_run_defacing.sh — T1w/T2w defacing via bidsonym (Apptainer)
-# Called by the snbb_scheduler as:  sbatch ... snbb_run_defacing.sh sub-XXXX ses-YY
+# snbb_run_defacing_fsl.sh — T1w/T2w defacing via fsl_deface (FSL, no container)
+# Called by the scheduler:  sbatch ... snbb_run_defacing_fsl.sh sub-XXXX ses-YY
 #
-# bidsonym applies pydeface to the anatomical images and writes defaced
-# copies using the desc-defaced BIDS entity (e.g. *_desc-defaced_T1w.nii.gz).
+# Applies fsl_deface to every T1w and T2w image in the session's anat/
+# directory and writes BIDS-named defaced copies:
+#   <stem>_desc-defaced_T1w.nii.gz
+# JSON sidecars are copied alongside each defaced image.
+# fsl_deface must be on PATH (install FSL or load the FSL module before submitting).
 #
 # ── Site configuration ────────────────────────────────────────────────────────
-# Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
-SNBB_BIDSONYM_SIF="${SNBB_BIDSONYM_SIF:-/media/storage/apptainer/images/bidsonym-0.4.0.sif}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=1:00:00
@@ -17,17 +18,39 @@ SNBB_BIDSONYM_SIF="${SNBB_BIDSONYM_SIF:-/media/storage/apptainer/images/bidsonym
 
 set -euo pipefail
 
-SUBJECT="$1"   # e.g. sub-0001
-SESSION="$2"   # e.g. ses-202602161208
+SUBJECT="$1"
+SESSION="$2"
 
-PARTICIPANT="${SUBJECT#sub-}"  # strip prefix → 0001
-SESSION_ID="${SESSION#ses-}"   # strip prefix → 202602161208
+ANAT_DIR="${SNBB_BIDS_ROOT}/${SUBJECT}/${SESSION}/anat"
 
-apptainer run --cleanenv \
-    --bind "${SNBB_BIDS_ROOT}":"${SNBB_BIDS_ROOT}" \
-    "${SNBB_BIDSONYM_SIF}" \
-    "${SNBB_BIDS_ROOT}" participant \
-    --participant_label "${PARTICIPANT}" \
-    --ses "${SESSION_ID}" \
-    --deid pydeface \
-    --del_nodeface
+[[ -d "${ANAT_DIR}" ]] || { echo "ERROR: anat dir not found: ${ANAT_DIR}" >&2; exit 1; }
+
+deface_one() {
+    local input="$1"
+    local modality="$2"          # T1w | T2w
+
+    local basename
+    basename=$(basename "${input}" .nii.gz)
+    # Insert desc-defaced before the modality suffix (BIDS convention)
+    local stem="${basename%_${modality}}"
+    local output="${ANAT_DIR}/${stem}_desc-defaced_${modality}.nii.gz"
+
+    echo "fsl_deface: ${input} → ${output}"
+    fsl_deface "${input}" "${output}"
+
+    # Copy JSON sidecar if present
+    local json="${ANAT_DIR}/${basename}.json"
+    if [[ -f "${json}" ]]; then
+        cp "${json}" "${ANAT_DIR}/${stem}_desc-defaced_${modality}.json"
+    fi
+}
+
+# Deface T1w images (skip already-defaced files)
+while IFS= read -r -d '' img; do
+    deface_one "${img}" "T1w"
+done < <(find "${ANAT_DIR}" -maxdepth 1 -name '*_T1w.nii.gz' ! -name '*desc-*' -print0)
+
+# Deface T2w images
+while IFS= read -r -d '' img; do
+    deface_one "${img}" "T2w"
+done < <(find "${ANAT_DIR}" -maxdepth 1 -name '*_T2w.nii.gz' ! -name '*desc-*' -print0)

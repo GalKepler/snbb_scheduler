@@ -550,6 +550,47 @@ def test_defacing_incomplete_when_session_dir_missing(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# defacing_fsl completion check — same glob marker as defacing
+# ---------------------------------------------------------------------------
+
+def test_defacing_fsl_complete_when_desc_defaced_present(tmp_path):
+    """defacing_fsl complete when anat/*desc-defaced*_T1w.nii.gz exists."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
+
+    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
+    anat = bids_session / "anat"
+    anat.mkdir(parents=True)
+    (anat / "sub-0001_ses-01_desc-defaced_T1w.nii.gz").touch()
+
+    assert is_complete(defacing_fsl, bids_session) is True
+
+
+def test_defacing_fsl_incomplete_when_no_desc_defaced(tmp_path):
+    """defacing_fsl incomplete when only the original (non-defaced) T1w exists."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
+
+    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
+    anat = bids_session / "anat"
+    anat.mkdir(parents=True)
+    (anat / "sub-0001_ses-01_T1w.nii.gz").touch()  # no desc-defaced entity
+
+    assert is_complete(defacing_fsl, bids_session) is False
+
+
+def test_defacing_fsl_incomplete_when_no_anat_dir(tmp_path):
+    """defacing_fsl incomplete when the anat directory does not exist."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
+
+    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
+    bids_session.mkdir(parents=True)  # session dir exists but no anat subdir
+
+    assert is_complete(defacing_fsl, bids_session) is False
+
+
+# ---------------------------------------------------------------------------
 # Legacy qsiprep/qsirecon nonempty tests (kept for backward compat coverage)
 # ---------------------------------------------------------------------------
 

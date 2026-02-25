@@ -213,7 +213,7 @@ def test_procedures_list_independent_per_instance():
     cfg1.procedures.append(
         Procedure(name="extra", output_dir="extra", script="extra.sh")
     )
-    assert len(cfg2.procedures) == len(DEFAULT_PROCEDURES)  # 5 default procedures
+    assert len(cfg2.procedures) == len(DEFAULT_PROCEDURES)
 
 
 # ---------------------------------------------------------------------------
@@ -338,3 +338,21 @@ def test_from_yaml_slurm_log_dir_none_stays_none(tmp_path):
     yaml_file.write_text("slurm_log_dir: null\n")
     cfg = SchedulerConfig.from_yaml(yaml_file)
     assert cfg.slurm_log_dir is None
+
+
+# ---------------------------------------------------------------------------
+# defacing_fsl procedure
+# ---------------------------------------------------------------------------
+
+
+def test_defacing_fsl_procedure_attributes():
+    p = {proc.name: proc for proc in DEFAULT_PROCEDURES}["defacing_fsl"]
+    assert p.script == "snbb_run_defacing_fsl.sh"
+    assert p.scope == "session"
+    assert p.depends_on == ["bids_post"]
+    assert p.completion_marker == "anat/*desc-defaced*_T1w.nii.gz"
+
+
+def test_defacing_fsl_uses_bids_root():
+    p = {proc.name: proc for proc in DEFAULT_PROCEDURES}["defacing_fsl"]
+    assert p.output_dir == ""

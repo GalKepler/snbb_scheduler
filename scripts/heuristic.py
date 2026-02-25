@@ -218,7 +218,7 @@ def infotodict(
     }
 
     for s in seqinfo:
-        p = s.protocol_name
+        p = s.series_description
 
         # ── Anatomical ────────────────────────────────────────────────────────
         if "T1w_MPRAGE" in p:
@@ -269,10 +269,10 @@ def infotodict(
             info[dwi_pa].append(s.series_id)
 
         # ── Field maps (spin-echo EPI) ─────────────────────────────────────────
-        elif "SpinEchoFieldMap_AP" in p or "SE_rsfMRI_FieldMap_AP" in p:
+        elif "SpinEchoFieldMap_AP" in p or "SE_rsfMRI_FieldMap_AP" in p or "SE_tfMRI_FieldMap_AP" in p:
             info[fmap_ap].append(s.series_id)
 
-        elif "SpinEchoFieldMap_PA" in p or "SE_rsfMRI_FieldMap_PA" in p:
+        elif "SpinEchoFieldMap_PA" in p or "SE_rsfMRI_FieldMap_PA" in p or "SE_tfMRI_FieldMap_PA" in p:
             info[fmap_pa].append(s.series_id)
 
         # ── Resting-state fMRI — SBRef before generic ─────────────────────────
