@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # snbb_run_qsirecon.sh — QSIRecon diffusion reconstruction via Apptainer
-# Called by the snbb_scheduler as:  sbatch ... snbb_run_qsirecon.sh sub-XXXX ses-YY
+# Called by the snbb_scheduler as:  sbatch ... snbb_run_qsirecon.sh sub-XXXX
+# (subject-scoped: no session argument — QSIRecon processes all sessions for a subject)
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
@@ -36,14 +37,12 @@ SNBB_LOCAL_TMP_ROOT="${SNBB_LOCAL_TMP_ROOT:-}"
 set -euo pipefail
 
 SUBJECT="$1"          # e.g. sub-0001
-SESSION="$2"          # e.g. ses-01
 PARTICIPANT="${SUBJECT#sub-}"
-SESSION_ID="${SESSION#ses-}"
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 {
-    echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ${SESSION} ==="
+    echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ==="
     echo "SNBB_QSIPREP_DIR:         ${SNBB_QSIPREP_DIR}"
     echo "SNBB_QSIRECON_OUTPUT_DIR: ${SNBB_QSIRECON_OUTPUT_DIR}"
     echo "SNBB_FS_LICENSE:          ${SNBB_FS_LICENSE}"
@@ -132,7 +131,6 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         "${LOCAL_OUTPUT}" \
         participant \
         --participant-label "${PARTICIPANT}" \
-        --session-id "${SESSION_ID}" \
         --recon-spec "${SNBB_RECON_SPEC}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --fs-subjects-dir "${LOCAL_FS}" \
@@ -166,7 +164,6 @@ else
         "${SNBB_QSIRECON_OUTPUT_DIR}" \
         participant \
         --participant-label "${PARTICIPANT}" \
-        --session-id "${SESSION_ID}" \
         --recon-spec "${SNBB_RECON_SPEC}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --fs-subjects-dir "${SNBB_FS_SUBJECTS_DIR}" \
