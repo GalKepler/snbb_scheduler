@@ -92,7 +92,7 @@ procedures:
   - name: qsirecon
     output_dir: qsirecon-MRtrix3_act-HSVS
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
-    scope: session
+    scope: subject
     depends_on: [qsiprep, freesurfer]
     completion_marker: null
 

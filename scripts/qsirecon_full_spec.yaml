@@ -1,20 +1,25 @@
-# QSIRecon custom workflow: multishell scalars + MNI mapping
+# QSIRecon custom workflow: multishell scalars + MNI mapping + tractometry
 # Produces native-space and MNI-space maps for DKI, NODDI, MAP-MRI.
+# Runs MSMT-CSD → iFOD2 + SD_Stream tractography → connectivity matrices.
+# Runs pyAFQ bundle recognition and along-tract profiling on iFOD2 streamlines.
 
 name: gal_multishell_scalars
 
-# Optional: add MRtrix HSVS 5tt (requires FreeSurfer in your QSIPrep outputs)
+# MRtrix HSVS 5tt (requires FreeSurfer in your QSIPrep outputs)
 anatomical:
    - mrtrix_5tt_hsvs
 
 nodes:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SCALAR MODEL FITTING
+  # ═══════════════════════════════════════════════════════════════════════════
+
   # --- DKI (DIPY) ---
   - action: DKI_reconstruction
     name: dipy_dki
     software: Dipy
     qsirecon_suffix: DIPYDKI
     parameters:
-        # Calculate microstructural metrics
         wmti: true
         write_fibgz: false
         write_mif: false
@@ -45,8 +50,8 @@ nodes:
         small_delta: null
         write_fibgz: true
         write_mif: true
-        
-  # --- DSI-DTI ---
+
+  # --- DSI Studio GQI + scalar export ---
   - action: reconstruction
     input: qsirecon
     name: dsistudio_gqi
@@ -60,13 +65,15 @@ nodes:
     qsirecon_suffix: DSIStudio
     software: DSI Studio
 
-  # --- Push all scalars to MNI template space used by QSIPrep ---
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MNI TEMPLATE MAPPING (all scalars → MNI space)
+  # ═══════════════════════════════════════════════════════════════════════════
+
   - action: template_map
     name: template_map
     software: qsirecon
-    input: qsirecon         # use QSIPrep's transforms as reference
+    input: qsirecon
     parameters:
-      # For scalar maps, Linear is typically preferred (docs example shows NearestNeighbor).
       interpolation: Linear
     scalars_from:
       - dipy_dki
@@ -74,11 +81,14 @@ nodes:
       - dipy_mapmri
       - scalar_export
 
-  # --- MRtrix3 MSMT-CSD + ACT/HSV S ---
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MSMT-CSD (MRtrix3) — with precomputed group-average response functions
+  # ═══════════════════════════════════════════════════════════════════════════
+
   - action: csd
     input: qsirecon
     name: msmt_csd
-    software: MRTrix3 
+    software: MRTrix3
     qsirecon_suffix: MRtrix3_act-HSVS
     parameters:
         fod:
@@ -94,6 +104,11 @@ nodes:
             gm_txt: /responses/median_response_gm_balanced_1426.txt
             csf_txt: /responses/median_response_csf_balanced_1426.txt
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # TRACTOGRAPHY
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # --- Probabilistic (iFOD2) ---
   - action: tractography
     name: track_ifod2
     software: MRTrix3
@@ -114,6 +129,7 @@ nodes:
         quiet: true
         select: 1000000
 
+  # --- Deterministic (SD_Stream) ---
   - action: tractography
     name: track_sdstream
     software: MRTrix3
@@ -133,6 +149,11 @@ nodes:
         quiet: true
         select: 1000000
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CONNECTIVITY MATRICES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # --- Probabilistic connectivity (from iFOD2) ---
   - action: connectivity
     name: mrtrix_prob_conn
     software: MRTrix3
@@ -170,6 +191,7 @@ nodes:
           use_sift_weights: true
           zero_diagonal: false
 
+  # --- Deterministic connectivity (from SD_Stream) ---
   - action: connectivity
     name: mrtrix_det_conn
     software: MRTrix3
@@ -206,6 +228,25 @@ nodes:
           symmetric: true
           use_sift_weights: true
           zero_diagonal: false
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # pyAFQ TRACTOMETRY — along-tract profiling using iFOD2 streamlines
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Recognises ~24 major WM bundles from the iFOD2 tractogram and extracts
+  # tissue-property profiles sampled at 100 nodes along each bundle.
+  #
+  # NOTE: pyAFQ downloads bundle template files on first run.
+  #       If compute nodes lack internet, pre-cache templateflow + AFQ data
+  #       and bind-mount them, or run once on a node with network access.
+
+  - action: pyafq_tractometry
+    name: pyafq_tract
+    software: pyAFQ
+    input: track_ifod2
+    qsirecon_suffix: pyAFQ_TRACTOMETRY
+    parameters:
+      use_external_tracking: true
+      export: all
 
 # Keep outputs in subject T1 space as well
 space: T1w
