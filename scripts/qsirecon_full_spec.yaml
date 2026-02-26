@@ -1,0 +1,211 @@
+# QSIRecon custom workflow: multishell scalars + MNI mapping
+# Produces native-space and MNI-space maps for DKI, NODDI, MAP-MRI.
+
+name: gal_multishell_scalars
+
+# Optional: add MRtrix HSVS 5tt (requires FreeSurfer in your QSIPrep outputs)
+anatomical:
+   - mrtrix_5tt_hsvs
+
+nodes:
+  # --- DKI (DIPY) ---
+  - action: DKI_reconstruction
+    name: dipy_dki
+    software: Dipy
+    qsirecon_suffix: DIPYDKI
+    parameters:
+        # Calculate microstructural metrics
+        wmti: true
+        write_fibgz: false
+        write_mif: false
+
+  # --- NODDI (AMICO) ---
+  - action: fit_noddi
+    name: amico_noddi
+    software: AMICO
+    qsirecon_suffix: AMICONODDI
+    parameters:
+        dIso: 0.003
+        dPar: 0.0017
+        isExvivo: false
+
+  # --- MAP-MRI (DIPY) ---
+  - action: MAPMRI_reconstruction
+    name: dipy_mapmri
+    software: Dipy
+    qsirecon_suffix: DIPYMAPMRI
+    parameters:
+        anisotropic_scaling: false
+        big_delta: null
+        bval_threshold: 2000
+        dti_scale_estimation: false
+        laplacian_regularization: true
+        laplacian_weighting: 0.2
+        radial_order: 6
+        small_delta: null
+        write_fibgz: true
+        write_mif: true
+        
+  # --- DSI-DTI ---
+  - action: reconstruction
+    input: qsirecon
+    name: dsistudio_gqi
+    parameters:
+        method: gqi
+    qsirecon_suffix: DSIStudio
+    software: DSI Studio
+  - action: export
+    input: dsistudio_gqi
+    name: scalar_export
+    qsirecon_suffix: DSIStudio
+    software: DSI Studio
+
+  # --- Push all scalars to MNI template space used by QSIPrep ---
+  - action: template_map
+    name: template_map
+    software: qsirecon
+    input: qsirecon         # use QSIPrep's transforms as reference
+    parameters:
+      # For scalar maps, Linear is typically preferred (docs example shows NearestNeighbor).
+      interpolation: Linear
+    scalars_from:
+      - dipy_dki
+      - amico_noddi
+      - dipy_mapmri
+      - scalar_export
+
+  # --- MRtrix3 MSMT-CSD + ACT/HSV S ---
+  - action: csd
+    input: qsirecon
+    name: msmt_csd
+    software: MRTrix3 
+    qsirecon_suffix: MRtrix3_act-HSVS
+    parameters:
+        fod:
+            algorithm: msmt_csd
+            max_sh:
+            - 8
+            - 8
+            - 8
+        mtnormalize: true
+        response:
+            algorithm: precomputed
+            wm_txt: /responses/median_response_wm_balanced_1426.txt
+            gm_txt: /responses/median_response_gm_balanced_1426.txt
+            csf_txt: /responses/median_response_csf_balanced_1426.txt
+
+  - action: tractography
+    name: track_ifod2
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: msmt_csd
+    parameters:
+      method_5tt: hsvs
+      use_5tt: true
+      use_sift2: true
+      sift2: {}
+      tckgen:
+        algorithm: iFOD2
+        backtrack: true
+        crop_at_gmwmi: true
+        max_length: 250
+        min_length: 30
+        power: 0.33
+        quiet: true
+        select: 1000000
+
+  - action: tractography
+    name: track_sdstream
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: msmt_csd
+    parameters:
+      method_5tt: hsvs
+      use_5tt: true
+      use_sift2: true
+      sift2: {}
+      tckgen:
+        algorithm: SD_Stream
+        crop_at_gmwmi: true
+        max_length: 250
+        min_length: 30
+        power: 0.33
+        quiet: true
+        select: 1000000
+
+  - action: connectivity
+    name: mrtrix_prob_conn
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: track_ifod2
+    parameters:
+      tck2connectome:
+        - measure: sift_invnodevol_radius2_count
+          scale_invnodevol: true
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+        - measure: radius2_meanlength
+          length_scale: length
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: mean
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: sift_radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+
+  - action: connectivity
+    name: mrtrix_det_conn
+    software: MRTrix3
+    qsirecon_suffix: MRtrix3_act-HSVS
+    input: track_sdstream
+    parameters:
+      tck2connectome:
+        - measure: sift_invnodevol_radius2_count
+          scale_invnodevol: true
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+        - measure: radius2_meanlength
+          length_scale: length
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: mean
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: false
+          zero_diagonal: false
+        - measure: sift_radius2_count
+          scale_invnodevol: false
+          search_radius: 2
+          stat_edge: sum
+          symmetric: true
+          use_sift_weights: true
+          zero_diagonal: false
+
+# Keep outputs in subject T1 space as well
+space: T1w

@@ -58,11 +58,11 @@ DEFAULT_PROCEDURES: list[Procedure] = [
     ),
     Procedure(
         name="defacing",
-        output_dir="",  # in-place in bids_root, using desc-defaced BIDS entity
+        output_dir="",  # in-place in bids_root, using acq-defaced BIDS entity
         script="snbb_run_defacing.sh",
         scope="session",
         depends_on=["bids_post"],
-        completion_marker="anat/*desc-defaced*_T1w.nii.gz",
+        completion_marker="anat/*acq-defaced*_T1w.nii.gz",
     ),
     Procedure(
         name="qsiprep",

@@ -94,24 +94,30 @@ def mark_qsirecon_complete(row: dict) -> None:
 
 
 def mark_defacing_complete(row: dict) -> None:
-    """Create a desc-defaced T1w file that marks defacing as complete."""
+    """Create an acq-defaced T1w file that marks defacing as complete."""
     anat_dir = row["defacing_path"] / "anat"
     anat_dir.mkdir(parents=True, exist_ok=True)
     subject = row["subject"]
     session = row["session"]
-    (anat_dir / f"{subject}_{session}_desc-defaced_T1w.nii.gz").touch()
+    (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
 def mark_freesurfer_complete(row: dict) -> None:
-    """Create recon-all.done with CMDARGS matching the available T1w count."""
+    """Create recon-all.done with CMDARGS matching the available T1w count.
+
+    Uses collect_images so that the same filtering rules (no defaced, prefer
+    rec-norm) apply here and in the completion check.
+    """
+    from snbb_scheduler.freesurfer import collect_images
+
     scripts = row["freesurfer_path"] / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    # Count T1w files already in the BIDS subject dir
-    subject_bids = row["bids_path"].parent  # bids_root/subject
-    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
-    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    bids_root = row["bids_path"].parent.parent  # bids_root/subject/session → bids_root
+    subject = row["subject"]
+    t1w_files, _ = collect_images(bids_root, subject)
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(len(t1w_files)))
     (scripts / "recon-all.done").write_text(
-        f"#CMDARGS -subject {row['subject']} -all {i_flags}\n"
+        f"#CMDARGS -subject {subject} -all {i_flags}\n"
     )
 
 
