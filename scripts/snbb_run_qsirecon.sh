@@ -4,17 +4,19 @@
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
-SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
-SNBB_QSIPREP_DIR="${SNBB_QSIPREP_DIR:-${SNBB_DERIVATIVES}}"
+# SNBB_DERIVATIVES="${SNBB_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
+SNBB_QSIPREP_DIR="${SNBB_QSIPREP_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsiprep}"
 SNBB_QSIRECON_OUTPUT_DIR="${SNBB_QSIRECON_OUTPUT_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/qsirecon}"
 SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
 SNBB_FS_SUBJECTS_DIR="${SNBB_FS_SUBJECTS_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
-SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/home/galkepler/Projects/snbb_scheduler/scripts/mrtrix_tractography.yaml}"
+SNBB_RECON_SPEC="${SNBB_RECON_SPEC:-/home/galkepler/Projects/snbb_scheduler/scripts/qsirecon_full_spec.yaml}"
 SNBB_WORK_DIR="${SNBB_WORK_DIR:-/media/storage/yalab-dev/snbb_scheduler/work/qsirecon}"
 SNBB_QSIRECON_SIF="${SNBB_QSIRECON_SIF:-/media/storage/apptainer/images/qsirecon-1.2.0.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/qsirecon/debug_submit.log}"
 # Optional: directory of pre-computed response functions (--recon-spec-aux-files)
 SNBB_RESPONSES_DIR="${SNBB_RESPONSES_DIR:-/media/storage/yalab-dev/qsiprep_test/derivatives/responses}"
+SNBB_TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME:-/media/storage/yalab-dev/snbb_scheduler/templateflow}"
+
 # Optional: atlas dataset directory and space-separated atlas names
 # Example: SNBB_ATLASES_DIR=/data/atlases  SNBB_ATLASES="4S156Parcels Schaefer2018N100n7Tian2020S1"
 SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/yalab-dev/voxelops/Schaefer2018Tian2020_atlases}"
@@ -64,8 +66,8 @@ EXTRA_BINDS=()
 EXTRA_ARGS=()
 
 if [[ -n "${SNBB_RESPONSES_DIR}" ]]; then
-    EXTRA_BINDS+=(--bind "${SNBB_RESPONSES_DIR}":"${SNBB_RESPONSES_DIR}":ro)
-    EXTRA_ARGS+=(--recon-spec-aux-files "${SNBB_RESPONSES_DIR}")
+    EXTRA_BINDS+=(--bind "${SNBB_RESPONSES_DIR}":/responses:ro)
+    EXTRA_ARGS+=(--recon-spec-aux-files /responses)
 fi
 
 if [[ -n "${SNBB_ATLASES_DIR}" ]]; then
@@ -122,6 +124,8 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         --bind "${SNBB_FS_LICENSE}":"${SNBB_FS_LICENSE}":ro \
         --bind "${SNBB_RECON_SPEC}":"${SNBB_RECON_SPEC}":ro \
         --bind "${LOCAL_WORK}":"${LOCAL_WORK}" \
+        --bind "${SNBB_TEMPLATEFLOW_HOME}":"${SNBB_TEMPLATEFLOW_HOME}" \
+        --env TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME}" \
         "${EXTRA_BINDS[@]}" \
         "${SNBB_QSIRECON_SIF}" \
         "${LOCAL_QSIPREP}" \

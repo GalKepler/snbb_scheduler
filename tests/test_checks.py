@@ -1,7 +1,3 @@
-from pathlib import Path
-
-import pytest
-
 from snbb_scheduler.checks import (
     _count_available_t1w,
     _count_bids_dwi_sessions,
@@ -16,24 +12,32 @@ from snbb_scheduler.config import Procedure
 # Helpers to build minimal Procedure instances for each completion strategy
 # ---------------------------------------------------------------------------
 
+
 def proc_nonempty(name="test"):
     """completion_marker=None → directory must be non-empty."""
-    return Procedure(name=name, output_dir=name, script=f"{name}.sh", completion_marker=None)
+    return Procedure(
+        name=name, output_dir=name, script=f"{name}.sh", completion_marker=None
+    )
 
 
 def proc_marker(name="test", marker="done.txt"):
     """completion_marker is a plain file path."""
-    return Procedure(name=name, output_dir=name, script=f"{name}.sh", completion_marker=marker)
+    return Procedure(
+        name=name, output_dir=name, script=f"{name}.sh", completion_marker=marker
+    )
 
 
 def proc_glob(name="test", pattern="**/*.nii.gz"):
     """completion_marker is a glob pattern."""
-    return Procedure(name=name, output_dir=name, script=f"{name}.sh", completion_marker=pattern)
+    return Procedure(
+        name=name, output_dir=name, script=f"{name}.sh", completion_marker=pattern
+    )
 
 
 # ---------------------------------------------------------------------------
 # Nonexistent path → always False
 # ---------------------------------------------------------------------------
+
 
 def test_nonexistent_path_nonempty_strategy(tmp_path):
     assert is_complete(proc_nonempty(), tmp_path / "missing") is False
@@ -50,6 +54,7 @@ def test_nonexistent_path_glob_strategy(tmp_path):
 # ---------------------------------------------------------------------------
 # completion_marker=None — directory must be non-empty
 # ---------------------------------------------------------------------------
+
 
 def test_nonempty_strategy_empty_dir(tmp_path):
     d = tmp_path / "out"
@@ -74,6 +79,7 @@ def test_nonempty_strategy_subdir_counts(tmp_path):
 # completion_marker is a plain file path
 # ---------------------------------------------------------------------------
 
+
 def test_marker_strategy_file_present(tmp_path):
     d = tmp_path / "out"
     (d / "scripts").mkdir(parents=True)
@@ -97,6 +103,7 @@ def test_marker_strategy_wrong_file(tmp_path):
 # ---------------------------------------------------------------------------
 # completion_marker is a glob pattern
 # ---------------------------------------------------------------------------
+
 
 def test_glob_strategy_match_present(tmp_path):
     d = tmp_path / "out"
@@ -144,7 +151,9 @@ def proc_list(name="test", patterns=None):
     """completion_marker is a list of glob patterns."""
     if patterns is None:
         patterns = ["anat/*.nii.gz", "dwi/*.bvec"]
-    return Procedure(name=name, output_dir=name, script=f"{name}.sh", completion_marker=patterns)
+    return Procedure(
+        name=name, output_dir=name, script=f"{name}.sh", completion_marker=patterns
+    )
 
 
 def test_list_marker_all_present(tmp_path):
@@ -179,6 +188,7 @@ def test_list_marker_nonexistent_path(tmp_path):
 # Realistic procedure configurations from DEFAULT_PROCEDURES
 # ---------------------------------------------------------------------------
 
+
 def _create_bids_session_files(bids_session_dir) -> None:
     """Create all required BIDS modality files matching the bids completion_marker."""
     files = {
@@ -206,6 +216,7 @@ def _create_bids_session_files(bids_session_dir) -> None:
 def test_bids_complete_all_patterns_present(tmp_path):
     """bids is complete when all 8 modality patterns are satisfied."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
@@ -217,6 +228,7 @@ def test_bids_complete_all_patterns_present(tmp_path):
 def test_bids_incomplete_missing_one_pattern(tmp_path):
     """bids is incomplete when any one of the 8 patterns is missing."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
@@ -229,6 +241,7 @@ def test_bids_incomplete_missing_one_pattern(tmp_path):
 
 def test_bids_incomplete_no_files(tmp_path):
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     bids = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
@@ -250,9 +263,11 @@ def _write_recon_all_done(scripts_dir, subject, n_t1w):
 # FreeSurfer — fallback (no kwargs)
 # ---------------------------------------------------------------------------
 
+
 def test_freesurfer_complete_with_marker_no_kwargs(tmp_path):
     """Without bids_root/subject kwargs the fallback is: done file exists → True."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     fs_subject = tmp_path / "freesurfer" / "sub-0001"
@@ -263,6 +278,7 @@ def test_freesurfer_complete_with_marker_no_kwargs(tmp_path):
 
 def test_freesurfer_incomplete_no_marker(tmp_path):
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     fs_subject = tmp_path / "freesurfer" / "sub-0001"
@@ -275,9 +291,11 @@ def test_freesurfer_incomplete_no_marker(tmp_path):
 # FreeSurfer — T1w count matching (with kwargs)
 # ---------------------------------------------------------------------------
 
+
 def test_freesurfer_complete_when_t1w_count_matches(tmp_path):
     """T1w count in done file matches available → complete."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     subject = "sub-0001"
@@ -295,6 +313,7 @@ def test_freesurfer_complete_when_t1w_count_matches(tmp_path):
 def test_freesurfer_incomplete_when_new_t1w_added(tmp_path):
     """More T1w files available than used in done file → needs re-run."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     subject = "sub-0001"
@@ -314,18 +333,23 @@ def test_freesurfer_incomplete_when_new_t1w_added(tmp_path):
 def test_freesurfer_incomplete_no_done_file_with_kwargs(tmp_path):
     """Done file missing → incomplete even with kwargs provided."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
     subject = "sub-0001"
     fs_subject = tmp_path / "freesurfer" / subject
     fs_subject.mkdir(parents=True)
 
-    assert is_complete(fs, fs_subject, bids_root=tmp_path / "bids", subject=subject) is False
+    assert (
+        is_complete(fs, fs_subject, bids_root=tmp_path / "bids", subject=subject)
+        is False
+    )
 
 
 # ---------------------------------------------------------------------------
 # _count_recon_all_inputs helper
 # ---------------------------------------------------------------------------
+
 
 def test_count_recon_all_inputs_one_flag(tmp_path):
     done = tmp_path / "recon-all.done"
@@ -351,6 +375,7 @@ def test_count_recon_all_inputs_no_cmdargs_line(tmp_path):
 # _count_available_t1w helper
 # ---------------------------------------------------------------------------
 
+
 def test_count_available_t1w_two_sessions(tmp_path):
     subject = "sub-0001"
     for ses in ("ses-01", "ses-02"):
@@ -364,9 +389,29 @@ def test_count_available_t1w_subject_missing(tmp_path):
     assert _count_available_t1w(tmp_path, "sub-9999") == 0
 
 
+def test_count_available_t1w_excludes_defaced(tmp_path):
+    subject = "sub-0001"
+    anat = tmp_path / subject / "ses-01" / "anat"
+    anat.mkdir(parents=True)
+    (anat / f"{subject}_ses-01_T1w.nii.gz").touch()
+    (anat / f"{subject}_ses-01_acq-defaced_T1w.nii.gz").touch()
+    assert _count_available_t1w(tmp_path, subject) == 1
+
+
+def test_count_available_t1w_prefers_rec_norm(tmp_path):
+    """When rec-norm variants exist, only those count."""
+    subject = "sub-0001"
+    anat = tmp_path / subject / "ses-01" / "anat"
+    anat.mkdir(parents=True)
+    (anat / f"{subject}_ses-01_T1w.nii.gz").touch()
+    (anat / f"{subject}_ses-01_rec-norm_T1w.nii.gz").touch()
+    assert _count_available_t1w(tmp_path, subject) == 1
+
+
 # ---------------------------------------------------------------------------
 # _count_subject_ses_dirs helper
 # ---------------------------------------------------------------------------
+
 
 def test_count_subject_ses_dirs_two_sessions(tmp_path):
     subject_dir = tmp_path / "sub-0001"
@@ -382,6 +427,7 @@ def test_count_subject_ses_dirs_missing_dir(tmp_path):
 # ---------------------------------------------------------------------------
 # _count_bids_dwi_sessions helper
 # ---------------------------------------------------------------------------
+
 
 def test_count_bids_dwi_sessions_two_sessions(tmp_path):
     subject = "sub-0001"
@@ -400,9 +446,11 @@ def test_count_bids_dwi_sessions_subject_missing(tmp_path):
 # QSIPrep specialized check
 # ---------------------------------------------------------------------------
 
+
 def test_qsiprep_complete_session_count_matches(tmp_path):
     """QSIPrep complete when ses-* dirs match BIDS DWI session count."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
     subject = "sub-0001"
@@ -415,12 +463,16 @@ def test_qsiprep_complete_session_count_matches(tmp_path):
     (qsiprep_subject / "ses-01").mkdir(parents=True)
     (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
 
-    assert is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject) is True
+    assert (
+        is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject)
+        is True
+    )
 
 
 def test_qsiprep_incomplete_missing_session(tmp_path):
     """QSIPrep incomplete when fewer ses-* dirs than BIDS DWI sessions."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
     subject = "sub-0001"
@@ -435,12 +487,16 @@ def test_qsiprep_incomplete_missing_session(tmp_path):
     (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
     # ses-02 not yet processed
 
-    assert is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject) is False
+    assert (
+        is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject)
+        is False
+    )
 
 
 def test_qsiprep_fallback_nonempty(tmp_path):
     """Without kwargs, qsiprep falls back to dir-nonempty check."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
     subject_dir = tmp_path / "qsiprep" / "sub-0001"
@@ -454,9 +510,11 @@ def test_qsiprep_fallback_nonempty(tmp_path):
 # QSIRecon specialized check
 # ---------------------------------------------------------------------------
 
+
 def test_qsirecon_complete_session_count_matches(tmp_path):
     """QSIRecon complete when ses-* dirs match QSIPrep session count."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
     subject = "sub-0001"
@@ -468,12 +526,21 @@ def test_qsirecon_complete_session_count_matches(tmp_path):
     (qsirecon_subject / "ses-01").mkdir(parents=True)
     (qsirecon_subject / "ses-01" / "report.html").touch()
 
-    assert is_complete(qsirecon, qsirecon_subject, derivatives_root=derivatives_root, subject=subject) is True
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+        )
+        is True
+    )
 
 
 def test_qsirecon_incomplete_missing_session(tmp_path):
     """QSIRecon incomplete when fewer ses-* dirs than QSIPrep sessions."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
     subject = "sub-0001"
@@ -485,12 +552,21 @@ def test_qsirecon_incomplete_missing_session(tmp_path):
     (qsirecon_subject / "ses-01").mkdir(parents=True)
     (qsirecon_subject / "ses-01" / "report.html").touch()
 
-    assert is_complete(qsirecon, qsirecon_subject, derivatives_root=derivatives_root, subject=subject) is False
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+        )
+        is False
+    )
 
 
 def test_qsirecon_fallback_nonempty(tmp_path):
     """Without kwargs, qsirecon falls back to dir-nonempty check."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
     subject_dir = tmp_path / "qsirecon-MRtrix3_act-HSVS" / "sub-0001"
@@ -501,31 +577,34 @@ def test_qsirecon_fallback_nonempty(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Defacing completion check — glob-based (desc-defaced T1w)
+# Defacing completion check — glob-based (acq-defaced T1w)
 # ---------------------------------------------------------------------------
 
-def test_defacing_complete_when_desc_defaced_present(tmp_path):
-    """Defacing complete when anat/*desc-defaced*_T1w.nii.gz exists."""
+
+def test_defacing_complete_when_acq_defaced_present(tmp_path):
+    """Defacing complete when anat/*acq-defaced*_T1w.nii.gz exists."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     defacing = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
     anat = bids_session / "anat"
     anat.mkdir(parents=True)
-    (anat / "sub-0001_ses-01_desc-defaced_T1w.nii.gz").touch()
+    (anat / "sub-0001_ses-01_acq-defaced_T1w.nii.gz").touch()
 
     assert is_complete(defacing, bids_session) is True
 
 
-def test_defacing_incomplete_when_no_desc_defaced(tmp_path):
+def test_defacing_incomplete_when_no_acq_defaced(tmp_path):
     """Defacing incomplete when only the original (non-defaced) T1w exists."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     defacing = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
     anat = bids_session / "anat"
     anat.mkdir(parents=True)
-    (anat / "sub-0001_ses-01_T1w.nii.gz").touch()  # no desc-defaced entity
+    (anat / "sub-0001_ses-01_T1w.nii.gz").touch()  # no acq-defaced entity
 
     assert is_complete(defacing, bids_session) is False
 
@@ -533,6 +612,7 @@ def test_defacing_incomplete_when_no_desc_defaced(tmp_path):
 def test_defacing_incomplete_when_no_anat_dir(tmp_path):
     """Defacing incomplete when the anat directory does not exist."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     defacing = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing")
 
     bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
@@ -544,59 +624,23 @@ def test_defacing_incomplete_when_no_anat_dir(tmp_path):
 def test_defacing_incomplete_when_session_dir_missing(tmp_path):
     """Defacing incomplete when the session directory itself does not exist."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     defacing = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing")
 
     assert is_complete(defacing, tmp_path / "bids" / "sub-0001" / "ses-01") is False
 
 
-# ---------------------------------------------------------------------------
-# defacing_fsl completion check — same glob marker as defacing
-# ---------------------------------------------------------------------------
-
-def test_defacing_fsl_complete_when_desc_defaced_present(tmp_path):
-    """defacing_fsl complete when anat/*desc-defaced*_T1w.nii.gz exists."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
-    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
-
-    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
-    anat = bids_session / "anat"
-    anat.mkdir(parents=True)
-    (anat / "sub-0001_ses-01_desc-defaced_T1w.nii.gz").touch()
-
-    assert is_complete(defacing_fsl, bids_session) is True
-
-
-def test_defacing_fsl_incomplete_when_no_desc_defaced(tmp_path):
-    """defacing_fsl incomplete when only the original (non-defaced) T1w exists."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
-    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
-
-    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
-    anat = bids_session / "anat"
-    anat.mkdir(parents=True)
-    (anat / "sub-0001_ses-01_T1w.nii.gz").touch()  # no desc-defaced entity
-
-    assert is_complete(defacing_fsl, bids_session) is False
-
-
-def test_defacing_fsl_incomplete_when_no_anat_dir(tmp_path):
-    """defacing_fsl incomplete when the anat directory does not exist."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
-    defacing_fsl = next(p for p in DEFAULT_PROCEDURES if p.name == "defacing_fsl")
-
-    bids_session = tmp_path / "bids" / "sub-0001" / "ses-01"
-    bids_session.mkdir(parents=True)  # session dir exists but no anat subdir
-
-    assert is_complete(defacing_fsl, bids_session) is False
 
 
 # ---------------------------------------------------------------------------
 # Legacy qsiprep/qsirecon nonempty tests (kept for backward compat coverage)
 # ---------------------------------------------------------------------------
 
+
 def test_qsiprep_complete_nonempty(tmp_path):
     """qsiprep uses completion_marker=None → non-empty directory."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
     qsiprep_session = tmp_path / "qsiprep" / "sub-0001" / "ses-01"
@@ -608,6 +652,7 @@ def test_qsiprep_complete_nonempty(tmp_path):
 
 def test_qsiprep_incomplete_empty_dir(tmp_path):
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
     qsiprep_session = tmp_path / "qsiprep" / "sub-0001" / "ses-01"

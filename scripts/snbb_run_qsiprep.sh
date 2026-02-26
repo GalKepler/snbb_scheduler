@@ -148,7 +148,8 @@ else
         --work-dir "${SNBB_WORK_DIR}" \
         --output-resolution 1.6 \
         --anatomical-template "${SNBB_ANATOMICAL_TEMPLATE}" \
-        --subject-anatomical-reference "${SNBB_SUBJECT_ANAT_REF}" \
-        "${EXTRA_ARGS[@]}"
+        "${EXTRA_ARGS[@]}" \
+        # --subject-anatomical-reference "${SNBB_SUBJECT_ANAT_REF}" \
+        
     # ─────────────────────────────────────────────────────────────────────────
 fi

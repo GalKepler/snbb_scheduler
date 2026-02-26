@@ -86,19 +86,25 @@ def add_qsirecon(tmp_path, subject, session):
 
 
 def add_defacing(tmp_path, subject, session):
-    """Create a desc-defaced T1w file that marks defacing as complete."""
+    """Create an acq-defaced T1w file that marks defacing as complete."""
     anat_dir = tmp_path / "bids" / subject / session / "anat"
     anat_dir.mkdir(parents=True, exist_ok=True)
-    (anat_dir / f"{subject}_{session}_desc-defaced_T1w.nii.gz").touch()
+    (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
 def add_freesurfer(tmp_path, subject):
-    """Create recon-all.done with CMDARGS matching T1w files in BIDS."""
+    """Create recon-all.done with CMDARGS matching T1w files in BIDS.
+
+    Uses collect_images so that the same filtering rules (no defaced, prefer
+    rec-norm) apply here and in the completion check.
+    """
+    from snbb_scheduler.freesurfer import collect_images
+
     scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    subject_bids = tmp_path / "bids" / subject
-    t1w_count = len(list(subject_bids.glob("ses-*/anat/*_T1w.nii.gz")))
-    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(t1w_count))
+    bids_root = tmp_path / "bids"
+    t1w_files, _ = collect_images(bids_root, subject)
+    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(len(t1w_files)))
     (scripts / "recon-all.done").write_text(
         f"#CMDARGS -subject {subject} -all {i_flags}\n"
     )

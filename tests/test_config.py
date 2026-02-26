@@ -37,7 +37,7 @@ def test_defacing_procedure_attributes():
     assert defacing.script == "snbb_run_defacing.sh"
     assert defacing.scope == "session"
     assert defacing.depends_on == ["bids_post"]
-    assert defacing.completion_marker == "anat/*desc-defaced*_T1w.nii.gz"
+    assert defacing.completion_marker == "anat/*acq-defaced*_T1w.nii.gz"
 
 
 def test_defacing_uses_bids_root():
@@ -340,19 +340,3 @@ def test_from_yaml_slurm_log_dir_none_stays_none(tmp_path):
     assert cfg.slurm_log_dir is None
 
 
-# ---------------------------------------------------------------------------
-# defacing_fsl procedure
-# ---------------------------------------------------------------------------
-
-
-def test_defacing_fsl_procedure_attributes():
-    p = {proc.name: proc for proc in DEFAULT_PROCEDURES}["defacing_fsl"]
-    assert p.script == "snbb_run_defacing_fsl.sh"
-    assert p.scope == "session"
-    assert p.depends_on == ["bids_post"]
-    assert p.completion_marker == "anat/*desc-defaced*_T1w.nii.gz"
-
-
-def test_defacing_fsl_uses_bids_root():
-    p = {proc.name: proc for proc in DEFAULT_PROCEDURES}["defacing_fsl"]
-    assert p.output_dir == ""

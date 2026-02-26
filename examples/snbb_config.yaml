@@ -62,18 +62,8 @@ procedures:
     scope: session
     depends_on: [bids]
     completion_marker:
-      - "anat/*desc-defaced*T1w.nii.gz"
-      - "anat/*desc-defaced*T2w.nii.gz"
-
-  # Alternative: use fsl_deface (FSL, no container) instead of bidsonym.
-  # Replace the defacing entry with defacing_fsl, or include both —
-  # only one will run per session (whichever completes first wins).
-  # - name: defacing_fsl
-  #   output_dir: ""
-  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_defacing_fsl.sh
-  #   scope: session
-  #   depends_on: [bids]
-  #   completion_marker: "anat/*desc-defaced*_T1w.nii.gz"
+      - "anat/*acq-defaced*T1w.nii.gz"
+      - "anat/*acq-defaced*T2w.nii.gz"
 
   # DWI preprocessing (subject-scoped: one run covers all sessions)
   # Completion: ses-* output dirs match BIDS DWI session count
@@ -90,21 +80,21 @@ procedures:
 
   # Cortical reconstruction (one run covers all sessions for a subject)
   # Completion: recon-all writes this marker file when it finishes
-  # - name: freesurfer
-  #   output_dir: freesurfer
-  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
-  #   scope: subject
-  #   depends_on: [bids]
-  #   completion_marker: "scripts/recon-all.done"
+  - name: freesurfer
+    output_dir: freesurfer
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
+    scope: subject
+    depends_on: [bids]
+    completion_marker: "scripts/recon-all.done"
 
   # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
   # Completion: ses-* output dirs match qsiprep session count
-  # - name: qsirecon
-  #   output_dir: qsirecon-MRtrix3_act-HSVS
-  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
-  #   scope: subject
-  #   depends_on: [qsiprep, freesurfer]
-  #   completion_marker: null
+  - name: qsirecon
+    output_dir: qsirecon-MRtrix3_act-HSVS
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
+    scope: session
+    depends_on: [qsiprep, freesurfer]
+    completion_marker: null
 
   # fMRI preprocessing
   # Completion: fmriprep writes an HTML report on success

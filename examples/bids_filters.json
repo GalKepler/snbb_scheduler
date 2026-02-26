@@ -1,4 +1,5 @@
 {
     "dwi": {"datatype":"dwi","direction": "AP"},
-    "t1w": {"datatype":"anat", "reconstruction": "norm"}
+    "t1w": {"datatype":"anat", "reconstruction": "norm", "acquisition": null},
+    "t2w": {"datatype": "anat", "acquisition":null}
 }

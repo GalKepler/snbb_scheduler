@@ -19,15 +19,18 @@ _SPECIALIZED_CHECKS: dict[str, Callable] = {}
 
 def _register_check(name: str):
     """Decorator to register a specialized completion check for a procedure."""
+
     def decorator(fn: Callable) -> Callable:
         _SPECIALIZED_CHECKS[name] = fn
         return fn
+
     return decorator
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
     """Return True if a procedure's output is considered complete.
@@ -64,6 +67,7 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
 # ---------------------------------------------------------------------------
 # Specialized checks
 # ---------------------------------------------------------------------------
+
 
 @_register_check("freesurfer")
 def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
@@ -128,6 +132,7 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_glob(pattern: str) -> bool:
     """Return True if *pattern* contains any glob metacharacter (``*``, ``?``, ``[``)."""
     return "*" in pattern or "?" in pattern or "[" in pattern
@@ -157,21 +162,25 @@ def _count_recon_all_inputs(done_file: Path) -> int:
 
 
 def _count_available_t1w(bids_root: Path, subject: str) -> int:
-    """Count T1w NIfTI files across all sessions for *subject* in *bids_root*.
+    """Count T1w NIfTI files that would be passed to ``recon-all`` for *subject*.
 
-    Globs ``<bids_root>/<subject>/ses-*/anat/*_T1w.nii.gz``.
+    Delegates to :func:`snbb_scheduler.freesurfer.collect_images` so that the
+    same filtering rules (exclude defaced, prefer ``rec-norm``) are applied
+    here and during actual job execution.
     """
-    subject_dir = bids_root / subject
-    if not subject_dir.exists():
-        return 0
-    return len(list(subject_dir.glob("ses-*/anat/*_T1w.nii.gz")))
+    from snbb_scheduler.freesurfer import collect_images
+
+    t1w, _ = collect_images(bids_root, subject)
+    return len(t1w)
 
 
 def _count_subject_ses_dirs(subject_dir: Path) -> int:
     """Count ``ses-*`` subdirectories inside *subject_dir*."""
     if not subject_dir.exists():
         return 0
-    return sum(1 for d in subject_dir.iterdir() if d.is_dir() and d.name.startswith("ses-"))
+    return sum(
+        1 for d in subject_dir.iterdir() if d.is_dir() and d.name.startswith("ses-")
+    )
 
 
 def _count_bids_dwi_sessions(bids_root: Path, subject: str) -> int:
