@@ -19,6 +19,11 @@ dev = [
     "pytest>=7.0",
     "pytest-cov",
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24",
+]
 
 [project.scripts]
 snbb-scheduler = "snbb_scheduler.cli:main"

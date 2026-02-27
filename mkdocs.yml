@@ -1,0 +1,92 @@
+site_name: snbb-scheduler
+site_description: Rule-based scheduler for the SNBB neuroimaging pipeline
+site_url: https://galkepler.github.io/snbb_scheduler/
+repo_url: https://github.com/GalKepler/snbb_scheduler
+repo_name: GalKepler/snbb_scheduler
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - Procedures: concepts/procedures.md
+      - State Machine: concepts/state-machine.md
+  - Configuration:
+      - Overview: configuration/index.md
+      - Completion Markers: configuration/completion-markers.md
+      - Slurm Settings: configuration/slurm.md
+  - CLI:
+      - Overview: cli/index.md
+      - run: cli/run.md
+      - manifest: cli/manifest.md
+      - status: cli/status.md
+      - monitor: cli/monitor.md
+      - retry: cli/retry.md
+  - Guides:
+      - Getting Started: guides/getting-started.md
+      - Adding a Procedure: guides/adding-procedure.md
+      - Forcing a Rerun: guides/forcing-rerun.md
+      - Monitoring Jobs: guides/monitoring-jobs.md
+      - Debugging: guides/debugging.md
+      - Cron / Systemd Setup: guides/cron-setup.md
+  - Reference:
+      - State File: reference/state-file.md
+      - Audit Log: reference/audit-log.md
+      - Shell Scripts: reference/scripts.md
+  - API:
+      - Overview: api/index.md
+      - config: api/config.md
+      - sessions: api/sessions.md
+      - checks: api/checks.md
+      - rules: api/rules.md
+      - manifest: api/manifest.md
+      - submit: api/submit.md
+      - monitor: api/monitor.md
+      - audit: api/audit.md
