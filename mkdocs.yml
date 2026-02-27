@@ -56,6 +56,7 @@ nav:
   - Installation: installation.md
   - Concepts:
       - Overview: concepts/index.md
+      - The SNBB Pipeline: concepts/pipeline.md
       - Procedures: concepts/procedures.md
       - State Machine: concepts/state-machine.md
   - Configuration:
