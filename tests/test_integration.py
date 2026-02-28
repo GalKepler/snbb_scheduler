@@ -78,31 +78,32 @@ def add_qsiprep(tmp_path, subject, session):
     (out / "dwi.nii.gz").touch()
 
 
-def add_fastsurfer_cross(tmp_path, subject, session):
-    """Create the cross-sectional FastSurfer completion marker."""
+def add_fastsurfer_single(tmp_path, subject, session):
+    """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
     scripts = (
         tmp_path / "derivatives" / "fastsurfer"
-        / f"{subject}_{session}" / "scripts"
+        / subject / session / "scripts"
     )
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+    (scripts / "recon-surf.done").touch()
 
 
-def add_fastsurfer_template(tmp_path, subject):
-    """Create the within-subject template completion marker."""
-    scripts = tmp_path / "derivatives" / "fastsurfer" / subject / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+def add_fastsurfer_multi(tmp_path, subject, sessions):
+    """Create longitudinal FastSurfer completion markers for all sessions."""
+    for ses in sessions:
+        scripts = (
+            tmp_path / "derivatives" / "fastsurfer"
+            / subject / f"{ses}.long.{subject}" / "scripts"
+        )
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "recon-surf.done").touch()
 
 
-def add_fastsurfer_long(tmp_path, subject, session):
-    """Create the longitudinal FastSurfer completion marker."""
-    scripts = (
-        tmp_path / "derivatives" / "fastsurfer"
-        / f"{subject}_{session}.long.{subject}" / "scripts"
-    )
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+def _make_bids_t1w(tmp_path, subject, session):
+    """Create a minimal BIDS T1w file so _count_bids_anat_sessions finds the session."""
+    anat = tmp_path / "bids" / subject / session / "anat"
+    anat.mkdir(parents=True, exist_ok=True)
+    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
 
 
 def add_qsirecon(tmp_path, subject, session):
@@ -257,8 +258,9 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
     add_qsirecon(tmp_path, "sub-0001", "ses-01")
-    # FastSurfer cross-sectional (single session — template/long are skipped)
-    add_fastsurfer_cross(tmp_path, "sub-0001", "ses-01")
+    # FastSurfer single-session (cross-sectional; recon-surf.done marker)
+    _make_bids_t1w(tmp_path, "sub-0001", "ses-01")
+    add_fastsurfer_single(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
@@ -374,8 +376,8 @@ def mock_sbatch(job_id="12345"):
     return m
 
 
-def test_fastsurfer_cross_appears_after_bids_post(tmp_path):
-    """fastsurfer_cross appears in manifest once bids_post is complete."""
+def test_fastsurfer_appears_after_bids_post_complete(tmp_path):
+    """fastsurfer appears in manifest once bids_post is complete for all sessions."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
@@ -384,11 +386,11 @@ def test_fastsurfer_cross_appears_after_bids_post(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer_cross" in set(manifest["procedure"])
+    assert "fastsurfer" in set(manifest["procedure"])
 
 
-def test_fastsurfer_cross_not_in_manifest_without_bids_post(tmp_path):
-    """fastsurfer_cross must not appear until bids_post is complete."""
+def test_fastsurfer_not_in_manifest_without_bids_post(tmp_path):
+    """fastsurfer must not appear until bids_post is complete."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
@@ -397,110 +399,56 @@ def test_fastsurfer_cross_not_in_manifest_without_bids_post(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer_cross" not in set(manifest["procedure"])
+    assert "fastsurfer" not in set(manifest["procedure"])
 
 
-def test_fastsurfer_template_appears_when_all_sessions_done(tmp_path):
-    """fastsurfer_template appears only once both sessions' cross are done."""
+def test_fastsurfer_deduplicated_per_subject(tmp_path):
+    """fastsurfer appears only once per subject even with two sessions."""
     cfg = make_config(tmp_path)
     for session in ("ses-01", "ses-02"):
         add_dicom(tmp_path, "sub-0001", session)
         add_bids(tmp_path, "sub-0001", session)
         add_bids_post(tmp_path, "sub-0001", session)
-        add_fastsurfer_cross(tmp_path, "sub-0001", session)
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer_template" in set(manifest["procedure"])
-    # Only one template task per subject (subject-scoped)
-    template_rows = manifest[manifest["procedure"] == "fastsurfer_template"]
-    assert len(template_rows) == 1
-    assert template_rows.iloc[0]["subject"] == "sub-0001"
-    assert template_rows.iloc[0]["session"] == ""
+    assert "fastsurfer" in set(manifest["procedure"])
+    fs_rows = manifest[manifest["procedure"] == "fastsurfer"]
+    assert len(fs_rows) == 1
+    assert fs_rows.iloc[0]["subject"] == "sub-0001"
+    assert fs_rows.iloc[0]["session"] == ""
 
 
-def test_fastsurfer_template_not_in_manifest_for_single_session_subject(tmp_path):
-    """Single-session subjects must NOT trigger template creation."""
+def test_fastsurfer_fires_for_single_session_subject(tmp_path):
+    """Single-session subjects DO trigger fastsurfer (cross-sectional mode)."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
     add_bids_post(tmp_path, "sub-0001", "ses-01")
-    add_fastsurfer_cross(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer_template" not in set(manifest["procedure"])
+    assert "fastsurfer" in set(manifest["procedure"])
 
 
-def test_fastsurfer_template_not_in_manifest_when_one_session_incomplete(tmp_path):
-    """Template must not appear if ses-02 cross is still pending."""
+def test_fastsurfer_not_in_manifest_when_one_session_missing_bids_post(tmp_path):
+    """fastsurfer must not appear if any session's bids_post is still pending."""
     cfg = make_config(tmp_path)
     for session in ("ses-01", "ses-02"):
         add_dicom(tmp_path, "sub-0001", session)
         add_bids(tmp_path, "sub-0001", session)
         add_bids_post(tmp_path, "sub-0001", session)
-    # Only ses-01 done
-    add_fastsurfer_cross(tmp_path, "sub-0001", "ses-01")
-
-    sessions = discover_sessions(cfg)
-    manifest = build_manifest(sessions, cfg)
-
-    assert "fastsurfer_template" not in set(manifest["procedure"])
-
-
-def test_fastsurfer_long_appears_after_template(tmp_path):
-    """fastsurfer_long appears for each session once template is complete."""
-    cfg = make_config(tmp_path)
     for session in ("ses-01", "ses-02"):
-        add_dicom(tmp_path, "sub-0001", session)
-        add_bids(tmp_path, "sub-0001", session)
-        add_bids_post(tmp_path, "sub-0001", session)
-        add_fastsurfer_cross(tmp_path, "sub-0001", session)
-    add_fastsurfer_template(tmp_path, "sub-0001")
+        add_dicom(tmp_path, "sub-0002", session)
+        add_bids(tmp_path, "sub-0002", session)
+    # sub-0002 bids_post NOT done; sub-0001 is fully done → only sub-0001 fires
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    long_rows = manifest[manifest["procedure"] == "fastsurfer_long"]
-    assert len(long_rows) == 2
-    assert set(long_rows["session"]) == {"ses-01", "ses-02"}
-
-
-def test_fastsurfer_full_pipeline_order(tmp_path):
-    """cross must appear before template, template before long in manifest priority."""
-    cfg = make_config(tmp_path)
-    for session in ("ses-01", "ses-02"):
-        add_dicom(tmp_path, "sub-0001", session)
-        add_bids(tmp_path, "sub-0001", session)
-        add_bids_post(tmp_path, "sub-0001", session)
-        add_fastsurfer_cross(tmp_path, "sub-0001", session)
-    add_fastsurfer_template(tmp_path, "sub-0001")
-
-    sessions = discover_sessions(cfg)
-    manifest = build_manifest(sessions, cfg)
-
-    procs_in_order = list(manifest["procedure"])
-    # All long entries must come after the template entry
-    if "fastsurfer_long" in procs_in_order and "fastsurfer_template" in procs_in_order:
-        tmpl_idx = procs_in_order.index("fastsurfer_template")
-        long_indices = [i for i, p in enumerate(procs_in_order) if p == "fastsurfer_long"]
-        for li in long_indices:
-            assert li > tmpl_idx
-
-
-def test_fastsurfer_long_not_in_manifest_without_template(tmp_path):
-    """fastsurfer_long must not appear until template is complete."""
-    cfg = make_config(tmp_path)
-    for session in ("ses-01", "ses-02"):
-        add_dicom(tmp_path, "sub-0001", session)
-        add_bids(tmp_path, "sub-0001", session)
-        add_bids_post(tmp_path, "sub-0001", session)
-        add_fastsurfer_cross(tmp_path, "sub-0001", session)
-    # Template NOT done
-
-    sessions = discover_sessions(cfg)
-    manifest = build_manifest(sessions, cfg)
-
-    assert "fastsurfer_long" not in set(manifest["procedure"])
+    sub01_procs = set(manifest[manifest["subject"] == "sub-0001"]["procedure"])
+    sub02_procs = set(manifest[manifest["subject"] == "sub-0002"]["procedure"])
+    assert "fastsurfer" in sub01_procs
+    assert "fastsurfer" not in sub02_procs

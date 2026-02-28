@@ -1,69 +1,56 @@
 from __future__ import annotations
 
 """snbb_scheduler.fastsurfer — T1w collection and command building for
-FastSurfer longitudinal processing.
+FastSurfer processing.
 
-FastSurfer longitudinal pipeline overview
------------------------------------------
-The longitudinal pipeline runs in three stages that must execute in order:
+FastSurfer pipeline overview
+-----------------------------
+A single ``fastsurfer`` procedure (subject-scoped) covers both the
+cross-sectional and longitudinal cases:
 
-1. **Cross-sectional** (``fastsurfer_cross``, per-session):
-   Each timepoint is processed independently with FastSurfer::
+* **1 session** — runs ``run_fastsurfer.sh`` (cross-sectional) via the
+  existing :func:`build_cross_apptainer_command` builder.
 
-       fastsurfer --sid sub-0001_ses-01 --sd <SUBJECTS_DIR> \\
-           --t1 <T1w.nii.gz> --threads 8
+* **2+ sessions** — runs ``long_fastsurfer.sh`` (full longitudinal pipeline)
+  via :func:`build_long_fastsurfer_command`.  ``long_fastsurfer.sh`` handles
+  the cross-sectional pre-processing, template creation, and longitudinal
+  refinement internally in a single invocation.
 
-   Output: ``<SUBJECTS_DIR>/sub-0001_ses-01/``
-
-2. **Template creation** (``fastsurfer_template``, per-subject):
-   A within-subject unbiased anatomical template is built from all
-   cross-sectional results using FreeSurfer's ``recon-all -base``.
-   Requires at least **two** completed cross-sectional timepoints::
-
-       recon-all -base sub-0001 \\
-           -tp sub-0001_ses-01 -tp sub-0001_ses-02 \\
-           -sd <SUBJECTS_DIR> -all
-
-   Output: ``<SUBJECTS_DIR>/sub-0001/``
-
-3. **Longitudinal** (``fastsurfer_long``, per-session):
-   Each timepoint is reprocessed longitudinally, using the template as a
-   prior for cortical surface reconstruction::
-
-       recon-all -long sub-0001_ses-01 sub-0001 \\
-           -sd <SUBJECTS_DIR> -all
-
-   Output: ``<SUBJECTS_DIR>/sub-0001_ses-01.long.sub-0001/``
-
-T1w selection rules (cross-sectional)
---------------------------------------
-Only one T1w image is passed per session (unlike FreeSurfer cross-sectional
-which pools all sessions).  The selection follows the same two-step filter
-used by :mod:`snbb_scheduler.freesurfer`:
+T1w selection rules
+--------------------
+One T1w image is selected per session.  The selection follows the same
+two-step filter used by :mod:`snbb_scheduler.freesurfer`:
 
 1. Exclude files whose basename contains ``defaced``.
-2. If any ``rec-norm`` variant survives, keep only those; otherwise keep all.
-3. Return the first (alphabetically sorted) surviving image.
+2. Prefer ``rec-norm`` variants when they exist.
+3. Return the first (sorted) surviving image, or ``None`` if none found.
 
 SUBJECTS_DIR naming
--------------------
-All three stages share a single ``SUBJECTS_DIR``
-(``<derivatives_root>/fastsurfer/``).  The subdirectory names encode stage
-and session:
+--------------------
+Each subject's outputs are nested under ``<derivatives_root>/fastsurfer/<subject>/``,
+which is bound to ``/output`` inside the container.  Within that subject directory:
 
-* Cross-sectional : ``<subject>_<session>``  (e.g. ``sub-0001_ses-01``)
-* Template        : ``<subject>``            (e.g. ``sub-0001``)
-* Longitudinal    : ``<subject>_<session>.long.<subject>``
-                    (e.g. ``sub-0001_ses-01.long.sub-0001``)
+* Cross-sectional : ``<session>``  (e.g. ``ses-01``)
+* Longitudinal    : ``<session>.long.<subject>``
+                    (e.g. ``ses-01.long.sub-0001``)
+* Template        : ``<subject>``  (e.g. ``sub-0001``)
+
+Full example layout::
+
+    fastsurfer/
+    └── sub-0001/
+        ├── ses-01                      (cross-sectional intermediate)
+        ├── ses-01.long.sub-0001        (longitudinal final)
+        └── sub-0001                    (template)
 """
 
 __all__ = [
     "collect_session_t1w",
+    "collect_all_session_t1ws",
     "fastsurfer_sid",
     "fastsurfer_long_sid",
     "build_cross_apptainer_command",
-    "build_template_apptainer_command",
-    "build_long_apptainer_command",
+    "build_long_fastsurfer_command",
 ]
 
 import argparse
@@ -80,20 +67,22 @@ from pathlib import Path
 def fastsurfer_sid(subject: str, session: str) -> str:
     """Return the FastSurfer subject-ID for a cross-sectional run.
 
+    With the nested per-subject output structure the subject directory is
+    already the ``SUBJECTS_DIR``, so only the bare session label is needed.
+
     Parameters
     ----------
     subject:
-        BIDS subject label, e.g. ``sub-0001``.
+        BIDS subject label, e.g. ``sub-0001`` (unused; kept for API symmetry).
     session:
         BIDS session label, e.g. ``ses-01``.
 
     Returns
     -------
     str
-        Combined identifier ``"{subject}_{session}"``,
-        e.g. ``"sub-0001_ses-01"``.
+        The session label, e.g. ``"ses-01"``.
     """
-    return f"{subject}_{session}"
+    return session
 
 
 def fastsurfer_long_sid(subject: str, session: str) -> str:
@@ -109,10 +98,10 @@ def fastsurfer_long_sid(subject: str, session: str) -> str:
     Returns
     -------
     str
-        Identifier ``"{subject}_{session}.long.{subject}"``,
-        e.g. ``"sub-0001_ses-01.long.sub-0001"``.
+        Identifier ``"{session}.long.{subject}"``,
+        e.g. ``"ses-01.long.sub-0001"``.
     """
-    return f"{subject}_{session}.long.{subject}"
+    return f"{session}.long.{subject}"
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +143,39 @@ def collect_session_t1w(bids_dir: Path, subject: str, session: str) -> Path | No
         candidates = rec_norm
 
     return candidates[0] if candidates else None
+
+
+def collect_all_session_t1ws(bids_dir: Path, subject: str) -> dict[str, Path]:
+    """Return a mapping of session label → T1w path for all valid sessions.
+
+    Iterates every ``ses-*`` subdirectory under ``<bids_dir>/<subject>`` and
+    calls :func:`collect_session_t1w` for each.  Sessions without a suitable
+    T1w image are omitted.
+
+    Parameters
+    ----------
+    bids_dir:
+        BIDS root directory.
+    subject:
+        BIDS subject label, e.g. ``sub-0001``.
+
+    Returns
+    -------
+    dict[str, Path]
+        Ordered mapping of ``session_label → absolute T1w path``,
+        e.g. ``{"ses-01": Path(...), "ses-02": Path(...)}``.
+    """
+    subject_dir = bids_dir / subject
+    if not subject_dir.exists():
+        return {}
+    result: dict[str, Path] = {}
+    for ses_dir in sorted(subject_dir.iterdir()):
+        if not ses_dir.is_dir() or not ses_dir.name.startswith("ses-"):
+            continue
+        t1w = collect_session_t1w(bids_dir, subject, ses_dir.name)
+        if t1w is not None:
+            result[ses_dir.name] = t1w
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +250,7 @@ def build_cross_apptainer_command(
         "--bind",
         f"{bids_dir}:/data:ro",
         "--bind",
-        f"{output_dir}:/output",
+        f"{output_dir}/{subject}:/output",
         "--bind",
         f"{fs_license}:/opt/fs_license.txt:ro",
         str(sif),
@@ -244,19 +266,26 @@ def build_cross_apptainer_command(
     ]
 
 
-def build_template_apptainer_command(
+def build_long_fastsurfer_command(
     sif: Path,
     fs_license: Path,
+    bids_dir: Path,
     output_dir: Path,
     subject: str,
-    session_ids: list[str],
+    sessions_t1ws: dict[str, Path],
     threads: int,
 ) -> list[str]:
-    """Build an Apptainer command for within-subject template creation.
+    """Build an Apptainer command for the FastSurfer longitudinal pipeline.
 
-    Wraps FreeSurfer's ``recon-all -base`` inside the FastSurfer container.
-    The template step does not read BIDS input directly — it uses the
-    cross-sectional outputs that already reside under *output_dir*.
+    Invokes ``long_fastsurfer.sh`` inside the FastSurfer container, which
+    handles cross-sectional pre-processing, template creation, and
+    longitudinal refinement in a single call.
+
+    The container is invoked with:
+
+    * ``/data``   ← *bids_dir* (read-only)
+    * ``/output`` ← *output_dir* (read-write)
+    * ``/opt/fs_license.txt`` ← *fs_license* (read-only)
 
     Parameters
     ----------
@@ -264,100 +293,51 @@ def build_template_apptainer_command(
         Path to the FastSurfer Apptainer SIF image.
     fs_license:
         FreeSurfer license file.
+    bids_dir:
+        BIDS root directory (bound read-only at ``/data``).
     output_dir:
-        FastSurfer SUBJECTS_DIR containing the cross-sectional results.
+        FastSurfer SUBJECTS_DIR (bound read-write at ``/output``).
     subject:
         BIDS subject label, e.g. ``sub-0001``.
-    session_ids:
-        Ordered list of session labels whose cross-sectional runs are
-        complete, e.g. ``["ses-01", "ses-02"]``.
+    sessions_t1ws:
+        Ordered mapping of session label → T1w path,
+        e.g. ``{"ses-01": Path(...), "ses-02": Path(...)}``.
     threads:
-        Number of threads to pass to ``recon-all``.
+        Number of parallel threads.
 
     Returns
     -------
     list[str]
-        Complete ``apptainer run`` command.
+        Complete ``apptainer run`` command suitable for :func:`subprocess.run`.
     """
     cmd = [
         "apptainer",
-        "run",
+        "exec",
         "--cleanenv",
         "--env",
         "FS_LICENSE=/opt/fs_license.txt",
         "--bind",
-        f"{output_dir}:/output",
+        f"{bids_dir}:/data:ro",
+        "--bind",
+        f"{output_dir}/{subject}:/output",
         "--bind",
         f"{fs_license}:/opt/fs_license.txt:ro",
         str(sif),
-        # Inside the container run FreeSurfer's recon-all -base
-        "recon-all",
-        "-base",
+        "/fastsurfer/long_fastsurfer.sh",
+        "--tid",
         subject,
-        "-sd",
+        "--sd",
         "/output",
-    ]
-    for ses in session_ids:
-        cmd += ["-tp", fastsurfer_sid(subject, ses)]
-    cmd += ["-all", "-parallel", "-openmp", str(threads)]
-    return cmd
-
-
-def build_long_apptainer_command(
-    sif: Path,
-    fs_license: Path,
-    output_dir: Path,
-    subject: str,
-    session: str,
-    threads: int,
-) -> list[str]:
-    """Build an Apptainer command for longitudinal FreeSurfer refinement.
-
-    Wraps FreeSurfer's ``recon-all -long`` inside the FastSurfer container.
-
-    Parameters
-    ----------
-    sif:
-        Path to the FastSurfer Apptainer SIF image.
-    fs_license:
-        FreeSurfer license file.
-    output_dir:
-        FastSurfer SUBJECTS_DIR.
-    subject:
-        BIDS subject label, e.g. ``sub-0001``.
-    session:
-        BIDS session label, e.g. ``ses-01``.
-    threads:
-        Number of threads to pass to ``recon-all``.
-
-    Returns
-    -------
-    list[str]
-        Complete ``apptainer run`` command.
-    """
-    sid = fastsurfer_sid(subject, session)
-    return [
-        "apptainer",
-        "run",
-        "--cleanenv",
-        "--env",
-        "FS_LICENSE=/opt/fs_license.txt",
-        "--bind",
-        f"{output_dir}:/output",
-        "--bind",
-        f"{fs_license}:/opt/fs_license.txt:ro",
-        str(sif),
-        "recon-all",
-        "-long",
-        sid,
-        subject,
-        "-sd",
-        "/output",
-        "-all",
-        "-parallel",
-        "-openmp",
+        "--3T",
+        "--parallel_surf",
+        "--threads",
         str(threads),
     ]
+    # Append all T1w paths remapped to container space
+    cmd += ["--t1s"] + [_remap(t1w, bids_dir, "/data") for t1w in sessions_t1ws.values()]
+    # Append all timepoint IDs (bare session labels; subject dir is already the SUBJECTS_DIR)
+    cmd += ["--tpids"] + list(sessions_t1ws.keys())
+    return cmd
 
 
 # ---------------------------------------------------------------------------
@@ -366,116 +346,76 @@ def build_long_apptainer_command(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point for all three FastSurfer longitudinal stages.
+    """CLI entry point for the unified FastSurfer helper.
 
-    Usage examples::
+    Auto-discovers BIDS sessions for the subject and branches:
 
-        # Cross-sectional
-        python3 snbb_fastsurfer_helper.py cross \\
+    * **1 session** → cross-sectional ``run_fastsurfer.sh``
+    * **2+ sessions** → longitudinal ``long_fastsurfer.sh``
+
+    Usage example::
+
+        python3 snbb_fastsurfer_helper.py \\
             --bids-dir /data/bids --output-dir /data/derivatives/fastsurfer \\
-            --subject sub-0001 --session ses-01 \\
-            --sif /containers/fastsurfer.sif --fs-license /misc/fs/license.txt
-
-        # Template
-        python3 snbb_fastsurfer_helper.py template \\
-            --output-dir /data/derivatives/fastsurfer \\
-            --subject sub-0001 --sessions ses-01 ses-02 \\
-            --sif /containers/fastsurfer.sif --fs-license /misc/fs/license.txt
-
-        # Longitudinal
-        python3 snbb_fastsurfer_helper.py long \\
-            --output-dir /data/derivatives/fastsurfer \\
-            --subject sub-0001 --session ses-01 \\
+            --subject sub-0001 \\
             --sif /containers/fastsurfer.sif --fs-license /misc/fs/license.txt
     """
     parser = argparse.ArgumentParser(
-        description="FastSurfer longitudinal pipeline helper.",
+        description="FastSurfer helper — cross-sectional or longitudinal.",
     )
-    sub = parser.add_subparsers(dest="mode", required=True)
-
-    # ── shared arguments ──────────────────────────────────────────────────
-    def _add_common(p: argparse.ArgumentParser) -> None:
-        p.add_argument("--output-dir", required=True, type=Path,
-                       help="FastSurfer SUBJECTS_DIR (derivatives/fastsurfer).")
-        p.add_argument("--subject", required=True,
-                       help="BIDS subject label, e.g. sub-0001.")
-        p.add_argument("--sif", required=True, type=Path,
-                       help="Path to FastSurfer Apptainer SIF image.")
-        p.add_argument("--fs-license", required=True, type=Path,
-                       help="FreeSurfer license file.")
-        p.add_argument("--threads", type=int, default=8,
-                       help="Number of parallel threads (default: 8).")
-
-    # ── cross-sectional ───────────────────────────────────────────────────
-    p_cross = sub.add_parser("cross", help="Run cross-sectional FastSurfer.")
-    _add_common(p_cross)
-    p_cross.add_argument("--bids-dir", required=True, type=Path,
-                          help="BIDS root directory.")
-    p_cross.add_argument("--session", required=True,
-                          help="BIDS session label, e.g. ses-01.")
-
-    # ── template ─────────────────────────────────────────────────────────
-    p_tmpl = sub.add_parser("template", help="Create within-subject template.")
-    _add_common(p_tmpl)
-    p_tmpl.add_argument("--sessions", required=True, nargs="+",
-                         help="Session labels whose cross-sectional runs are complete.")
-
-    # ── longitudinal ──────────────────────────────────────────────────────
-    p_long = sub.add_parser("long", help="Run longitudinal refinement.")
-    _add_common(p_long)
-    p_long.add_argument("--session", required=True,
-                         help="BIDS session label to process longitudinally.")
+    parser.add_argument("--bids-dir", required=True, type=Path,
+                        help="BIDS root directory.")
+    parser.add_argument("--output-dir", required=True, type=Path,
+                        help="FastSurfer SUBJECTS_DIR (derivatives/fastsurfer).")
+    parser.add_argument("--subject", required=True,
+                        help="BIDS subject label, e.g. sub-0001.")
+    parser.add_argument("--sif", required=True, type=Path,
+                        help="Path to FastSurfer Apptainer SIF image.")
+    parser.add_argument("--fs-license", required=True, type=Path,
+                        help="FreeSurfer license file.")
+    parser.add_argument("--threads", type=int, default=8,
+                        help="Number of parallel threads (default: 8).")
 
     args = parser.parse_args(argv)
 
-    # ── dispatch ──────────────────────────────────────────────────────────
-    if args.mode == "cross":
-        t1w = collect_session_t1w(args.bids_dir, args.subject, args.session)
-        if t1w is None:
-            print(
-                f"ERROR: No T1w image found for {args.subject} {args.session} "
-                f"under {args.bids_dir}",
-                file=sys.stderr,
-            )
-            return 1
-        print(f"Using T1w: {t1w}")
-        args.output_dir.mkdir(parents=True, exist_ok=True)
+    sessions_t1ws = collect_all_session_t1ws(args.bids_dir, args.subject)
+    if not sessions_t1ws:
+        print(
+            f"ERROR: No sessions with a T1w image found for {args.subject} "
+            f"under {args.bids_dir}",
+            file=sys.stderr,
+        )
+        return 1
+
+    (args.output_dir / args.subject).mkdir(parents=True, exist_ok=True)
+
+    if len(sessions_t1ws) == 1:
+        session, t1w = next(iter(sessions_t1ws.items()))
+        print(f"Single session ({session}): running cross-sectional FastSurfer.")
         cmd = build_cross_apptainer_command(
             sif=args.sif,
             fs_license=args.fs_license,
             bids_dir=args.bids_dir,
             output_dir=args.output_dir,
             subject=args.subject,
-            session=args.session,
+            session=session,
             t1w_file=t1w,
             threads=args.threads,
         )
-
-    elif args.mode == "template":
-        print(f"Building template for {args.subject} from sessions: {args.sessions}")
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        cmd = build_template_apptainer_command(
+    else:
+        sessions = list(sessions_t1ws.keys())
+        print(f"Multiple sessions ({sessions}): running longitudinal FastSurfer.")
+        cmd = build_long_fastsurfer_command(
             sif=args.sif,
             fs_license=args.fs_license,
+            bids_dir=args.bids_dir,
             output_dir=args.output_dir,
             subject=args.subject,
-            session_ids=args.sessions,
+            sessions_t1ws=sessions_t1ws,
             threads=args.threads,
         )
 
-    else:  # long
-        print(f"Running longitudinal for {args.subject} {args.session}")
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        cmd = build_long_apptainer_command(
-            sif=args.sif,
-            fs_license=args.fs_license,
-            output_dir=args.output_dir,
-            subject=args.subject,
-            session=args.session,
-            threads=args.threads,
-        )
-
-    print(f"Running: {' '.join(cmd)}")
+    print(f"Running: {' '.join(str(c) for c in cmd)}")
     result = subprocess.run(cmd)
     return result.returncode
 

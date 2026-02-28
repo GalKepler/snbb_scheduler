@@ -87,14 +87,25 @@ procedures:
     depends_on: [bids]
     completion_marker: "scripts/recon-all.done"
 
+  # FastSurfer cortical reconstruction (subject-scoped: one run covers all sessions)
+  # For subjects with 1 session: cross-sectional FastSurfer.
+  # For subjects with 2+ sessions: longitudinal long_fastsurfer.sh pipeline.
+  # Completion: specialised check in checks.py detects recon-surf.done markers.
+  - name: fastsurfer
+    output_dir: fastsurfer
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_fastsurfer.sh
+    scope: subject
+    depends_on: [post-bids]
+    completion_marker: null
+
   # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
   # Completion: ses-* output dirs match qsiprep session count
-  - name: qsirecon
-    output_dir: qsirecon-MRtrix3_act-HSVS
-    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
-    scope: subject
-    depends_on: [qsiprep, freesurfer]
-    completion_marker: null
+  # - name: qsirecon
+  #   output_dir: qsirecon-MRtrix3_act-HSVS
+  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
+  #   scope: subject
+  #   depends_on: [qsiprep, freesurfer]
+  #   completion_marker: null
 
   # fMRI preprocessing
   # Completion: fmriprep writes an HTML report on success
