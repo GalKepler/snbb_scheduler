@@ -9,7 +9,7 @@ import pandas as pd
 
 from snbb_scheduler.checks import is_complete
 from snbb_scheduler.config import SchedulerConfig
-from snbb_scheduler.rules import build_rules
+from snbb_scheduler.rules import _completion_kwargs, build_rules
 
 if TYPE_CHECKING:
     from snbb_scheduler.audit import AuditLogger
@@ -46,7 +46,12 @@ def build_manifest(
     if sessions.empty:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
 
-    rules = build_rules(config, force=force, force_procedures=force_procedures)
+    rules = build_rules(
+        config,
+        sessions_df=sessions,
+        force=force,
+        force_procedures=force_procedures,
+    )
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
     subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
 
@@ -148,11 +153,10 @@ def reconcile_with_filesystem(
         root = config.get_procedure_root(proc)
         output_path = root / subject if proc.scope == "subject" else root / subject / session
 
-        kwargs: dict = {}
-        if proc_name in ("freesurfer", "qsiprep"):
-            kwargs = {"bids_root": config.bids_root, "subject": subject}
-        elif proc_name == "qsirecon":
-            kwargs = {"derivatives_root": config.derivatives_root, "subject": subject}
+        # Build a minimal row-like Series so we can reuse _completion_kwargs
+        # from rules.py rather than duplicating the per-procedure mapping here.
+        _row = pd.Series({"subject": subject, "session": session or ""})
+        kwargs = _completion_kwargs(proc, _row, config)
 
         if is_complete(proc, output_path, **kwargs):
             old_status = str(updated.at[idx, "status"])

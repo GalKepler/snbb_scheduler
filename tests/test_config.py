@@ -340,3 +340,78 @@ def test_from_yaml_slurm_log_dir_none_stays_none(tmp_path):
     assert cfg.slurm_log_dir is None
 
 
+# ---------------------------------------------------------------------------
+# FastSurfer longitudinal procedures
+# ---------------------------------------------------------------------------
+
+
+def test_fastsurfer_procedures_present():
+    """All three FastSurfer stages are in DEFAULT_PROCEDURES."""
+    cfg = SchedulerConfig()
+    names = [p.name for p in cfg.procedures]
+    assert "fastsurfer_cross" in names
+    assert "fastsurfer_template" in names
+    assert "fastsurfer_long" in names
+
+
+def test_fastsurfer_cross_attributes():
+    cfg = SchedulerConfig()
+    proc = cfg.get_procedure("fastsurfer_cross")
+    assert proc.scope == "session"
+    assert proc.depends_on == ["bids_post"]
+    assert proc.output_dir == "fastsurfer"
+    assert proc.script == "snbb_run_fastsurfer_cross.sh"
+    assert proc.completion_marker is None
+
+
+def test_fastsurfer_template_attributes():
+    cfg = SchedulerConfig()
+    proc = cfg.get_procedure("fastsurfer_template")
+    assert proc.scope == "subject"
+    assert proc.depends_on == ["fastsurfer_cross"]
+    assert proc.output_dir == "fastsurfer"
+    assert proc.script == "snbb_run_fastsurfer_template.sh"
+    assert proc.completion_marker is None
+
+
+def test_fastsurfer_long_attributes():
+    cfg = SchedulerConfig()
+    proc = cfg.get_procedure("fastsurfer_long")
+    assert proc.scope == "session"
+    assert proc.depends_on == ["fastsurfer_template"]
+    assert proc.output_dir == "fastsurfer"
+    assert proc.script == "snbb_run_fastsurfer_long.sh"
+    assert proc.completion_marker is None
+
+
+def test_fastsurfer_procedures_use_derivatives_root():
+    """All three stages write to derivatives/fastsurfer/."""
+    cfg = SchedulerConfig(derivatives_root=Path("/data/derivatives"))
+    for name in ("fastsurfer_cross", "fastsurfer_template", "fastsurfer_long"):
+        proc = cfg.get_procedure(name)
+        assert cfg.get_procedure_root(proc) == Path("/data/derivatives/fastsurfer")
+
+
+def test_fastsurfer_procedure_order():
+    """cross → template → long must appear in order in the pipeline."""
+    cfg = SchedulerConfig()
+    names = [p.name for p in cfg.procedures]
+    assert names.index("fastsurfer_cross") < names.index("fastsurfer_template")
+    assert names.index("fastsurfer_template") < names.index("fastsurfer_long")
+
+
+def test_fastsurfer_comes_after_freesurfer():
+    """FastSurfer stages appear after FreeSurfer in the default pipeline."""
+    cfg = SchedulerConfig()
+    names = [p.name for p in cfg.procedures]
+    assert names.index("freesurfer") < names.index("fastsurfer_cross")
+
+
+def test_default_config_validates_fastsurfer_deps():
+    """SchedulerConfig.__post_init__ accepts the FastSurfer dependency chain."""
+    # If any depends_on reference is broken this will raise ValueError
+    cfg = SchedulerConfig()
+    assert cfg.get_procedure("fastsurfer_template").depends_on == ["fastsurfer_cross"]
+    assert cfg.get_procedure("fastsurfer_long").depends_on == ["fastsurfer_template"]
+
+

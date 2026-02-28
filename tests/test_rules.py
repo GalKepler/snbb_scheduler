@@ -291,6 +291,9 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_defacing_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    mark_fastsurfer_template_complete(cfg, "sub-0001")
+    mark_fastsurfer_long_complete(cfg, "sub-0001", "ses-01")
     mark_qsirecon_complete(row)
     rules = build_rules(cfg)
     for name, rule in rules.items():
@@ -451,3 +454,232 @@ def test_custom_procedure_respects_dependency(tmp_path):
 
     mark_bids_complete(row)
     assert rules["fmriprep"](pd.Series(row)) is True
+
+
+# ---------------------------------------------------------------------------
+# FastSurfer longitudinal pipeline — helpers
+# ---------------------------------------------------------------------------
+
+
+def mark_bids_post_complete_for_row(row: dict) -> None:
+    """Mark bids_post complete for the session in *row*."""
+    mark_bids_post_complete(row)
+
+
+def mark_fastsurfer_cross_complete(cfg: SchedulerConfig, subject: str, session: str) -> None:
+    """Create the FastSurfer cross-sectional completion marker at the actual path."""
+    actual = cfg.derivatives_root / "fastsurfer" / f"{subject}_{session}" / "scripts"
+    actual.mkdir(parents=True, exist_ok=True)
+    (actual / "recon-all.done").write_text("#CMDARGS placeholder\n")
+
+
+def mark_fastsurfer_template_complete(cfg: SchedulerConfig, subject: str) -> None:
+    """Create the FastSurfer template completion marker."""
+    scripts = cfg.derivatives_root / "fastsurfer" / subject / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+
+
+def mark_fastsurfer_long_complete(cfg: SchedulerConfig, subject: str, session: str) -> None:
+    """Create the FastSurfer longitudinal completion marker at the actual path."""
+    actual = (
+        cfg.derivatives_root
+        / "fastsurfer"
+        / f"{subject}_{session}.long.{subject}"
+        / "scripts"
+    )
+    actual.mkdir(parents=True, exist_ok=True)
+    (actual / "recon-all.done").write_text("#CMDARGS placeholder\n")
+
+
+def make_two_session_df(cfg: SchedulerConfig) -> pd.DataFrame:
+    """Build a sessions DataFrame with sub-0001/ses-01 and sub-0001/ses-02."""
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# fastsurfer_cross — session-scoped, depends on bids_post
+# ---------------------------------------------------------------------------
+
+
+def test_fastsurfer_cross_needed_when_bids_post_complete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    rules = build_rules(cfg)
+    assert rules["fastsurfer_cross"](pd.Series(row)) is True
+
+
+def test_fastsurfer_cross_not_needed_without_bids_post(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    rules = build_rules(cfg)
+    assert rules["fastsurfer_cross"](pd.Series(row)) is False
+
+
+def test_fastsurfer_cross_not_needed_when_already_complete(cfg):
+    row = make_row(cfg)
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    rules = build_rules(cfg)
+    assert rules["fastsurfer_cross"](pd.Series(row)) is False
+
+
+# ---------------------------------------------------------------------------
+# fastsurfer_template — subject-scoped, depends on fastsurfer_cross
+# Cross-scope: all sessions must be complete; min 2 sessions required.
+# ---------------------------------------------------------------------------
+
+
+def test_fastsurfer_template_fires_when_both_sessions_complete(cfg):
+    """Template rule fires only when all sessions have cross done (≥2 sessions)."""
+    sessions_df = make_two_session_df(cfg)
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-02")
+
+    # Rebuild sessions_df with updated state info
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+    sessions_df = pd.DataFrame(rows)
+
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    row = pd.Series(rows[0])  # evaluate from ses-01's perspective
+    assert rules["fastsurfer_template"](row) is True
+
+
+def test_fastsurfer_template_does_not_fire_when_one_session_incomplete(cfg):
+    """Template must NOT fire if any session's cross is still incomplete."""
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+    sessions_df = pd.DataFrame(rows)
+
+    # Only ses-01 cross done — ses-02 is still pending
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    row = pd.Series(rows[0])
+    assert rules["fastsurfer_template"](row) is False
+
+
+def test_fastsurfer_template_skipped_for_single_session_subject(cfg):
+    """Single-session subjects must NOT trigger template creation."""
+    row = make_row(cfg, subject="sub-0001", session="ses-01")
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+
+    sessions_df = pd.DataFrame([row])  # only one session
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    assert rules["fastsurfer_template"](pd.Series(row)) is False
+
+
+def test_fastsurfer_template_not_needed_when_already_complete(cfg):
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+    sessions_df = pd.DataFrame(rows)
+
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-02")
+    mark_fastsurfer_template_complete(cfg, "sub-0001")
+
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    assert rules["fastsurfer_template"](pd.Series(rows[0])) is False
+
+
+def test_fastsurfer_template_without_sessions_df_skips_cross_scope_check(cfg):
+    """Without sessions_df the cross-scope dep check is skipped.
+
+    This is the backward-compat behaviour: callers that don't pass sessions_df
+    won't break, though they may get inaccurate results for cross-scope deps.
+    The template's self-completion check still prevents double-submission.
+    """
+    row = make_row(cfg, subject="sub-0001", session="ses-01")
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    # fastsurfer_cross NOT done, but sessions_df not provided
+    rules = build_rules(cfg, sessions_df=None)
+    # Without sessions_df, cross-scope check is skipped → template self-check runs
+    # (not complete) → rule returns True because it thinks it should run
+    assert rules["fastsurfer_template"](pd.Series(row)) is True
+
+
+# ---------------------------------------------------------------------------
+# fastsurfer_long — session-scoped, depends on fastsurfer_template
+# ---------------------------------------------------------------------------
+
+
+def test_fastsurfer_long_needed_when_template_complete(cfg):
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-02")
+    mark_fastsurfer_template_complete(cfg, "sub-0001")
+
+    sessions_df = pd.DataFrame(rows)
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    # ses-01's longitudinal is not done → should fire
+    assert rules["fastsurfer_long"](pd.Series(rows[0])) is True
+
+
+def test_fastsurfer_long_not_needed_without_template(cfg):
+    row = make_row(cfg, subject="sub-0001", session="ses-01")
+    mark_dicom(row)
+    mark_bids_complete(row)
+    mark_bids_post_complete(row)
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    # Template NOT complete
+    rules = build_rules(cfg)
+    assert rules["fastsurfer_long"](pd.Series(row)) is False
+
+
+def test_fastsurfer_long_not_needed_when_already_complete(cfg):
+    rows = []
+    for session in ("ses-01", "ses-02"):
+        row = make_row(cfg, subject="sub-0001", session=session)
+        mark_dicom(row)
+        mark_bids_complete(row)
+        mark_bids_post_complete(row)
+        rows.append(row)
+
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-01")
+    mark_fastsurfer_cross_complete(cfg, "sub-0001", "ses-02")
+    mark_fastsurfer_template_complete(cfg, "sub-0001")
+    mark_fastsurfer_long_complete(cfg, "sub-0001", "ses-01")
+
+    sessions_df = pd.DataFrame(rows)
+    rules = build_rules(cfg, sessions_df=sessions_df)
+    assert rules["fastsurfer_long"](pd.Series(rows[0])) is False

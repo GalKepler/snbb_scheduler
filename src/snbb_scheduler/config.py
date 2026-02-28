@@ -85,6 +85,40 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         depends_on=["bids_post"],
         completion_marker="scripts/recon-all.done",
     ),
+    # ── FastSurfer longitudinal pipeline ─────────────────────────────────────
+    # Three-stage longitudinal approach:
+    #   1. fastsurfer_cross — independent cross-sectional run per session
+    #   2. fastsurfer_template — within-subject unbiased template (≥2 sessions)
+    #   3. fastsurfer_long — longitudinal refinement per session using template
+    #
+    # All three write to a single SUBJECTS_DIR (derivatives/fastsurfer/), but
+    # with different subdirectory naming conventions (see fastsurfer.py).
+    # Specialised completion checks in checks.py handle the path remapping.
+    Procedure(
+        name="fastsurfer_cross",
+        output_dir="fastsurfer",
+        script="snbb_run_fastsurfer_cross.sh",
+        scope="session",
+        depends_on=["bids_post"],
+        completion_marker=None,  # specialised check: fastsurfer_cross
+    ),
+    Procedure(
+        name="fastsurfer_template",
+        output_dir="fastsurfer",
+        script="snbb_run_fastsurfer_template.sh",
+        scope="subject",
+        depends_on=["fastsurfer_cross"],
+        completion_marker=None,  # specialised check: fastsurfer_template
+    ),
+    Procedure(
+        name="fastsurfer_long",
+        output_dir="fastsurfer",
+        script="snbb_run_fastsurfer_long.sh",
+        scope="session",
+        depends_on=["fastsurfer_template"],
+        completion_marker=None,  # specialised check: fastsurfer_long
+    ),
+    # ─────────────────────────────────────────────────────────────────────────
     Procedure(
         name="qsirecon",
         output_dir="qsirecon-MRtrix3_act-HSVS",

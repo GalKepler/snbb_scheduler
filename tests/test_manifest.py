@@ -166,6 +166,7 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         qp.mkdir(parents=True)
         (qp / "out.nii.gz").touch()
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
+        mark_fastsurfer_cross_complete(tmp_path, sub, "ses-01")
         # qsirecon: session subdir count must match qsiprep
         qr = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / sub / "ses-01"
         qr.mkdir(parents=True)
@@ -392,3 +393,100 @@ def test_reconcile_partial_resolution(cfg, tmp_path):
     result = reconcile_with_filesystem(state, cfg)
     assert result.iloc[0]["status"] == "complete"
     assert result.iloc[1]["status"] == "pending"
+
+
+# ---------------------------------------------------------------------------
+# FastSurfer manifest tests
+# ---------------------------------------------------------------------------
+
+
+def make_two_session_df(cfg: SchedulerConfig, tmp_path: Path) -> "pd.DataFrame":
+    """Create DICOM dirs for sub-0001/ses-01 and sub-0001/ses-02, return sessions df."""
+    from snbb_scheduler.sessions import discover_sessions
+
+    for session in ("ses-01", "ses-02"):
+        (tmp_path / "dicom" / "sub-0001" / session).mkdir(parents=True, exist_ok=True)
+    return discover_sessions(cfg)
+
+
+def mark_fastsurfer_cross_complete(tmp_path: Path, subject: str, session: str) -> None:
+    scripts = tmp_path / "derivatives" / "fastsurfer" / f"{subject}_{session}" / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+
+
+def mark_fastsurfer_template_complete(tmp_path: Path, subject: str) -> None:
+    scripts = tmp_path / "derivatives" / "fastsurfer" / subject / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+
+
+def test_fastsurfer_template_deduplicated_in_manifest(cfg, tmp_path):
+    """fastsurfer_template appears only once per subject even with two sessions."""
+    sessions_df = make_two_session_df(cfg, tmp_path)
+    for session in ("ses-01", "ses-02"):
+        mark_bids_complete(tmp_path, "sub-0001", session)
+        mark_bids_post_complete(tmp_path, "sub-0001", session)
+        mark_fastsurfer_cross_complete(tmp_path, "sub-0001", session)
+
+    manifest = build_manifest(sessions_df, cfg)
+
+    template_rows = manifest[manifest["procedure"] == "fastsurfer_template"]
+    assert len(template_rows) == 1
+    assert template_rows.iloc[0]["session"] == ""
+
+
+def test_fastsurfer_long_not_deduplicated(cfg, tmp_path):
+    """fastsurfer_long appears once per session (session-scoped, not deduplicated)."""
+    sessions_df = make_two_session_df(cfg, tmp_path)
+    for session in ("ses-01", "ses-02"):
+        mark_bids_complete(tmp_path, "sub-0001", session)
+        mark_bids_post_complete(tmp_path, "sub-0001", session)
+        mark_fastsurfer_cross_complete(tmp_path, "sub-0001", session)
+    mark_fastsurfer_template_complete(tmp_path, "sub-0001")
+
+    manifest = build_manifest(sessions_df, cfg)
+
+    long_rows = manifest[manifest["procedure"] == "fastsurfer_long"]
+    assert len(long_rows) == 2
+    assert set(long_rows["session"]) == {"ses-01", "ses-02"}
+
+
+def test_fastsurfer_manifest_order_cross_before_template_before_long(cfg, tmp_path):
+    """Priority ensures cross < template < long in manifest ordering."""
+    sessions_df = make_two_session_df(cfg, tmp_path)
+    for session in ("ses-01", "ses-02"):
+        mark_bids_complete(tmp_path, "sub-0001", session)
+        mark_bids_post_complete(tmp_path, "sub-0001", session)
+        mark_fastsurfer_cross_complete(tmp_path, "sub-0001", session)
+    mark_fastsurfer_template_complete(tmp_path, "sub-0001")
+
+    manifest = build_manifest(sessions_df, cfg)
+
+    procs = list(manifest["procedure"])
+    if "fastsurfer_template" in procs and "fastsurfer_long" in procs:
+        tmpl_idx = procs.index("fastsurfer_template")
+        long_indices = [i for i, p in enumerate(procs) if p == "fastsurfer_long"]
+        for li in long_indices:
+            assert li > tmpl_idx
+
+
+def test_reconcile_fastsurfer_cross_completion(cfg, tmp_path):
+    """reconcile_with_filesystem detects completed fastsurfer_cross."""
+    subject, session = "sub-0001", "ses-01"
+    mark_fastsurfer_cross_complete(tmp_path, subject, session)
+
+    state = pd.DataFrame([make_state_row(subject, session, "fastsurfer_cross", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
+
+
+def test_reconcile_fastsurfer_template_completion(cfg, tmp_path):
+    """reconcile_with_filesystem detects completed fastsurfer_template."""
+    subject = "sub-0001"
+    mark_fastsurfer_template_complete(tmp_path, subject)
+
+    # Template is subject-scoped (session="")
+    state = pd.DataFrame([make_state_row(subject, "", "fastsurfer_template", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "complete"
