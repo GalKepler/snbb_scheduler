@@ -27,12 +27,21 @@ two-step filter used by :mod:`snbb_scheduler.freesurfer`:
 
 SUBJECTS_DIR naming
 --------------------
-All outputs live under a single ``SUBJECTS_DIR``
-(``<derivatives_root>/fastsurfer/``).  The subdirectory names encode the run:
+Each subject's outputs are nested under ``<derivatives_root>/fastsurfer/<subject>/``,
+which is bound to ``/output`` inside the container.  Within that subject directory:
 
-* Cross-sectional : ``<subject>_<session>``  (e.g. ``sub-0001_ses-01``)
-* Longitudinal    : ``<subject>_<session>.long.<subject>``
-                    (e.g. ``sub-0001_ses-01.long.sub-0001``)
+* Cross-sectional : ``<session>``  (e.g. ``ses-01``)
+* Longitudinal    : ``<session>.long.<subject>``
+                    (e.g. ``ses-01.long.sub-0001``)
+* Template        : ``<subject>``  (e.g. ``sub-0001``)
+
+Full example layout::
+
+    fastsurfer/
+    └── sub-0001/
+        ├── ses-01                      (cross-sectional intermediate)
+        ├── ses-01.long.sub-0001        (longitudinal final)
+        └── sub-0001                    (template)
 """
 
 __all__ = [
@@ -58,20 +67,22 @@ from pathlib import Path
 def fastsurfer_sid(subject: str, session: str) -> str:
     """Return the FastSurfer subject-ID for a cross-sectional run.
 
+    With the nested per-subject output structure the subject directory is
+    already the ``SUBJECTS_DIR``, so only the bare session label is needed.
+
     Parameters
     ----------
     subject:
-        BIDS subject label, e.g. ``sub-0001``.
+        BIDS subject label, e.g. ``sub-0001`` (unused; kept for API symmetry).
     session:
         BIDS session label, e.g. ``ses-01``.
 
     Returns
     -------
     str
-        Combined identifier ``"{subject}_{session}"``,
-        e.g. ``"sub-0001_ses-01"``.
+        The session label, e.g. ``"ses-01"``.
     """
-    return f"{subject}_{session}"
+    return session
 
 
 def fastsurfer_long_sid(subject: str, session: str) -> str:
@@ -87,10 +98,10 @@ def fastsurfer_long_sid(subject: str, session: str) -> str:
     Returns
     -------
     str
-        Identifier ``"{subject}_{session}.long.{subject}"``,
-        e.g. ``"sub-0001_ses-01.long.sub-0001"``.
+        Identifier ``"{session}.long.{subject}"``,
+        e.g. ``"ses-01.long.sub-0001"``.
     """
-    return f"{subject}_{session}.long.{subject}"
+    return f"{session}.long.{subject}"
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +250,7 @@ def build_cross_apptainer_command(
         "--bind",
         f"{bids_dir}:/data:ro",
         "--bind",
-        f"{output_dir}:/output",
+        f"{output_dir}/{subject}:/output",
         "--bind",
         f"{fs_license}:/opt/fs_license.txt:ro",
         str(sif),
@@ -301,18 +312,18 @@ def build_long_fastsurfer_command(
     """
     cmd = [
         "apptainer",
-        "run",
+        "exec",
         "--cleanenv",
         "--env",
         "FS_LICENSE=/opt/fs_license.txt",
         "--bind",
         f"{bids_dir}:/data:ro",
         "--bind",
-        f"{output_dir}:/output",
+        f"{output_dir}/{subject}:/output",
         "--bind",
         f"{fs_license}:/opt/fs_license.txt:ro",
         str(sif),
-        "long_fastsurfer.sh",
+        "/fastsurfer/long_fastsurfer.sh",
         "--tid",
         subject,
         "--sd",
@@ -324,8 +335,8 @@ def build_long_fastsurfer_command(
     ]
     # Append all T1w paths remapped to container space
     cmd += ["--t1s"] + [_remap(t1w, bids_dir, "/data") for t1w in sessions_t1ws.values()]
-    # Append all timepoint IDs
-    cmd += ["--tpids"] + [fastsurfer_sid(subject, ses) for ses in sessions_t1ws]
+    # Append all timepoint IDs (bare session labels; subject dir is already the SUBJECTS_DIR)
+    cmd += ["--tpids"] + list(sessions_t1ws.keys())
     return cmd
 
 
@@ -376,7 +387,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    (args.output_dir / args.subject).mkdir(parents=True, exist_ok=True)
 
     if len(sessions_t1ws) == 1:
         session, t1w = next(iter(sessions_t1ws.items()))

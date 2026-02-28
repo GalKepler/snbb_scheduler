@@ -690,17 +690,16 @@ def _make_bids_t1w(bids_root: "Path", subject: str, session: str) -> None:
 
 
 def test_fastsurfer_single_session_complete(tmp_path):
-    """Single-session: check sub-XXXX_ses-YY/scripts/recon-surf.done."""
+    """Single-session: check <output_path>/ses-YY/scripts/recon-surf.done."""
     proc = _get_fastsurfer_proc()
     subject, session = "sub-0001", "ses-01"
     bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
 
     _make_bids_t1w(bids_root, subject, session)
-    actual_dir = derivatives_root / "fastsurfer" / f"{subject}_{session}"
-    _write_recon_surf_done(actual_dir)
-
     output_path = derivatives_root / "fastsurfer" / subject
+    _write_recon_surf_done(output_path / session)
+
     assert is_complete(
         proc, output_path,
         bids_root=bids_root,
@@ -717,10 +716,10 @@ def test_fastsurfer_single_session_incomplete_no_done(tmp_path):
     derivatives_root = tmp_path / "derivatives"
 
     _make_bids_t1w(bids_root, subject, session)
-    # Create dir but no done file
-    (derivatives_root / "fastsurfer" / f"{subject}_{session}" / "scripts").mkdir(parents=True)
-
     output_path = derivatives_root / "fastsurfer" / subject
+    # Create dir but no done file
+    (output_path / session / "scripts").mkdir(parents=True)
+
     assert is_complete(
         proc, output_path,
         bids_root=bids_root,
@@ -751,19 +750,18 @@ def test_fastsurfer_single_session_incomplete_directory_absent(tmp_path):
 
 
 def test_fastsurfer_multi_session_complete(tmp_path):
-    """Multi-session: all sub-XXXX_ses-YY.long.sub-XXXX/scripts/recon-surf.done must exist."""
+    """Multi-session: all <output_path>/ses-YY.long.sub-XXXX/scripts/recon-surf.done must exist."""
     proc = _get_fastsurfer_proc()
     subject = "sub-0001"
     sessions = ["ses-01", "ses-02"]
     bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
 
+    output_path = derivatives_root / "fastsurfer" / subject
     for ses in sessions:
         _make_bids_t1w(bids_root, subject, ses)
-        long_dir = derivatives_root / "fastsurfer" / f"{subject}_{ses}.long.{subject}"
-        _write_recon_surf_done(long_dir)
+        _write_recon_surf_done(output_path / f"{ses}.long.{subject}")
 
-    output_path = derivatives_root / "fastsurfer" / subject
     assert is_complete(
         proc, output_path,
         bids_root=bids_root,
@@ -780,15 +778,13 @@ def test_fastsurfer_multi_session_incomplete_one_missing(tmp_path):
     bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
 
+    output_path = derivatives_root / "fastsurfer" / subject
     for ses in sessions:
         _make_bids_t1w(bids_root, subject, ses)
 
     # Only ses-01 long done file exists; ses-02 is missing
-    _write_recon_surf_done(
-        derivatives_root / "fastsurfer" / f"{subject}_ses-01.long.{subject}"
-    )
+    _write_recon_surf_done(output_path / f"ses-01.long.{subject}")
 
-    output_path = derivatives_root / "fastsurfer" / subject
     assert is_complete(
         proc, output_path,
         bids_root=bids_root,

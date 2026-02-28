@@ -468,7 +468,7 @@ def _make_bids_t1w(cfg: SchedulerConfig, subject: str, session: str) -> None:
 
 def mark_fastsurfer_complete_single(cfg: SchedulerConfig, subject: str, session: str) -> None:
     """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
-    scripts = cfg.derivatives_root / "fastsurfer" / f"{subject}_{session}" / "scripts"
+    scripts = cfg.derivatives_root / "fastsurfer" / subject / session / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     (scripts / "recon-surf.done").touch()
 
@@ -480,7 +480,7 @@ def mark_fastsurfer_complete_multi(
     for ses in sessions:
         scripts = (
             cfg.derivatives_root / "fastsurfer"
-            / f"{subject}_{ses}.long.{subject}" / "scripts"
+            / subject / f"{ses}.long.{subject}" / "scripts"
         )
         scripts.mkdir(parents=True, exist_ok=True)
         (scripts / "recon-surf.done").touch()

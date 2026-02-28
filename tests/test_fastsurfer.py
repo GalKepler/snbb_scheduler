@@ -19,19 +19,19 @@ from snbb_scheduler.fastsurfer import (
 
 
 def test_fastsurfer_sid():
-    assert fastsurfer_sid("sub-0001", "ses-01") == "sub-0001_ses-01"
+    assert fastsurfer_sid("sub-0001", "ses-01") == "ses-01"
 
 
 def test_fastsurfer_sid_different_subject():
-    assert fastsurfer_sid("sub-9999", "ses-99") == "sub-9999_ses-99"
+    assert fastsurfer_sid("sub-9999", "ses-99") == "ses-99"
 
 
 def test_fastsurfer_long_sid():
-    assert fastsurfer_long_sid("sub-0001", "ses-01") == "sub-0001_ses-01.long.sub-0001"
+    assert fastsurfer_long_sid("sub-0001", "ses-01") == "ses-01.long.sub-0001"
 
 
 def test_fastsurfer_long_sid_multi_session():
-    assert fastsurfer_long_sid("sub-0002", "ses-02") == "sub-0002_ses-02.long.sub-0002"
+    assert fastsurfer_long_sid("sub-0002", "ses-02") == "ses-02.long.sub-0002"
 
 
 # ---------------------------------------------------------------------------
@@ -172,14 +172,14 @@ def test_cross_command_binds_bids_readonly():
 def test_cross_command_binds_output_readwrite():
     cmd = build_cross_apptainer_command(SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR,
                                         "sub-0001", "ses-01", T1W, 8)
-    assert f"{OUTPUT_DIR}:/output" in cmd
+    assert f"{OUTPUT_DIR}/sub-0001:/output" in cmd
 
 
 def test_cross_command_sid_is_subject_session():
     cmd = build_cross_apptainer_command(SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR,
                                         "sub-0001", "ses-01", T1W, 8)
     idx = cmd.index("--sid")
-    assert cmd[idx + 1] == "sub-0001_ses-01"
+    assert cmd[idx + 1] == "ses-01"
 
 
 def test_cross_command_sd_is_container_output():
@@ -238,7 +238,7 @@ def test_long_fastsurfer_command_binds_output_readwrite():
     cmd = build_long_fastsurfer_command(
         SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert f"{OUTPUT_DIR}:/output" in cmd
+    assert f"{OUTPUT_DIR}/sub-0001:/output" in cmd
 
 
 def test_long_fastsurfer_command_invokes_long_fastsurfer_sh():
@@ -296,7 +296,7 @@ def test_long_fastsurfer_command_tpids_are_fastsurfer_sids():
     )
     tpids_idx = cmd.index("--tpids")
     tpids = cmd[tpids_idx + 1 : tpids_idx + 3]
-    assert tpids == ["sub-0001_ses-01", "sub-0001_ses-02"]
+    assert tpids == ["ses-01", "ses-02"]
 
 
 def test_long_fastsurfer_command_threads():

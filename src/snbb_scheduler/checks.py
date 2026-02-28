@@ -117,37 +117,40 @@ def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 def _fastsurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     """Unified FastSurfer completion check for both cross-sectional and longitudinal runs.
 
-    Requires *bids_root*, *derivatives_root*, and *subject* kwargs.  Falls
-    back to ``_dir_nonempty(output_path)`` when they are absent.
+    Requires *bids_root* and *subject* kwargs.  Falls back to
+    ``_dir_nonempty(output_path)`` when they are absent.
+
+    ``output_path`` is ``<derivatives>/fastsurfer/<subject>`` — the subject-level
+    SUBJECTS_DIR that is bound to ``/output`` inside the container.
 
     Logic:
     * Discover BIDS sessions with an anatomical T1w image.
-    * **1 session**: check ``<subjects_dir>/<subject>_<session>/scripts/recon-surf.done``
+    * **1 session**: check ``<output_path>/<session>/scripts/recon-surf.done``
     * **2+ sessions**: check that ALL
-      ``<subjects_dir>/<subject>_<session>.long.<subject>/scripts/recon-surf.done``
+      ``<output_path>/<session>.long.<subject>/scripts/recon-surf.done``
       exist (produced by ``long_fastsurfer.sh``).
+
+    The ``derivatives_root`` kwarg is accepted but unused (kept for backward
+    compatibility with callers that pass it).
     """
     from snbb_scheduler.fastsurfer import fastsurfer_long_sid, fastsurfer_sid
 
     bids_root = kwargs.get("bids_root")
-    derivatives_root = kwargs.get("derivatives_root")
     subject = kwargs.get("subject")
 
-    if bids_root is None or derivatives_root is None or subject is None:
+    if bids_root is None or subject is None:
         return _dir_nonempty(output_path)
 
     sessions = _count_bids_anat_sessions(Path(bids_root), subject)
     if not sessions:
         return False
 
-    fs_dir = Path(derivatives_root) / "fastsurfer"
-
     if len(sessions) == 1:
         session = sessions[0]
-        return (fs_dir / fastsurfer_sid(subject, session) / "scripts" / "recon-surf.done").exists()
+        return (output_path / fastsurfer_sid(subject, session) / "scripts" / "recon-surf.done").exists()
 
     return all(
-        (fs_dir / fastsurfer_long_sid(subject, ses) / "scripts" / "recon-surf.done").exists()
+        (output_path / fastsurfer_long_sid(subject, ses) / "scripts" / "recon-surf.done").exists()
         for ses in sessions
     )
 

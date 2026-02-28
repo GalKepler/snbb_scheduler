@@ -418,7 +418,7 @@ def _make_bids_t1w(tmp_path: Path, subject: str, session: str) -> None:
 
 def mark_fastsurfer_complete_single(tmp_path: Path, subject: str, session: str) -> None:
     """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
-    scripts = tmp_path / "derivatives" / "fastsurfer" / f"{subject}_{session}" / "scripts"
+    scripts = tmp_path / "derivatives" / "fastsurfer" / subject / session / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     (scripts / "recon-surf.done").touch()
 
@@ -428,7 +428,7 @@ def mark_fastsurfer_complete_multi(tmp_path: Path, subject: str, sessions: list)
     for ses in sessions:
         scripts = (
             tmp_path / "derivatives" / "fastsurfer"
-            / f"{subject}_{ses}.long.{subject}" / "scripts"
+            / subject / f"{ses}.long.{subject}" / "scripts"
         )
         scripts.mkdir(parents=True, exist_ok=True)
         (scripts / "recon-surf.done").touch()

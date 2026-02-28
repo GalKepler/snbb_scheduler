@@ -82,7 +82,7 @@ def add_fastsurfer_single(tmp_path, subject, session):
     """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
     scripts = (
         tmp_path / "derivatives" / "fastsurfer"
-        / f"{subject}_{session}" / "scripts"
+        / subject / session / "scripts"
     )
     scripts.mkdir(parents=True, exist_ok=True)
     (scripts / "recon-surf.done").touch()
@@ -93,7 +93,7 @@ def add_fastsurfer_multi(tmp_path, subject, sessions):
     for ses in sessions:
         scripts = (
             tmp_path / "derivatives" / "fastsurfer"
-            / f"{subject}_{ses}.long.{subject}" / "scripts"
+            / subject / f"{ses}.long.{subject}" / "scripts"
         )
         scripts.mkdir(parents=True, exist_ok=True)
         (scripts / "recon-surf.done").touch()

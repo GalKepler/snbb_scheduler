@@ -7,8 +7,8 @@
 #   - cross-sectional FastSurfer  (1 session)
 #   - long_fastsurfer.sh          (2+ sessions, full longitudinal pipeline)
 #
-# Output directory: SNBB_FASTSURFER_OUTPUT/<subject>*/
-# (SUBJECTS_DIR naming: sub-XXXX_ses-YY  or  sub-XXXX_ses-YY.long.sub-XXXX)
+# Output directory: SNBB_FASTSURFER_OUTPUT/<subject>/
+# (SUBJECTS_DIR naming: ses-YY  or  ses-YY.long.sub-XXXX  inside the subject dir)
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the defaults below for your cluster, or export the env vars before
@@ -82,16 +82,12 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         --fs-license  "${SNBB_FS_LICENSE}" \
         --threads     "${SLURM_CPUS_PER_TASK:-8}"
 
-    # Rsync ALL subject-prefixed output directories back
+    # Rsync the subject subdirectory back as a single unit
     CLEANUP_ON_EXIT=false
-    for local_dir in "${LOCAL_FS_OUTPUT}/${SUBJECT}"*/; do
-        [[ -d "${local_dir}" ]] || continue
-        dir_name="$(basename "${local_dir}")"
-        rsync -av "${local_dir}" "${SNBB_FASTSURFER_OUTPUT}/${dir_name}/" || {
-            echo "ERROR: rsync failed for ${dir_name}. Local output preserved at ${local_dir}" >&2
-            exit 1
-        }
-    done
+    rsync -av "${LOCAL_FS_OUTPUT}/${SUBJECT}/" "${SNBB_FASTSURFER_OUTPUT}/${SUBJECT}/" || {
+        echo "ERROR: rsync failed for ${SUBJECT}. Local output preserved at ${LOCAL_FS_OUTPUT}/${SUBJECT}" >&2
+        exit 1
+    }
     CLEANUP_ON_EXIT=true
     # ─────────────────────────────────────────────────────────────────────────
 else
