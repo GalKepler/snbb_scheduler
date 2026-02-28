@@ -42,13 +42,17 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
       ["pat1", ...] — ALL patterns must match at least one file
 
     Procedures registered in ``_SPECIALIZED_CHECKS`` use a custom check
-    function instead.  Unknown keyword arguments are silently ignored.
-    """
-    if not output_path.exists():
-        return False
+    function instead and are called **before** the ``output_path.exists()``
+    guard, allowing them to remap paths (e.g. FastSurfer's SUBJECTS_DIR
+    naming differs from the scheduler's path convention).
 
+    Unknown keyword arguments are silently ignored.
+    """
     if proc.name in _SPECIALIZED_CHECKS:
         return _SPECIALIZED_CHECKS[proc.name](proc, output_path, **kwargs)
+
+    if not output_path.exists():
+        return False
 
     marker = proc.completion_marker
 
@@ -109,6 +113,71 @@ def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
 
 
+@_register_check("fastsurfer_cross")
+def _fastsurfer_cross_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """Cross-sectional FastSurfer is complete when ``scripts/recon-all.done``
+    exists inside the session-specific subdirectory.
+
+    The scheduler constructs ``output_path`` as ``<root>/<subject>/<session>``
+    (the standard session-scoped convention), but FastSurfer writes its output
+    to ``<root>/<subject>_<session>`` (the SUBJECTS_DIR naming convention).
+    This check remaps the path accordingly.
+
+    When *derivatives_root*, *subject*, and *session* are not provided as
+    keyword arguments, falls back to checking ``output_path`` directly
+    (useful in unit tests that pre-create the scheduler-convention path).
+    """
+    from snbb_scheduler.fastsurfer import fastsurfer_sid
+
+    derivatives_root = kwargs.get("derivatives_root")
+    subject = kwargs.get("subject")
+    session = kwargs.get("session")
+
+    if derivatives_root is None or subject is None or session is None:
+        # Fallback: treat output_path as the actual directory
+        return (output_path / "scripts" / "recon-all.done").exists()
+
+    actual = Path(derivatives_root) / "fastsurfer" / fastsurfer_sid(subject, session)
+    return (actual / "scripts" / "recon-all.done").exists()
+
+
+@_register_check("fastsurfer_template")
+def _fastsurfer_template_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """Within-subject template is complete when ``scripts/recon-all.done``
+    exists inside the subject-level subdirectory.
+
+    For the template stage the scheduler path (``<root>/<subject>``) matches
+    the actual FastSurfer directory, so no remapping is needed.
+    """
+    return (output_path / "scripts" / "recon-all.done").exists()
+
+
+@_register_check("fastsurfer_long")
+def _fastsurfer_long_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """Longitudinal FastSurfer is complete when ``scripts/recon-all.done``
+    exists inside the longitudinal output subdirectory.
+
+    FastSurfer writes the longitudinal result to
+    ``<root>/<subject>_<session>.long.<subject>`` while the scheduler
+    constructs ``output_path`` as ``<root>/<subject>/<session>``.
+    This check remaps the path accordingly.
+
+    Falls back to ``output_path`` when *derivatives_root*, *subject*, and
+    *session* are absent.
+    """
+    from snbb_scheduler.fastsurfer import fastsurfer_long_sid
+
+    derivatives_root = kwargs.get("derivatives_root")
+    subject = kwargs.get("subject")
+    session = kwargs.get("session")
+
+    if derivatives_root is None or subject is None or session is None:
+        return (output_path / "scripts" / "recon-all.done").exists()
+
+    actual = Path(derivatives_root) / "fastsurfer" / fastsurfer_long_sid(subject, session)
+    return (actual / "scripts" / "recon-all.done").exists()
+
+
 @_register_check("qsirecon")
 def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     """QSIRecon (subject-scoped) is complete when its ``ses-*`` subdirectory count
@@ -139,11 +208,11 @@ def _is_glob(pattern: str) -> bool:
 
 
 def _dir_nonempty(path: Path) -> bool:
-    """Return True if *path* is a directory that contains at least one entry."""
+    """Return True if *path* is an existing directory that contains at least one entry."""
     try:
         next(path.iterdir())
         return True
-    except StopIteration:
+    except (StopIteration, FileNotFoundError, NotADirectoryError):
         return False
 
 
