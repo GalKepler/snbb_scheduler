@@ -6,6 +6,8 @@ repo_name: GalKepler/snbb_scheduler
 
 theme:
   name: material
+  logo: assets/snbb_logo.png
+  favicon: assets/snbb_logo.png
   features:
     - navigation.tabs
     - navigation.sections
