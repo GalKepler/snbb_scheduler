@@ -113,69 +113,43 @@ def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
 
 
-@_register_check("fastsurfer_cross")
-def _fastsurfer_cross_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """Cross-sectional FastSurfer is complete when ``scripts/recon-all.done``
-    exists inside the session-specific subdirectory.
+@_register_check("fastsurfer")
+def _fastsurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+    """Unified FastSurfer completion check for both cross-sectional and longitudinal runs.
 
-    The scheduler constructs ``output_path`` as ``<root>/<subject>/<session>``
-    (the standard session-scoped convention), but FastSurfer writes its output
-    to ``<root>/<subject>_<session>`` (the SUBJECTS_DIR naming convention).
-    This check remaps the path accordingly.
+    Requires *bids_root*, *derivatives_root*, and *subject* kwargs.  Falls
+    back to ``_dir_nonempty(output_path)`` when they are absent.
 
-    When *derivatives_root*, *subject*, and *session* are not provided as
-    keyword arguments, falls back to checking ``output_path`` directly
-    (useful in unit tests that pre-create the scheduler-convention path).
+    Logic:
+    * Discover BIDS sessions with an anatomical T1w image.
+    * **1 session**: check ``<subjects_dir>/<subject>_<session>/scripts/recon-surf.done``
+    * **2+ sessions**: check that ALL
+      ``<subjects_dir>/<subject>_<session>.long.<subject>/scripts/recon-surf.done``
+      exist (produced by ``long_fastsurfer.sh``).
     """
-    from snbb_scheduler.fastsurfer import fastsurfer_sid
+    from snbb_scheduler.fastsurfer import fastsurfer_long_sid, fastsurfer_sid
 
+    bids_root = kwargs.get("bids_root")
     derivatives_root = kwargs.get("derivatives_root")
     subject = kwargs.get("subject")
-    session = kwargs.get("session")
 
-    if derivatives_root is None or subject is None or session is None:
-        # Fallback: treat output_path as the actual directory
-        return (output_path / "scripts" / "recon-all.done").exists()
+    if bids_root is None or derivatives_root is None or subject is None:
+        return _dir_nonempty(output_path)
 
-    actual = Path(derivatives_root) / "fastsurfer" / fastsurfer_sid(subject, session)
-    return (actual / "scripts" / "recon-all.done").exists()
+    sessions = _count_bids_anat_sessions(Path(bids_root), subject)
+    if not sessions:
+        return False
 
+    fs_dir = Path(derivatives_root) / "fastsurfer"
 
-@_register_check("fastsurfer_template")
-def _fastsurfer_template_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """Within-subject template is complete when ``scripts/recon-all.done``
-    exists inside the subject-level subdirectory.
+    if len(sessions) == 1:
+        session = sessions[0]
+        return (fs_dir / fastsurfer_sid(subject, session) / "scripts" / "recon-surf.done").exists()
 
-    For the template stage the scheduler path (``<root>/<subject>``) matches
-    the actual FastSurfer directory, so no remapping is needed.
-    """
-    return (output_path / "scripts" / "recon-all.done").exists()
-
-
-@_register_check("fastsurfer_long")
-def _fastsurfer_long_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """Longitudinal FastSurfer is complete when ``scripts/recon-all.done``
-    exists inside the longitudinal output subdirectory.
-
-    FastSurfer writes the longitudinal result to
-    ``<root>/<subject>_<session>.long.<subject>`` while the scheduler
-    constructs ``output_path`` as ``<root>/<subject>/<session>``.
-    This check remaps the path accordingly.
-
-    Falls back to ``output_path`` when *derivatives_root*, *subject*, and
-    *session* are absent.
-    """
-    from snbb_scheduler.fastsurfer import fastsurfer_long_sid
-
-    derivatives_root = kwargs.get("derivatives_root")
-    subject = kwargs.get("subject")
-    session = kwargs.get("session")
-
-    if derivatives_root is None or subject is None or session is None:
-        return (output_path / "scripts" / "recon-all.done").exists()
-
-    actual = Path(derivatives_root) / "fastsurfer" / fastsurfer_long_sid(subject, session)
-    return (actual / "scripts" / "recon-all.done").exists()
+    return all(
+        (fs_dir / fastsurfer_long_sid(subject, ses) / "scripts" / "recon-surf.done").exists()
+        for ses in sessions
+    )
 
 
 @_register_check("qsirecon")
@@ -249,6 +223,24 @@ def _count_subject_ses_dirs(subject_dir: Path) -> int:
         return 0
     return sum(
         1 for d in subject_dir.iterdir() if d.is_dir() and d.name.startswith("ses-")
+    )
+
+
+def _count_bids_anat_sessions(bids_root: Path, subject: str) -> list[str]:
+    """Return sorted list of session labels with at least one T1w NIfTI.
+
+    A session qualifies when ``ses-*/anat/*_T1w.nii.gz`` matches inside
+    ``<bids_root>/<subject>``.
+    """
+    subject_dir = bids_root / subject
+    if not subject_dir.exists():
+        return []
+    return sorted(
+        ses_dir.name
+        for ses_dir in subject_dir.iterdir()
+        if ses_dir.is_dir()
+        and ses_dir.name.startswith("ses-")
+        and any((ses_dir / "anat").glob("*_T1w.nii.gz"))
     )
 
 

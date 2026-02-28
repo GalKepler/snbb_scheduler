@@ -547,80 +547,36 @@ def test_submit_task_log_filenames_contain_job_name(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_submit_fastsurfer_cross_is_session_scoped(cfg):
-    """fastsurfer_cross passes subject AND session to the script."""
+def test_submit_fastsurfer_is_subject_scoped(cfg):
+    """fastsurfer passes only subject (no session) to the script."""
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(
-            make_row(subject="sub-0001", session="ses-01", procedure="fastsurfer_cross"), cfg
+            make_row(subject="sub-0001", session="", procedure="fastsurfer"), cfg
         )
     cmd = mock_run.call_args[0][0]
-    assert "snbb_run_fastsurfer_cross.sh" in cmd
-    assert "sub-0001" in cmd
-    assert "ses-01" in cmd
-
-
-def test_submit_fastsurfer_cross_job_name(cfg):
-    """fastsurfer_cross job name includes session (session-scoped)."""
-    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
-        submit_task(
-            make_row(subject="sub-0001", session="ses-01", procedure="fastsurfer_cross"), cfg
-        )
-    cmd = mock_run.call_args[0][0]
-    assert "--job-name=fastsurfer_cross_sub-0001_ses-01" in cmd
-
-
-def test_submit_fastsurfer_template_is_subject_scoped(cfg):
-    """fastsurfer_template passes only subject (no session) to the script."""
-    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
-        submit_task(
-            make_row(subject="sub-0001", session="", procedure="fastsurfer_template"), cfg
-        )
-    cmd = mock_run.call_args[0][0]
-    assert "snbb_run_fastsurfer_template.sh" in cmd
+    assert "snbb_run_fastsurfer.sh" in cmd
     assert "sub-0001" in cmd
     # session must NOT be in the positional script args
     assert cmd[-1] != "ses-01"
     assert "ses-" not in cmd[-1]
 
 
-def test_submit_fastsurfer_template_job_name(cfg):
-    """fastsurfer_template job name includes only subject (subject-scoped)."""
+def test_submit_fastsurfer_job_name(cfg):
+    """fastsurfer job name includes only subject (subject-scoped)."""
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(
-            make_row(subject="sub-0001", session="", procedure="fastsurfer_template"), cfg
+            make_row(subject="sub-0001", session="", procedure="fastsurfer"), cfg
         )
     cmd = mock_run.call_args[0][0]
-    assert "--job-name=fastsurfer_template_sub-0001" in cmd
+    assert "--job-name=fastsurfer_sub-0001" in cmd
 
 
-def test_submit_fastsurfer_long_is_session_scoped(cfg):
-    """fastsurfer_long passes subject AND session to the script."""
-    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
-        submit_task(
-            make_row(subject="sub-0001", session="ses-02", procedure="fastsurfer_long"), cfg
-        )
-    cmd = mock_run.call_args[0][0]
-    assert "snbb_run_fastsurfer_long.sh" in cmd
-    assert "sub-0001" in cmd
-    assert "ses-02" in cmd
-
-
-def test_submit_fastsurfer_long_job_name(cfg):
-    """fastsurfer_long job name includes session (session-scoped)."""
-    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
-        submit_task(
-            make_row(subject="sub-0001", session="ses-02", procedure="fastsurfer_long"), cfg
-        )
-    cmd = mock_run.call_args[0][0]
-    assert "--job-name=fastsurfer_long_sub-0001_ses-02" in cmd
-
-
-def test_submit_fastsurfer_template_no_dicom_path(cfg):
-    """dicom_path is never appended for subject-scoped fastsurfer_template."""
+def test_submit_fastsurfer_no_dicom_path(cfg):
+    """dicom_path is never appended for subject-scoped fastsurfer."""
     dicom = Path("/data/dicom/session_dir")
     row = pd.Series({
         "subject": "sub-0001", "session": "",
-        "procedure": "fastsurfer_template", "dicom_path": dicom, "priority": 0,
+        "procedure": "fastsurfer", "dicom_path": dicom, "priority": 0,
     })
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(row, cfg)

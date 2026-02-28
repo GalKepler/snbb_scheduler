@@ -86,37 +86,18 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         completion_marker="scripts/recon-all.done",
     ),
     # ── FastSurfer longitudinal pipeline ─────────────────────────────────────
-    # Three-stage longitudinal approach:
-    #   1. fastsurfer_cross — independent cross-sectional run per session
-    #   2. fastsurfer_template — within-subject unbiased template (≥2 sessions)
-    #   3. fastsurfer_long — longitudinal refinement per session using template
-    #
-    # All three write to a single SUBJECTS_DIR (derivatives/fastsurfer/), but
-    # with different subdirectory naming conventions (see fastsurfer.py).
-    # Specialised completion checks in checks.py handle the path remapping.
+    # Single subject-scoped procedure using long_fastsurfer.sh.
+    # For subjects with one session: runs cross-sectional FastSurfer.
+    # For subjects with 2+ sessions: runs the full longitudinal pipeline.
+    # All output lives under a single SUBJECTS_DIR (derivatives/fastsurfer/).
+    # Specialised completion check in checks.py handles path remapping.
     Procedure(
-        name="fastsurfer_cross",
+        name="fastsurfer",
         output_dir="fastsurfer",
-        script="snbb_run_fastsurfer_cross.sh",
-        scope="session",
-        depends_on=["bids_post"],
-        completion_marker=None,  # specialised check: fastsurfer_cross
-    ),
-    Procedure(
-        name="fastsurfer_template",
-        output_dir="fastsurfer",
-        script="snbb_run_fastsurfer_template.sh",
+        script="snbb_run_fastsurfer.sh",
         scope="subject",
-        depends_on=["fastsurfer_cross"],
-        completion_marker=None,  # specialised check: fastsurfer_template
-    ),
-    Procedure(
-        name="fastsurfer_long",
-        output_dir="fastsurfer",
-        script="snbb_run_fastsurfer_long.sh",
-        scope="session",
-        depends_on=["fastsurfer_template"],
-        completion_marker=None,  # specialised check: fastsurfer_long
+        depends_on=["bids_post"],
+        completion_marker=None,  # specialised check: fastsurfer
     ),
     # ─────────────────────────────────────────────────────────────────────────
     Procedure(

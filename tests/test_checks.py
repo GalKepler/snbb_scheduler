@@ -662,176 +662,192 @@ def test_qsiprep_incomplete_empty_dir(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# FastSurfer specialized checks
+# FastSurfer specialized check
 # ---------------------------------------------------------------------------
 
 
-def _get_fs_proc(name: str):
-    """Retrieve a FastSurfer Procedure from DEFAULT_PROCEDURES by name."""
+def _get_fastsurfer_proc():
+    """Retrieve the fastsurfer Procedure from DEFAULT_PROCEDURES."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
-    return next(p for p in DEFAULT_PROCEDURES if p.name == name)
+    return next(p for p in DEFAULT_PROCEDURES if p.name == "fastsurfer")
 
 
-def _write_fastsurfer_done(subdir: "Path") -> None:
-    """Create a scripts/recon-all.done marker inside *subdir*."""
+def _write_recon_surf_done(subdir: "Path") -> None:
+    """Create a scripts/recon-surf.done marker inside *subdir*."""
     scripts = subdir / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").write_text("#CMDARGS placeholder\n")
+    (scripts / "recon-surf.done").touch()
 
 
-# ── fastsurfer_cross ─────────────────────────────────────────────────────────
+def _make_bids_t1w(bids_root: "Path", subject: str, session: str) -> None:
+    """Create a minimal BIDS T1w NIfTI so _count_bids_anat_sessions finds the session."""
+    anat = bids_root / subject / session / "anat"
+    anat.mkdir(parents=True, exist_ok=True)
+    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
 
 
-def test_fastsurfer_cross_complete_with_kwargs(tmp_path):
-    """Cross check remaps path and finds recon-all.done in the correct dir."""
-    from pathlib import Path
+# ── single-session (cross-sectional) ─────────────────────────────────────────
 
-    proc = _get_fs_proc("fastsurfer_cross")
+
+def test_fastsurfer_single_session_complete(tmp_path):
+    """Single-session: check sub-XXXX_ses-YY/scripts/recon-surf.done."""
+    proc = _get_fastsurfer_proc()
     subject, session = "sub-0001", "ses-01"
+    bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
+
+    _make_bids_t1w(bids_root, subject, session)
     actual_dir = derivatives_root / "fastsurfer" / f"{subject}_{session}"
-    _write_fastsurfer_done(actual_dir)
+    _write_recon_surf_done(actual_dir)
 
-    # scheduler-convention path (what _build_row constructs — does NOT exist)
-    scheduler_path = derivatives_root / "fastsurfer" / subject / session
-
+    output_path = derivatives_root / "fastsurfer" / subject
     assert is_complete(
-        proc, scheduler_path,
+        proc, output_path,
+        bids_root=bids_root,
         derivatives_root=derivatives_root,
         subject=subject,
-        session=session,
     ) is True
 
 
-def test_fastsurfer_cross_incomplete_no_done_file(tmp_path):
-    """Cross check returns False when recon-all.done is absent."""
-    proc = _get_fs_proc("fastsurfer_cross")
+def test_fastsurfer_single_session_incomplete_no_done(tmp_path):
+    """Single-session: returns False when recon-surf.done is absent."""
+    proc = _get_fastsurfer_proc()
     subject, session = "sub-0001", "ses-01"
+    bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
-    # Create the directory but not the done file
+
+    _make_bids_t1w(bids_root, subject, session)
+    # Create dir but no done file
     (derivatives_root / "fastsurfer" / f"{subject}_{session}" / "scripts").mkdir(parents=True)
 
+    output_path = derivatives_root / "fastsurfer" / subject
     assert is_complete(
-        proc, derivatives_root / "fastsurfer" / subject / session,
+        proc, output_path,
+        bids_root=bids_root,
         derivatives_root=derivatives_root,
         subject=subject,
-        session=session,
     ) is False
 
 
-def test_fastsurfer_cross_incomplete_directory_absent(tmp_path):
-    """Cross check returns False when the actual output directory does not exist."""
-    proc = _get_fs_proc("fastsurfer_cross")
+def test_fastsurfer_single_session_incomplete_directory_absent(tmp_path):
+    """Single-session: returns False when the output directory does not exist."""
+    proc = _get_fastsurfer_proc()
+    subject, session = "sub-0001", "ses-01"
+    bids_root = tmp_path / "bids"
     derivatives_root = tmp_path / "derivatives"
 
+    _make_bids_t1w(bids_root, subject, session)
+
+    output_path = derivatives_root / "fastsurfer" / subject
     assert is_complete(
-        proc, derivatives_root / "fastsurfer" / "sub-0001" / "ses-01",
+        proc, output_path,
+        bids_root=bids_root,
         derivatives_root=derivatives_root,
-        subject="sub-0001",
-        session="ses-01",
+        subject=subject,
     ) is False
 
 
-def test_fastsurfer_cross_fallback_without_kwargs(tmp_path):
-    """Without kwargs the check falls back to output_path directly."""
-    proc = _get_fs_proc("fastsurfer_cross")
-    output_path = tmp_path / "fastsurfer" / "sub-0001" / "ses-01"
-    _write_fastsurfer_done(output_path)
+# ── multi-session (longitudinal) ──────────────────────────────────────────────
+
+
+def test_fastsurfer_multi_session_complete(tmp_path):
+    """Multi-session: all sub-XXXX_ses-YY.long.sub-XXXX/scripts/recon-surf.done must exist."""
+    proc = _get_fastsurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+    bids_root = tmp_path / "bids"
+    derivatives_root = tmp_path / "derivatives"
+
+    for ses in sessions:
+        _make_bids_t1w(bids_root, subject, ses)
+        long_dir = derivatives_root / "fastsurfer" / f"{subject}_{ses}.long.{subject}"
+        _write_recon_surf_done(long_dir)
+
+    output_path = derivatives_root / "fastsurfer" / subject
+    assert is_complete(
+        proc, output_path,
+        bids_root=bids_root,
+        derivatives_root=derivatives_root,
+        subject=subject,
+    ) is True
+
+
+def test_fastsurfer_multi_session_incomplete_one_missing(tmp_path):
+    """Multi-session: returns False when any longitudinal done file is absent."""
+    proc = _get_fastsurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+    bids_root = tmp_path / "bids"
+    derivatives_root = tmp_path / "derivatives"
+
+    for ses in sessions:
+        _make_bids_t1w(bids_root, subject, ses)
+
+    # Only ses-01 long done file exists; ses-02 is missing
+    _write_recon_surf_done(
+        derivatives_root / "fastsurfer" / f"{subject}_ses-01.long.{subject}"
+    )
+
+    output_path = derivatives_root / "fastsurfer" / subject
+    assert is_complete(
+        proc, output_path,
+        bids_root=bids_root,
+        derivatives_root=derivatives_root,
+        subject=subject,
+    ) is False
+
+
+def test_fastsurfer_multi_session_incomplete_all_missing(tmp_path):
+    """Multi-session: returns False when no longitudinal done files exist."""
+    proc = _get_fastsurfer_proc()
+    subject = "sub-0001"
+    bids_root = tmp_path / "bids"
+    derivatives_root = tmp_path / "derivatives"
+
+    _make_bids_t1w(bids_root, subject, "ses-01")
+    _make_bids_t1w(bids_root, subject, "ses-02")
+
+    output_path = derivatives_root / "fastsurfer" / subject
+    assert is_complete(
+        proc, output_path,
+        bids_root=bids_root,
+        derivatives_root=derivatives_root,
+        subject=subject,
+    ) is False
+
+
+# ── no BIDS sessions / fallback ───────────────────────────────────────────────
+
+
+def test_fastsurfer_no_bids_sessions_returns_false(tmp_path):
+    """Returns False when no T1w sessions are found in BIDS."""
+    proc = _get_fastsurfer_proc()
+    subject = "sub-0001"
+    bids_root = tmp_path / "bids"
+    derivatives_root = tmp_path / "derivatives"
+
+    output_path = derivatives_root / "fastsurfer" / subject
+    assert is_complete(
+        proc, output_path,
+        bids_root=bids_root,
+        derivatives_root=derivatives_root,
+        subject=subject,
+    ) is False
+
+
+def test_fastsurfer_fallback_without_kwargs_nonempty(tmp_path):
+    """Without kwargs the check falls back to _dir_nonempty(output_path)."""
+    proc = _get_fastsurfer_proc()
+    output_path = tmp_path / "fastsurfer" / "sub-0001"
+    output_path.mkdir(parents=True)
+    (output_path / "somefile").touch()
 
     assert is_complete(proc, output_path) is True
 
 
-def test_fastsurfer_cross_fallback_incomplete_without_kwargs(tmp_path):
-    proc = _get_fs_proc("fastsurfer_cross")
-    output_path = tmp_path / "fastsurfer" / "sub-0001" / "ses-01"
+def test_fastsurfer_fallback_without_kwargs_empty(tmp_path):
+    proc = _get_fastsurfer_proc()
+    output_path = tmp_path / "fastsurfer" / "sub-0001"
     output_path.mkdir(parents=True)
 
     assert is_complete(proc, output_path) is False
-
-
-# ── fastsurfer_template ──────────────────────────────────────────────────────
-
-
-def test_fastsurfer_template_complete(tmp_path):
-    """Template check: scheduler path matches actual dir → check for done file."""
-    proc = _get_fs_proc("fastsurfer_template")
-    subject = "sub-0001"
-    derivatives_root = tmp_path / "derivatives"
-    # Template dir matches scheduler path (root/subject)
-    template_dir = derivatives_root / "fastsurfer" / subject
-    _write_fastsurfer_done(template_dir)
-
-    assert is_complete(proc, template_dir) is True
-
-
-def test_fastsurfer_template_incomplete_no_done_file(tmp_path):
-    proc = _get_fs_proc("fastsurfer_template")
-    subject = "sub-0001"
-    template_dir = tmp_path / "derivatives" / "fastsurfer" / subject
-    template_dir.mkdir(parents=True)
-
-    assert is_complete(proc, template_dir) is False
-
-
-def test_fastsurfer_template_incomplete_directory_absent(tmp_path):
-    proc = _get_fs_proc("fastsurfer_template")
-    path = tmp_path / "derivatives" / "fastsurfer" / "sub-0001"
-
-    assert is_complete(proc, path) is False
-
-
-# ── fastsurfer_long ──────────────────────────────────────────────────────────
-
-
-def test_fastsurfer_long_complete_with_kwargs(tmp_path):
-    """Long check remaps to sub-XXXX_ses-YY.long.sub-XXXX/ and finds done file."""
-    proc = _get_fs_proc("fastsurfer_long")
-    subject, session = "sub-0001", "ses-01"
-    derivatives_root = tmp_path / "derivatives"
-    long_dir = derivatives_root / "fastsurfer" / f"{subject}_{session}.long.{subject}"
-    _write_fastsurfer_done(long_dir)
-
-    scheduler_path = derivatives_root / "fastsurfer" / subject / session
-
-    assert is_complete(
-        proc, scheduler_path,
-        derivatives_root=derivatives_root,
-        subject=subject,
-        session=session,
-    ) is True
-
-
-def test_fastsurfer_long_incomplete_no_done_file(tmp_path):
-    proc = _get_fs_proc("fastsurfer_long")
-    subject, session = "sub-0001", "ses-01"
-    derivatives_root = tmp_path / "derivatives"
-    long_dir = derivatives_root / "fastsurfer" / f"{subject}_{session}.long.{subject}"
-    long_dir.mkdir(parents=True)  # dir exists, no done file
-
-    assert is_complete(
-        proc, derivatives_root / "fastsurfer" / subject / session,
-        derivatives_root=derivatives_root,
-        subject=subject,
-        session=session,
-    ) is False
-
-
-def test_fastsurfer_long_incomplete_directory_absent(tmp_path):
-    proc = _get_fs_proc("fastsurfer_long")
-    derivatives_root = tmp_path / "derivatives"
-
-    assert is_complete(
-        proc, derivatives_root / "fastsurfer" / "sub-0001" / "ses-01",
-        derivatives_root=derivatives_root,
-        subject="sub-0001",
-        session="ses-01",
-    ) is False
-
-
-def test_fastsurfer_long_fallback_without_kwargs(tmp_path):
-    """Without kwargs the check falls back to output_path directly."""
-    proc = _get_fs_proc("fastsurfer_long")
-    output_path = tmp_path / "fastsurfer" / "sub-0001" / "ses-01"
-    _write_fastsurfer_done(output_path)
-
-    assert is_complete(proc, output_path) is True

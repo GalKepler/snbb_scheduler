@@ -5,8 +5,8 @@ import pytest
 
 from snbb_scheduler.fastsurfer import (
     build_cross_apptainer_command,
-    build_long_apptainer_command,
-    build_template_apptainer_command,
+    build_long_fastsurfer_command,
+    collect_all_session_t1ws,
     collect_session_t1w,
     fastsurfer_long_sid,
     fastsurfer_sid,
@@ -99,6 +99,54 @@ def test_collect_session_t1w_excludes_defaced_rec_norm(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# collect_all_session_t1ws
+# ---------------------------------------------------------------------------
+
+
+def test_collect_all_session_t1ws_single_session(tmp_path):
+    t1w = _make_anat(tmp_path, "sub-0001", "ses-01", "sub-0001_ses-01_T1w.nii.gz")
+    result = collect_all_session_t1ws(tmp_path, "sub-0001")
+    assert result == {"ses-01": t1w}
+
+
+def test_collect_all_session_t1ws_multi_session(tmp_path):
+    t1 = _make_anat(tmp_path, "sub-0001", "ses-01", "sub-0001_ses-01_T1w.nii.gz")
+    t2 = _make_anat(tmp_path, "sub-0001", "ses-02", "sub-0001_ses-02_T1w.nii.gz")
+    result = collect_all_session_t1ws(tmp_path, "sub-0001")
+    assert result == {"ses-01": t1, "ses-02": t2}
+
+
+def test_collect_all_session_t1ws_skips_sessions_without_t1w(tmp_path):
+    """Sessions without a suitable T1w image are omitted from the result."""
+    t1 = _make_anat(tmp_path, "sub-0001", "ses-01", "sub-0001_ses-01_T1w.nii.gz")
+    # ses-02 has only a defaced T1w → should be skipped
+    _make_anat(tmp_path, "sub-0001", "ses-02", "sub-0001_ses-02_acq-defaced_T1w.nii.gz")
+    result = collect_all_session_t1ws(tmp_path, "sub-0001")
+    assert result == {"ses-01": t1}
+
+
+def test_collect_all_session_t1ws_empty_when_no_sessions(tmp_path):
+    """Returns an empty dict when the subject directory has no sessions."""
+    (tmp_path / "sub-0001").mkdir()
+    result = collect_all_session_t1ws(tmp_path, "sub-0001")
+    assert result == {}
+
+
+def test_collect_all_session_t1ws_empty_when_subject_absent(tmp_path):
+    result = collect_all_session_t1ws(tmp_path, "sub-9999")
+    assert result == {}
+
+
+def test_collect_all_session_t1ws_sorted_by_session(tmp_path):
+    """Sessions are returned in sorted order."""
+    _make_anat(tmp_path, "sub-0001", "ses-03", "sub-0001_ses-03_T1w.nii.gz")
+    _make_anat(tmp_path, "sub-0001", "ses-01", "sub-0001_ses-01_T1w.nii.gz")
+    _make_anat(tmp_path, "sub-0001", "ses-02", "sub-0001_ses-02_T1w.nii.gz")
+    result = collect_all_session_t1ws(tmp_path, "sub-0001")
+    assert list(result.keys()) == ["ses-01", "ses-02", "ses-03"]
+
+
+# ---------------------------------------------------------------------------
 # build_cross_apptainer_command
 # ---------------------------------------------------------------------------
 
@@ -163,92 +211,97 @@ def test_cross_command_includes_3T_flag():
 
 
 # ---------------------------------------------------------------------------
-# build_template_apptainer_command
+# build_long_fastsurfer_command
 # ---------------------------------------------------------------------------
 
+SESSIONS_T1WS = {
+    "ses-01": Path("/data/bids/sub-0001/ses-01/anat/sub-0001_ses-01_T1w.nii.gz"),
+    "ses-02": Path("/data/bids/sub-0001/ses-02/anat/sub-0001_ses-02_T1w.nii.gz"),
+}
 
-def test_template_command_starts_with_apptainer_run():
-    cmd = build_template_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", ["ses-01", "ses-02"], 8
+
+def test_long_fastsurfer_command_starts_with_apptainer_run():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
     assert cmd[:3] == ["apptainer", "run", "--cleanenv"]
 
 
-def test_template_command_includes_base_flag():
-    cmd = build_template_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", ["ses-01", "ses-02"], 8
+def test_long_fastsurfer_command_binds_bids_readonly():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert "recon-all" in cmd
-    idx = cmd.index("recon-all")
-    assert cmd[idx + 1] == "-base"
-    assert cmd[idx + 2] == "sub-0001"
+    assert f"{BIDS_DIR}:/data:ro" in cmd
 
 
-def test_template_command_includes_all_timepoints():
-    cmd = build_template_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", ["ses-01", "ses-02", "ses-03"], 8
+def test_long_fastsurfer_command_binds_output_readwrite():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert "-tp" in cmd
-    tp_indices = [i for i, v in enumerate(cmd) if v == "-tp"]
-    timepoints = [cmd[i + 1] for i in tp_indices]
-    assert timepoints == ["sub-0001_ses-01", "sub-0001_ses-02", "sub-0001_ses-03"]
+    assert f"{OUTPUT_DIR}:/output" in cmd
 
 
-def test_template_command_sd_is_container_output():
-    cmd = build_template_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", ["ses-01", "ses-02"], 8
+def test_long_fastsurfer_command_invokes_long_fastsurfer_sh():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    idx = cmd.index("-sd")
+    assert "long_fastsurfer.sh" in cmd
+
+
+def test_long_fastsurfer_command_tid_is_subject():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
+    )
+    idx = cmd.index("--tid")
+    assert cmd[idx + 1] == "sub-0001"
+
+
+def test_long_fastsurfer_command_sd_is_container_output():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
+    )
+    idx = cmd.index("--sd")
     assert cmd[idx + 1] == "/output"
 
 
-def test_template_command_includes_all_flag():
-    cmd = build_template_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", ["ses-01", "ses-02"], 8
+def test_long_fastsurfer_command_includes_3T_flag():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert "-all" in cmd
+    assert "--3T" in cmd
 
 
-# ---------------------------------------------------------------------------
-# build_long_apptainer_command
-# ---------------------------------------------------------------------------
-
-
-def test_long_command_starts_with_apptainer_run():
-    cmd = build_long_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", "ses-01", 8
+def test_long_fastsurfer_command_includes_parallel_surf():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert cmd[:3] == ["apptainer", "run", "--cleanenv"]
+    assert "--parallel_surf" in cmd
 
 
-def test_long_command_includes_long_flag():
-    cmd = build_long_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", "ses-01", 8
+def test_long_fastsurfer_command_t1s_remapped_to_container():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    assert "recon-all" in cmd
-    idx = cmd.index("recon-all")
-    assert cmd[idx + 1] == "-long"
+    t1s_idx = cmd.index("--t1s")
+    t1s = cmd[t1s_idx + 1 : t1s_idx + 3]
+    assert t1s == [
+        "/data/sub-0001/ses-01/anat/sub-0001_ses-01_T1w.nii.gz",
+        "/data/sub-0001/ses-02/anat/sub-0001_ses-02_T1w.nii.gz",
+    ]
 
 
-def test_long_command_long_sid_and_template():
-    cmd = build_long_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", "ses-01", 8
+def test_long_fastsurfer_command_tpids_are_fastsurfer_sids():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 8
     )
-    idx = cmd.index("-long")
-    assert cmd[idx + 1] == "sub-0001_ses-01"   # cross-sectional sid
-    assert cmd[idx + 2] == "sub-0001"            # template (subject only)
+    tpids_idx = cmd.index("--tpids")
+    tpids = cmd[tpids_idx + 1 : tpids_idx + 3]
+    assert tpids == ["sub-0001_ses-01", "sub-0001_ses-02"]
 
 
-def test_long_command_sd_is_container_output():
-    cmd = build_long_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", "ses-01", 8
+def test_long_fastsurfer_command_threads():
+    cmd = build_long_fastsurfer_command(
+        SIF, FS_LICENSE, BIDS_DIR, OUTPUT_DIR, "sub-0001", SESSIONS_T1WS, 16
     )
-    idx = cmd.index("-sd")
-    assert cmd[idx + 1] == "/output"
-
-
-def test_long_command_includes_all_flag():
-    cmd = build_long_apptainer_command(
-        SIF, FS_LICENSE, OUTPUT_DIR, "sub-0001", "ses-01", 8
-    )
-    assert "-all" in cmd
+    idx = cmd.index("--threads")
+    assert cmd[idx + 1] == "16"
