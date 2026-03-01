@@ -102,23 +102,49 @@ def mark_defacing_complete(row: dict) -> None:
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
-def mark_freesurfer_complete(row: dict) -> None:
-    """Create recon-all.done with CMDARGS matching the available T1w count.
+def mark_freesurfer_complete(row: dict, sessions: list[str] | None = None) -> None:
+    """Create the FreeSurfer longitudinal completion markers.
 
-    Uses collect_images so that the same filtering rules (no defaced, prefer
-    rec-norm) apply here and in the completion check.
+    For single-session subjects, creates ``<subject>/scripts/recon-all.done``.
+    For multi-session subjects, creates all three sets of done files:
+      - ``<subject>_<session>/scripts/recon-all.done`` (cross-sectional, one per session)
+      - ``<subject>/scripts/recon-all.done`` (template)
+      - ``<subject>_<session>.long.<subject>/scripts/recon-all.done`` (longitudinal, one per session)
+
+    Parameters
+    ----------
+    row:
+        Session row dict (must contain ``freesurfer_path`` and ``subject``).
+    sessions:
+        List of session labels to create done files for.  When *None*,
+        defaults to ``["ses-01"]`` (single-session).
     """
-    from snbb_scheduler.freesurfer import collect_images
-
-    scripts = row["freesurfer_path"] / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    bids_root = row["bids_path"].parent.parent  # bids_root/subject/session → bids_root
     subject = row["subject"]
-    t1w_files, _ = collect_images(bids_root, subject)
-    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(len(t1w_files)))
-    (scripts / "recon-all.done").write_text(
-        f"#CMDARGS -subject {subject} -all {i_flags}\n"
-    )
+    subjects_dir = row["freesurfer_path"].parent  # derivatives/freesurfer/
+    if sessions is None:
+        sessions = ["ses-01"]
+
+    if len(sessions) == 1:
+        # Single session: cross-sectional output lives at <subject>/
+        scripts = subjects_dir / subject / "scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "recon-all.done").touch()
+    else:
+        # Multi-session: all 3 pipeline steps
+        for ses in sessions:
+            # Step 1: cross-sectional
+            s = subjects_dir / f"{subject}_{ses}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
+        # Step 2: template
+        s = subjects_dir / subject / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+        # Step 3: longitudinal
+        for ses in sessions:
+            s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +261,9 @@ def test_qsiprep_not_needed_when_already_complete(cfg):
 def test_freesurfer_not_needed_when_bids_incomplete(cfg):
     row = make_row(cfg)
     mark_dicom(row)
-    rules = build_rules(cfg)
+    # sessions_df required for cross-scope bids_post dependency check
+    sessions_df = pd.DataFrame([row])
+    rules = build_rules(cfg, sessions_df=sessions_df)
     assert rules["freesurfer"](pd.Series(row)) is False
 
 
@@ -264,7 +292,9 @@ def test_freesurfer_not_needed_when_already_complete(cfg):
 def test_only_bids_fires_when_nothing_done(cfg):
     row = make_row(cfg)
     mark_dicom(row)
-    rules = build_rules(cfg)
+    # sessions_df required for cross-scope bids_post dependency check
+    sessions_df = pd.DataFrame([row])
+    rules = build_rules(cfg, sessions_df=sessions_df)
     assert rules["bids"](pd.Series(row)) is True
     assert rules["qsiprep"](pd.Series(row)) is False
     assert rules["freesurfer"](pd.Series(row)) is False
@@ -291,9 +321,10 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_defacing_complete(row)
     mark_qsiprep_complete(row)
     mark_freesurfer_complete(row)
-    mark_fastsurfer_complete_single(cfg, "sub-0001", "ses-01")
     mark_qsirecon_complete(row)
-    rules = build_rules(cfg)
+    # Need sessions_df for cross-scope freesurfer check
+    sessions_df = pd.DataFrame([row])
+    rules = build_rules(cfg, sessions_df=sessions_df)
     for name, rule in rules.items():
         assert rule(pd.Series(row)) is False, f"{name} fired when already complete"
 
@@ -455,7 +486,7 @@ def test_custom_procedure_respects_dependency(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# fastsurfer — helpers
+# freesurfer — cross-scope dependency helpers
 # ---------------------------------------------------------------------------
 
 
@@ -466,33 +497,13 @@ def _make_bids_t1w(cfg: SchedulerConfig, subject: str, session: str) -> None:
     (anat / f"{subject}_{session}_T1w.nii.gz").touch()
 
 
-def mark_fastsurfer_complete_single(cfg: SchedulerConfig, subject: str, session: str) -> None:
-    """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
-    scripts = cfg.derivatives_root / "fastsurfer" / subject / session / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-surf.done").touch()
-
-
-def mark_fastsurfer_complete_multi(
-    cfg: SchedulerConfig, subject: str, sessions: list[str]
-) -> None:
-    """Create longitudinal FastSurfer completion markers for all sessions."""
-    for ses in sessions:
-        scripts = (
-            cfg.derivatives_root / "fastsurfer"
-            / subject / f"{ses}.long.{subject}" / "scripts"
-        )
-        scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "recon-surf.done").touch()
-
-
 # ---------------------------------------------------------------------------
-# fastsurfer — subject-scoped, depends on bids_post (cross-scope)
+# freesurfer — subject-scoped, depends on bids_post (cross-scope)
 # ---------------------------------------------------------------------------
 
 
-def test_fastsurfer_needed_single_session_bids_post_complete(cfg):
-    """fastsurfer fires for a single-session subject when bids_post is done."""
+def test_freesurfer_needed_single_session_bids_post_complete(cfg):
+    """freesurfer fires for a single-session subject when bids_post is done."""
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
@@ -501,11 +512,11 @@ def test_fastsurfer_needed_single_session_bids_post_complete(cfg):
 
     sessions_df = pd.DataFrame([row])
     rules = build_rules(cfg, sessions_df=sessions_df)
-    assert rules["fastsurfer"](pd.Series(row)) is True
+    assert rules["freesurfer"](pd.Series(row)) is True
 
 
-def test_fastsurfer_needed_multi_session_all_bids_post_complete(cfg):
-    """fastsurfer fires when ALL sessions have bids_post complete."""
+def test_freesurfer_needed_multi_session_all_bids_post_complete(cfg):
+    """freesurfer fires when ALL sessions have bids_post complete."""
     rows = []
     for session in ("ses-01", "ses-02"):
         row = make_row(cfg, subject="sub-0001", session=session)
@@ -517,11 +528,11 @@ def test_fastsurfer_needed_multi_session_all_bids_post_complete(cfg):
     sessions_df = pd.DataFrame(rows)
 
     rules = build_rules(cfg, sessions_df=sessions_df)
-    assert rules["fastsurfer"](pd.Series(rows[0])) is True
+    assert rules["freesurfer"](pd.Series(rows[0])) is True
 
 
-def test_fastsurfer_not_needed_when_one_session_missing_bids_post(cfg):
-    """fastsurfer must NOT fire if any session's bids_post is still incomplete."""
+def test_freesurfer_not_needed_when_one_session_missing_bids_post(cfg):
+    """freesurfer must NOT fire if any session's bids_post is still incomplete."""
     rows = []
     for session in ("ses-01", "ses-02"):
         row = make_row(cfg, subject="sub-0001", session=session)
@@ -533,25 +544,25 @@ def test_fastsurfer_not_needed_when_one_session_missing_bids_post(cfg):
     sessions_df = pd.DataFrame(rows)
 
     rules = build_rules(cfg, sessions_df=sessions_df)
-    assert rules["fastsurfer"](pd.Series(rows[0])) is False
+    assert rules["freesurfer"](pd.Series(rows[0])) is False
 
 
-def test_fastsurfer_not_needed_when_already_complete_single(cfg):
-    """fastsurfer does not fire when single-session output already exists."""
+def test_freesurfer_not_needed_when_already_complete_single(cfg):
+    """freesurfer does not fire when single-session output already exists."""
     row = make_row(cfg)
     mark_dicom(row)
     mark_bids_complete(row)
     mark_bids_post_complete(row)
     _make_bids_t1w(cfg, "sub-0001", "ses-01")
-    mark_fastsurfer_complete_single(cfg, "sub-0001", "ses-01")
+    mark_freesurfer_complete(row, sessions=["ses-01"])
 
     sessions_df = pd.DataFrame([row])
     rules = build_rules(cfg, sessions_df=sessions_df)
-    assert rules["fastsurfer"](pd.Series(row)) is False
+    assert rules["freesurfer"](pd.Series(row)) is False
 
 
-def test_fastsurfer_not_needed_when_already_complete_multi(cfg):
-    """fastsurfer does not fire when all longitudinal outputs already exist."""
+def test_freesurfer_not_needed_when_already_complete_multi(cfg):
+    """freesurfer does not fire when all longitudinal outputs already exist."""
     rows = []
     for session in ("ses-01", "ses-02"):
         row = make_row(cfg, subject="sub-0001", session=session)
@@ -560,14 +571,14 @@ def test_fastsurfer_not_needed_when_already_complete_multi(cfg):
         mark_bids_post_complete(row)
         _make_bids_t1w(cfg, "sub-0001", session)
         rows.append(row)
-    mark_fastsurfer_complete_multi(cfg, "sub-0001", ["ses-01", "ses-02"])
+    mark_freesurfer_complete(rows[0], sessions=["ses-01", "ses-02"])
 
     sessions_df = pd.DataFrame(rows)
     rules = build_rules(cfg, sessions_df=sessions_df)
-    assert rules["fastsurfer"](pd.Series(rows[0])) is False
+    assert rules["freesurfer"](pd.Series(rows[0])) is False
 
 
-def test_fastsurfer_without_sessions_df_skips_cross_scope_check(cfg):
+def test_freesurfer_without_sessions_df_skips_cross_scope_check(cfg):
     """Without sessions_df the cross-scope dep check is skipped.
 
     This is the backward-compat behaviour: callers that don't pass sessions_df
@@ -580,4 +591,4 @@ def test_fastsurfer_without_sessions_df_skips_cross_scope_check(cfg):
     rules = build_rules(cfg, sessions_df=None)
     # Without sessions_df, cross-scope check is skipped → self-check runs
     # (not complete) → rule returns True because it thinks it should run
-    assert rules["fastsurfer"](pd.Series(row)) is True
+    assert rules["freesurfer"](pd.Series(row)) is True

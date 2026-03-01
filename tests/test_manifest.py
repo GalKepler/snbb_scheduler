@@ -135,22 +135,35 @@ def mark_defacing_complete(tmp_path: Path, subject: str, session: str) -> None:
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
-def mark_freesurfer_complete(tmp_path: Path, subject: str, session: str) -> None:
-    """Create recon-all.done with CMDARGS matching available T1w count.
+def mark_freesurfer_complete(
+    tmp_path: Path, subject: str, session: str, sessions: list[str] | None = None
+) -> None:
+    """Create FreeSurfer longitudinal completion markers.
 
-    Uses collect_images so that the same filtering rules (no defaced, prefer
-    rec-norm) apply here and in the completion check.
+    For single-session subjects, creates ``<subject>/scripts/recon-all.done``.
+    For multi-session subjects (when *sessions* has 2+ entries), creates all
+    three sets of done files: cross-sectional, template, and longitudinal.
     """
-    from snbb_scheduler.freesurfer import collect_images
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
+    if sessions is None:
+        sessions = [session]
 
-    scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    bids_root = tmp_path / "bids"
-    t1w_files, _ = collect_images(bids_root, subject)
-    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(len(t1w_files)))
-    (scripts / "recon-all.done").write_text(
-        f"#CMDARGS -subject {subject} -all {i_flags}\n"
-    )
+    if len(sessions) == 1:
+        s = subjects_dir / subject / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+    else:
+        for ses in sessions:
+            s = subjects_dir / f"{subject}_{ses}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
+        s = subjects_dir / subject / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+        for ses in sessions:
+            s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
 
 
 def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
@@ -165,8 +178,8 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
         qp.mkdir(parents=True)
         (qp / "out.nii.gz").touch()
+        _make_bids_t1w(tmp_path, sub, "ses-01")
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
-        mark_fastsurfer_complete_single(tmp_path, sub, "ses-01")
         # qsirecon: session subdir count must match qsiprep
         qr = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / sub / "ses-01"
         qr.mkdir(parents=True)
@@ -396,7 +409,7 @@ def test_reconcile_partial_resolution(cfg, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# FastSurfer manifest tests
+# FreeSurfer longitudinal manifest tests
 # ---------------------------------------------------------------------------
 
 
@@ -416,26 +429,8 @@ def _make_bids_t1w(tmp_path: Path, subject: str, session: str) -> None:
     (anat / f"{subject}_{session}_T1w.nii.gz").touch()
 
 
-def mark_fastsurfer_complete_single(tmp_path: Path, subject: str, session: str) -> None:
-    """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
-    scripts = tmp_path / "derivatives" / "fastsurfer" / subject / session / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-surf.done").touch()
-
-
-def mark_fastsurfer_complete_multi(tmp_path: Path, subject: str, sessions: list) -> None:
-    """Create longitudinal FastSurfer completion markers for all sessions."""
-    for ses in sessions:
-        scripts = (
-            tmp_path / "derivatives" / "fastsurfer"
-            / subject / f"{ses}.long.{subject}" / "scripts"
-        )
-        scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "recon-surf.done").touch()
-
-
-def test_fastsurfer_appears_when_bids_post_complete(cfg, tmp_path):
-    """fastsurfer appears in manifest once bids_post is complete for all sessions."""
+def test_freesurfer_appears_when_bids_post_complete(cfg, tmp_path):
+    """freesurfer appears in manifest once bids_post is complete for all sessions."""
     (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True, exist_ok=True)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
     mark_bids_post_complete(tmp_path, "sub-0001", "ses-01")
@@ -444,36 +439,37 @@ def test_fastsurfer_appears_when_bids_post_complete(cfg, tmp_path):
     from snbb_scheduler.sessions import discover_sessions
     sessions_df = discover_sessions(cfg)
     manifest = build_manifest(sessions_df, cfg)
-    assert "fastsurfer" in set(manifest["procedure"])
+    assert "freesurfer" in set(manifest["procedure"])
 
 
-def test_fastsurfer_not_in_manifest_without_bids_post(cfg, tmp_path):
-    """fastsurfer must not appear until bids_post is complete."""
+def test_freesurfer_not_in_manifest_without_bids_post(cfg, tmp_path):
+    """freesurfer must not appear until bids_post is complete."""
     (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True, exist_ok=True)
     mark_bids_complete(tmp_path, "sub-0001", "ses-01")
 
     from snbb_scheduler.sessions import discover_sessions
     sessions_df = discover_sessions(cfg)
     manifest = build_manifest(sessions_df, cfg)
-    assert "fastsurfer" not in set(manifest["procedure"])
+    assert "freesurfer" not in set(manifest["procedure"])
 
 
-def test_fastsurfer_deduplicated_in_manifest(cfg, tmp_path):
-    """fastsurfer appears only once per subject even with two sessions."""
+def test_freesurfer_deduplicated_in_manifest(cfg, tmp_path):
+    """freesurfer appears only once per subject even with two sessions."""
     sessions_df = make_two_session_df(cfg, tmp_path)
     for session in ("ses-01", "ses-02"):
         mark_bids_complete(tmp_path, "sub-0001", session)
         mark_bids_post_complete(tmp_path, "sub-0001", session)
+        _make_bids_t1w(tmp_path, "sub-0001", session)
 
     manifest = build_manifest(sessions_df, cfg)
 
-    fs_rows = manifest[manifest["procedure"] == "fastsurfer"]
+    fs_rows = manifest[manifest["procedure"] == "freesurfer"]
     assert len(fs_rows) == 1
     assert fs_rows.iloc[0]["session"] == ""
 
 
-def test_fastsurfer_not_in_manifest_when_one_session_missing_bids_post(cfg, tmp_path):
-    """fastsurfer must not appear if any session's bids_post is still incomplete."""
+def test_freesurfer_not_in_manifest_when_one_session_missing_bids_post(cfg, tmp_path):
+    """freesurfer must not appear if any session's bids_post is still incomplete."""
     sessions_df = make_two_session_df(cfg, tmp_path)
     for session in ("ses-01", "ses-02"):
         mark_bids_complete(tmp_path, "sub-0001", session)
@@ -481,28 +477,50 @@ def test_fastsurfer_not_in_manifest_when_one_session_missing_bids_post(cfg, tmp_
     mark_bids_post_complete(tmp_path, "sub-0001", "ses-01")
 
     manifest = build_manifest(sessions_df, cfg)
-    assert "fastsurfer" not in set(manifest["procedure"])
+    assert "freesurfer" not in set(manifest["procedure"])
 
 
-def test_reconcile_fastsurfer_completion_single_session(cfg, tmp_path):
-    """reconcile_with_filesystem detects completed single-session fastsurfer."""
+def test_reconcile_freesurfer_completion_single_session(cfg, tmp_path):
+    """reconcile_with_filesystem detects completed single-session freesurfer."""
     subject, session = "sub-0001", "ses-01"
     _make_bids_t1w(tmp_path, subject, session)
-    mark_fastsurfer_complete_single(tmp_path, subject, session)
+    mark_freesurfer_complete(tmp_path, subject, session, sessions=[session])
 
-    state = pd.DataFrame([make_state_row(subject, "", "fastsurfer", "pending")])
+    state = pd.DataFrame([make_state_row(subject, "", "freesurfer", "pending")])
     result = reconcile_with_filesystem(state, cfg)
     assert result.iloc[0]["status"] == "complete"
 
 
-def test_reconcile_fastsurfer_completion_multi_session(cfg, tmp_path):
-    """reconcile_with_filesystem detects completed multi-session fastsurfer."""
+def test_reconcile_freesurfer_completion_multi_session(cfg, tmp_path):
+    """reconcile_with_filesystem detects completed multi-session freesurfer (all 3 steps)."""
     subject = "sub-0001"
     sessions = ["ses-01", "ses-02"]
     for ses in sessions:
         _make_bids_t1w(tmp_path, subject, ses)
-    mark_fastsurfer_complete_multi(tmp_path, subject, sessions)
+    mark_freesurfer_complete(tmp_path, subject, sessions[0], sessions=sessions)
 
-    state = pd.DataFrame([make_state_row(subject, "", "fastsurfer", "pending")])
+    state = pd.DataFrame([make_state_row(subject, "", "freesurfer", "pending")])
     result = reconcile_with_filesystem(state, cfg)
     assert result.iloc[0]["status"] == "complete"
+
+
+def test_reconcile_freesurfer_incomplete_missing_longitudinal(cfg, tmp_path):
+    """reconcile stays pending when longitudinal step is not yet done."""
+    subject, session = "sub-0001", "ses-01"
+    sessions = ["ses-01", "ses-02"]
+    for ses in sessions:
+        _make_bids_t1w(tmp_path, subject, ses)
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
+    # Create cross-sectional and template done files, but not longitudinal
+    for ses in sessions:
+        s = subjects_dir / f"{subject}_{ses}" / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+    s = subjects_dir / subject / "scripts"
+    s.mkdir(parents=True, exist_ok=True)
+    (s / "recon-all.done").touch()
+    # Intentionally skip the longitudinal done files
+
+    state = pd.DataFrame([make_state_row(subject, "", "freesurfer", "pending")])
+    result = reconcile_with_filesystem(state, cfg)
+    assert result.iloc[0]["status"] == "pending"

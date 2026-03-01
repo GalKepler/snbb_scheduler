@@ -547,36 +547,36 @@ def test_submit_task_log_filenames_contain_job_name(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_submit_fastsurfer_is_subject_scoped(cfg):
-    """fastsurfer passes only subject (no session) to the script."""
+def test_submit_freesurfer_longitudinal_is_subject_scoped(cfg):
+    """freesurfer passes only subject (no session) to the script."""
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(
-            make_row(subject="sub-0001", session="", procedure="fastsurfer"), cfg
+            make_row(subject="sub-0001", session="", procedure="freesurfer"), cfg
         )
     cmd = mock_run.call_args[0][0]
-    assert "snbb_run_fastsurfer.sh" in cmd
+    assert "snbb_run_freesurfer.sh" in cmd
     assert "sub-0001" in cmd
     # session must NOT be in the positional script args
     assert cmd[-1] != "ses-01"
     assert "ses-" not in cmd[-1]
 
 
-def test_submit_fastsurfer_job_name(cfg):
-    """fastsurfer job name includes only subject (subject-scoped)."""
+def test_submit_freesurfer_longitudinal_job_name(cfg):
+    """freesurfer job name includes only subject (subject-scoped)."""
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(
-            make_row(subject="sub-0001", session="", procedure="fastsurfer"), cfg
+            make_row(subject="sub-0001", session="", procedure="freesurfer"), cfg
         )
     cmd = mock_run.call_args[0][0]
-    assert "--job-name=fastsurfer_sub-0001" in cmd
+    assert "--job-name=freesurfer_sub-0001" in cmd
 
 
-def test_submit_fastsurfer_no_dicom_path(cfg):
-    """dicom_path is never appended for subject-scoped fastsurfer."""
+def test_submit_freesurfer_longitudinal_no_dicom_path(cfg):
+    """dicom_path is never appended for subject-scoped freesurfer."""
     dicom = Path("/data/dicom/session_dir")
     row = pd.Series({
         "subject": "sub-0001", "session": "",
-        "procedure": "fastsurfer", "dicom_path": dicom, "priority": 0,
+        "procedure": "freesurfer", "dicom_path": dicom, "priority": 0,
     })
     with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
         submit_task(row, cfg)

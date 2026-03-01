@@ -345,43 +345,43 @@ def test_from_yaml_slurm_log_dir_none_stays_none(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_fastsurfer_procedure_present():
-    """The consolidated fastsurfer procedure is in DEFAULT_PROCEDURES."""
+def test_fastsurfer_procedure_absent():
+    """fastsurfer is no longer in DEFAULT_PROCEDURES (replaced by freesurfer longitudinal)."""
     cfg = SchedulerConfig()
     names = [p.name for p in cfg.procedures]
-    assert "fastsurfer" in names
-    assert "fastsurfer_cross" not in names
-    assert "fastsurfer_template" not in names
-    assert "fastsurfer_long" not in names
+    assert "fastsurfer" not in names
 
 
-def test_fastsurfer_attributes():
+def test_freesurfer_longitudinal_attributes():
+    """freesurfer uses longitudinal pipeline with completion_marker=None."""
     cfg = SchedulerConfig()
-    proc = cfg.get_procedure("fastsurfer")
+    proc = cfg.get_procedure("freesurfer")
     assert proc.scope == "subject"
     assert proc.depends_on == ["bids_post"]
-    assert proc.output_dir == "fastsurfer"
-    assert proc.script == "snbb_run_fastsurfer.sh"
-    assert proc.completion_marker is None
+    assert proc.output_dir == "freesurfer"
+    assert proc.script == "snbb_run_freesurfer.sh"
+    assert proc.completion_marker is None  # specialised longitudinal check
 
 
-def test_fastsurfer_uses_derivatives_root():
-    """fastsurfer writes to derivatives/fastsurfer/."""
+def test_freesurfer_uses_derivatives_root():
+    """freesurfer writes to derivatives/freesurfer/."""
     cfg = SchedulerConfig(derivatives_root=Path("/data/derivatives"))
-    proc = cfg.get_procedure("fastsurfer")
-    assert cfg.get_procedure_root(proc) == Path("/data/derivatives/fastsurfer")
+    proc = cfg.get_procedure("freesurfer")
+    assert cfg.get_procedure_root(proc) == Path("/data/derivatives/freesurfer")
 
 
-def test_fastsurfer_comes_after_freesurfer():
-    """fastsurfer appears after freesurfer in the default pipeline."""
+def test_freesurfer_comes_before_qsirecon():
+    """freesurfer appears before qsirecon in the default pipeline."""
     cfg = SchedulerConfig()
     names = [p.name for p in cfg.procedures]
-    assert names.index("freesurfer") < names.index("fastsurfer")
+    assert names.index("freesurfer") < names.index("qsirecon")
 
 
-def test_default_config_validates_fastsurfer_deps():
-    """SchedulerConfig.__post_init__ accepts the fastsurfer dependency chain."""
+def test_qsirecon_depends_on_freesurfer():
+    """qsirecon lists freesurfer (not fastsurfer) as a dependency."""
     cfg = SchedulerConfig()
-    assert cfg.get_procedure("fastsurfer").depends_on == ["bids_post"]
+    qsirecon = cfg.get_procedure("qsirecon")
+    assert "freesurfer" in qsirecon.depends_on
+    assert "fastsurfer" not in qsirecon.depends_on
 
 

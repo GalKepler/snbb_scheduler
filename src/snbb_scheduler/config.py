@@ -77,27 +77,21 @@ DEFAULT_PROCEDURES: list[Procedure] = [
             "ses-*/dwi/*dir-AP*desc-image_qc.tsv",
         ],
     ),
+    # ── FreeSurfer longitudinal pipeline ─────────────────────────────────────
+    # Single subject-scoped procedure using snbb_recon_all_helper.py.
+    # For subjects with one session: runs cross-sectional recon-all.
+    # For subjects with 2+ sessions: runs the full 3-step longitudinal pipeline
+    #   (cross-sectional → template → longitudinal refinement).
+    # All output lives under derivatives/freesurfer/ (SUBJECTS_DIR).
+    # Specialised completion check in checks.py handles multi-directory layout.
+    # Subject-scoped cross-scope dependency: waits for ALL sessions' bids_post.
     Procedure(
         name="freesurfer",
         output_dir="freesurfer",
         script="snbb_run_freesurfer.sh",
         scope="subject",
         depends_on=["bids_post"],
-        completion_marker="scripts/recon-all.done",
-    ),
-    # ── FastSurfer longitudinal pipeline ─────────────────────────────────────
-    # Single subject-scoped procedure using long_fastsurfer.sh.
-    # For subjects with one session: runs cross-sectional FastSurfer.
-    # For subjects with 2+ sessions: runs the full longitudinal pipeline.
-    # All output lives under a single SUBJECTS_DIR (derivatives/fastsurfer/).
-    # Specialised completion check in checks.py handles path remapping.
-    Procedure(
-        name="fastsurfer",
-        output_dir="fastsurfer",
-        script="snbb_run_fastsurfer.sh",
-        scope="subject",
-        depends_on=["bids_post"],
-        completion_marker=None,  # specialised check: fastsurfer
+        completion_marker=None,  # specialised check: freesurfer
     ),
     # ─────────────────────────────────────────────────────────────────────────
     Procedure(

@@ -43,8 +43,8 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
     Procedures registered in ``_SPECIALIZED_CHECKS`` use a custom check
     function instead and are called **before** the ``output_path.exists()``
-    guard, allowing them to remap paths (e.g. FastSurfer's SUBJECTS_DIR
-    naming differs from the scheduler's path convention).
+    guard, allowing them to remap paths (e.g. FreeSurfer's longitudinal
+    SUBJECTS_DIR naming differs from the scheduler's path convention).
 
     Unknown keyword arguments are silently ignored.
     """
@@ -75,25 +75,67 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
 @_register_check("freesurfer")
 def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """FreeSurfer is complete when recon-all.done exists AND all available
-    T1w images were used as inputs.
+    """FreeSurfer longitudinal completion check.
 
-    If ``bids_root`` and ``subject`` are not provided, falls back to simply
-    checking for the ``scripts/recon-all.done`` marker file.
+    ``output_path`` is ``<derivatives>/freesurfer/<subject>`` — the subject-level
+    directory that serves as the template output and the QSIRecon FS subjects dir.
+
+    With ``bids_root`` and ``subject`` kwargs:
+
+    * **Single-session**: checks ``<output_path>/scripts/recon-all.done``
+      (cross-sectional output, located at ``<subject>/``).
+    * **Multi-session** (2+ sessions): checks all three pipeline steps:
+
+      1. Cross-sectional — ``<subjects_dir>/<subject>_<session>/scripts/recon-all.done``
+         for every BIDS session.
+      2. Template — ``<output_path>/scripts/recon-all.done``
+         (i.e. ``<subject>/`` directory, same as single-session location).
+      3. Longitudinal — ``<subjects_dir>/<subject>_<session>.long.<subject>/scripts/recon-all.done``
+         for every BIDS session.
+
+    Without kwargs: falls back to checking ``<output_path>/scripts/recon-all.done``.
     """
-    done_file = output_path / "scripts" / "recon-all.done"
-    if not done_file.exists():
-        return False
-
     bids_root = kwargs.get("bids_root")
     subject = kwargs.get("subject")
-    if bids_root is None or subject is None:
-        # Backward-compat fallback: marker file presence is sufficient
-        return True
 
-    used = _count_recon_all_inputs(done_file)
-    available = _count_available_t1w(Path(bids_root), subject)
-    return used == available
+    if bids_root is None or subject is None:
+        # Backward-compat fallback
+        return (output_path / "scripts" / "recon-all.done").exists()
+
+    sessions = _count_bids_anat_sessions(Path(bids_root), subject)
+    if not sessions:
+        return False
+
+    # output_path = derivatives/freesurfer/<subject>
+    subjects_dir = output_path.parent
+
+    if len(sessions) == 1:
+        # Single session: cross-sectional only, output at <subject>/
+        return (output_path / "scripts" / "recon-all.done").exists()
+
+    # Multi-session: verify all 3 pipeline steps
+    # Step 1 — cross-sectional for each session
+    for ses in sessions:
+        cross_done = subjects_dir / f"{subject}_{ses}" / "scripts" / "recon-all.done"
+        if not cross_done.exists():
+            return False
+
+    # Step 2 — template
+    if not (output_path / "scripts" / "recon-all.done").exists():
+        return False
+
+    # Step 3 — longitudinal for each session
+    for ses in sessions:
+        long_done = (
+            subjects_dir
+            / f"{subject}_{ses}.long.{subject}"
+            / "scripts"
+            / "recon-all.done"
+        )
+        if not long_done.exists():
+            return False
+
+    return True
 
 
 @_register_check("qsiprep")
@@ -111,48 +153,6 @@ def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     qsiprep_sessions = _count_subject_ses_dirs(output_path)
     dwi_sessions = _count_bids_dwi_sessions(Path(bids_root), subject)
     return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
-
-
-@_register_check("fastsurfer")
-def _fastsurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """Unified FastSurfer completion check for both cross-sectional and longitudinal runs.
-
-    Requires *bids_root* and *subject* kwargs.  Falls back to
-    ``_dir_nonempty(output_path)`` when they are absent.
-
-    ``output_path`` is ``<derivatives>/fastsurfer/<subject>`` — the subject-level
-    SUBJECTS_DIR that is bound to ``/output`` inside the container.
-
-    Logic:
-    * Discover BIDS sessions with an anatomical T1w image.
-    * **1 session**: check ``<output_path>/<session>/scripts/recon-surf.done``
-    * **2+ sessions**: check that ALL
-      ``<output_path>/<session>.long.<subject>/scripts/recon-surf.done``
-      exist (produced by ``long_fastsurfer.sh``).
-
-    The ``derivatives_root`` kwarg is accepted but unused (kept for backward
-    compatibility with callers that pass it).
-    """
-    from snbb_scheduler.fastsurfer import fastsurfer_long_sid, fastsurfer_sid
-
-    bids_root = kwargs.get("bids_root")
-    subject = kwargs.get("subject")
-
-    if bids_root is None or subject is None:
-        return _dir_nonempty(output_path)
-
-    sessions = _count_bids_anat_sessions(Path(bids_root), subject)
-    if not sessions:
-        return False
-
-    if len(sessions) == 1:
-        session = sessions[0]
-        return (output_path / fastsurfer_sid(subject, session) / "scripts" / "recon-surf.done").exists()
-
-    return all(
-        (output_path / fastsurfer_long_sid(subject, ses) / "scripts" / "recon-surf.done").exists()
-        for ses in sessions
-    )
 
 
 @_register_check("qsirecon")

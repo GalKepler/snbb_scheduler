@@ -288,62 +288,187 @@ def test_freesurfer_incomplete_no_marker(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# FreeSurfer — T1w count matching (with kwargs)
+# FreeSurfer — longitudinal completion check (with kwargs)
 # ---------------------------------------------------------------------------
 
 
-def test_freesurfer_complete_when_t1w_count_matches(tmp_path):
-    """T1w count in done file matches available → complete."""
+def _get_freesurfer_proc():
+    """Retrieve the freesurfer Procedure from DEFAULT_PROCEDURES."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
+    return next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
-    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
 
-    subject = "sub-0001"
-    fs_subject = tmp_path / "freesurfer" / subject
-    _write_recon_all_done(fs_subject / "scripts", subject, n_t1w=1)
+def _make_bids_t1w(bids_root, subject, session):
+    """Create a minimal BIDS T1w NIfTI so _count_bids_anat_sessions finds the session."""
+    anat = bids_root / subject / session / "anat"
+    anat.mkdir(parents=True, exist_ok=True)
+    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
 
+
+def _touch_done(subjects_dir, subject_id):
+    """Create scripts/recon-all.done for a FreeSurfer subject ID."""
+    scripts = subjects_dir / subject_id / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    (scripts / "recon-all.done").touch()
+
+
+# ── single-session (cross-sectional only) ─────────────────────────────────────
+
+
+def test_freesurfer_single_session_complete(tmp_path):
+    """Single-session: check <output_path>/scripts/recon-all.done."""
+    proc = _get_freesurfer_proc()
+    subject, session = "sub-0001", "ses-01"
     bids_root = tmp_path / "bids"
-    anat = bids_root / subject / "ses-01" / "anat"
-    anat.mkdir(parents=True)
-    (anat / f"{subject}_ses-01_T1w.nii.gz").touch()
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
 
-    assert is_complete(fs, fs_subject, bids_root=bids_root, subject=subject) is True
+    _make_bids_t1w(bids_root, subject, session)
+    # output at <subject>/ (cross-sectional naming for single session)
+    output_path = subjects_dir / subject
+    _touch_done(subjects_dir, subject)
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is True
 
 
-def test_freesurfer_incomplete_when_new_t1w_added(tmp_path):
-    """More T1w files available than used in done file → needs re-run."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
-
-    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
-
-    subject = "sub-0001"
-    fs_subject = tmp_path / "freesurfer" / subject
-    # Done file only used 1 T1w
-    _write_recon_all_done(fs_subject / "scripts", subject, n_t1w=1)
-
+def test_freesurfer_single_session_incomplete_no_done(tmp_path):
+    """Single-session: returns False when recon-all.done is absent."""
+    proc = _get_freesurfer_proc()
+    subject, session = "sub-0001", "ses-01"
     bids_root = tmp_path / "bids"
-    for ses in ("ses-01", "ses-02"):  # 2 T1w now available
-        anat = bids_root / subject / ses / "anat"
-        anat.mkdir(parents=True)
-        (anat / f"{subject}_{ses}_T1w.nii.gz").touch()
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
 
-    assert is_complete(fs, fs_subject, bids_root=bids_root, subject=subject) is False
+    _make_bids_t1w(bids_root, subject, session)
+    output_path = subjects_dir / subject
+    output_path.mkdir(parents=True)  # dir exists but no done file
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
+
+
+def test_freesurfer_single_session_incomplete_dir_absent(tmp_path):
+    """Single-session: returns False when the subject directory does not exist."""
+    proc = _get_freesurfer_proc()
+    subject, session = "sub-0001", "ses-01"
+    bids_root = tmp_path / "bids"
+
+    _make_bids_t1w(bids_root, subject, session)
+    output_path = tmp_path / "derivatives" / "freesurfer" / subject
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
+
+
+# ── multi-session (longitudinal: cross + template + long) ─────────────────────
+
+
+def _setup_multi_session_complete(tmp_path, subject, sessions):
+    """Create all done files needed for a complete longitudinal FreeSurfer run."""
+    bids_root = tmp_path / "bids"
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
+
+    for ses in sessions:
+        _make_bids_t1w(bids_root, subject, ses)
+        # Step 1: cross-sectional
+        _touch_done(subjects_dir, f"{subject}_{ses}")
+
+    # Step 2: template
+    _touch_done(subjects_dir, subject)
+
+    # Step 3: longitudinal
+    for ses in sessions:
+        _touch_done(subjects_dir, f"{subject}_{ses}.long.{subject}")
+
+    return bids_root, subjects_dir / subject
+
+
+def test_freesurfer_multi_session_complete(tmp_path):
+    """Multi-session: complete when cross, template, and longitudinal done files all exist."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+
+    bids_root, output_path = _setup_multi_session_complete(tmp_path, subject, sessions)
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is True
+
+
+def test_freesurfer_multi_session_incomplete_cross_missing(tmp_path):
+    """Multi-session: returns False when a cross-sectional done file is absent."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+
+    bids_root, output_path = _setup_multi_session_complete(tmp_path, subject, sessions)
+
+    # Remove one cross-sectional done file
+    subjects_dir = output_path.parent
+    (subjects_dir / f"{subject}_ses-02" / "scripts" / "recon-all.done").unlink()
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
+
+
+def test_freesurfer_multi_session_incomplete_template_missing(tmp_path):
+    """Multi-session: returns False when the template done file is absent."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+
+    bids_root, output_path = _setup_multi_session_complete(tmp_path, subject, sessions)
+
+    # Remove the template done file
+    (output_path / "scripts" / "recon-all.done").unlink()
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
+
+
+def test_freesurfer_multi_session_incomplete_long_missing(tmp_path):
+    """Multi-session: returns False when a longitudinal done file is absent."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02"]
+
+    bids_root, output_path = _setup_multi_session_complete(tmp_path, subject, sessions)
+
+    # Remove one longitudinal done file
+    subjects_dir = output_path.parent
+    (subjects_dir / f"{subject}_ses-01.long.{subject}" / "scripts" / "recon-all.done").unlink()
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
+
+
+def test_freesurfer_multi_session_three_sessions_complete(tmp_path):
+    """Multi-session: works correctly with three sessions."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    sessions = ["ses-01", "ses-02", "ses-03"]
+
+    bids_root, output_path = _setup_multi_session_complete(tmp_path, subject, sessions)
+
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is True
+
+
+# ── no BIDS sessions / fallback ───────────────────────────────────────────────
+
+
+def test_freesurfer_no_bids_sessions_returns_false(tmp_path):
+    """Returns False when no T1w sessions are found in BIDS."""
+    proc = _get_freesurfer_proc()
+    subject = "sub-0001"
+    bids_root = tmp_path / "bids"
+
+    output_path = tmp_path / "derivatives" / "freesurfer" / subject
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
 
 
 def test_freesurfer_incomplete_no_done_file_with_kwargs(tmp_path):
-    """Done file missing → incomplete even with kwargs provided."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    """Done file missing → incomplete even with kwargs provided (single session)."""
+    proc = _get_freesurfer_proc()
+    subject, session = "sub-0001", "ses-01"
+    bids_root = tmp_path / "bids"
 
-    fs = next(p for p in DEFAULT_PROCEDURES if p.name == "freesurfer")
+    _make_bids_t1w(bids_root, subject, session)
+    output_path = tmp_path / "derivatives" / "freesurfer" / subject
+    output_path.mkdir(parents=True)  # dir exists but no done file
 
-    subject = "sub-0001"
-    fs_subject = tmp_path / "freesurfer" / subject
-    fs_subject.mkdir(parents=True)
-
-    assert (
-        is_complete(fs, fs_subject, bids_root=tmp_path / "bids", subject=subject)
-        is False
-    )
+    assert is_complete(proc, output_path, bids_root=bids_root, subject=subject) is False
 
 
 # ---------------------------------------------------------------------------
@@ -661,189 +786,4 @@ def test_qsiprep_incomplete_empty_dir(tmp_path):
     assert is_complete(qsiprep, qsiprep_session) is False
 
 
-# ---------------------------------------------------------------------------
-# FastSurfer specialized check
-# ---------------------------------------------------------------------------
-
-
-def _get_fastsurfer_proc():
-    """Retrieve the fastsurfer Procedure from DEFAULT_PROCEDURES."""
-    from snbb_scheduler.config import DEFAULT_PROCEDURES
-    return next(p for p in DEFAULT_PROCEDURES if p.name == "fastsurfer")
-
-
-def _write_recon_surf_done(subdir: "Path") -> None:
-    """Create a scripts/recon-surf.done marker inside *subdir*."""
-    scripts = subdir / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-surf.done").touch()
-
-
-def _make_bids_t1w(bids_root: "Path", subject: str, session: str) -> None:
-    """Create a minimal BIDS T1w NIfTI so _count_bids_anat_sessions finds the session."""
-    anat = bids_root / subject / session / "anat"
-    anat.mkdir(parents=True, exist_ok=True)
-    (anat / f"{subject}_{session}_T1w.nii.gz").touch()
-
-
-# ── single-session (cross-sectional) ─────────────────────────────────────────
-
-
-def test_fastsurfer_single_session_complete(tmp_path):
-    """Single-session: check <output_path>/ses-YY/scripts/recon-surf.done."""
-    proc = _get_fastsurfer_proc()
-    subject, session = "sub-0001", "ses-01"
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    _make_bids_t1w(bids_root, subject, session)
-    output_path = derivatives_root / "fastsurfer" / subject
-    _write_recon_surf_done(output_path / session)
-
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is True
-
-
-def test_fastsurfer_single_session_incomplete_no_done(tmp_path):
-    """Single-session: returns False when recon-surf.done is absent."""
-    proc = _get_fastsurfer_proc()
-    subject, session = "sub-0001", "ses-01"
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    _make_bids_t1w(bids_root, subject, session)
-    output_path = derivatives_root / "fastsurfer" / subject
-    # Create dir but no done file
-    (output_path / session / "scripts").mkdir(parents=True)
-
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is False
-
-
-def test_fastsurfer_single_session_incomplete_directory_absent(tmp_path):
-    """Single-session: returns False when the output directory does not exist."""
-    proc = _get_fastsurfer_proc()
-    subject, session = "sub-0001", "ses-01"
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    _make_bids_t1w(bids_root, subject, session)
-
-    output_path = derivatives_root / "fastsurfer" / subject
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is False
-
-
-# ── multi-session (longitudinal) ──────────────────────────────────────────────
-
-
-def test_fastsurfer_multi_session_complete(tmp_path):
-    """Multi-session: all <output_path>/ses-YY.long.sub-XXXX/scripts/recon-surf.done must exist."""
-    proc = _get_fastsurfer_proc()
-    subject = "sub-0001"
-    sessions = ["ses-01", "ses-02"]
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    output_path = derivatives_root / "fastsurfer" / subject
-    for ses in sessions:
-        _make_bids_t1w(bids_root, subject, ses)
-        _write_recon_surf_done(output_path / f"{ses}.long.{subject}")
-
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is True
-
-
-def test_fastsurfer_multi_session_incomplete_one_missing(tmp_path):
-    """Multi-session: returns False when any longitudinal done file is absent."""
-    proc = _get_fastsurfer_proc()
-    subject = "sub-0001"
-    sessions = ["ses-01", "ses-02"]
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    output_path = derivatives_root / "fastsurfer" / subject
-    for ses in sessions:
-        _make_bids_t1w(bids_root, subject, ses)
-
-    # Only ses-01 long done file exists; ses-02 is missing
-    _write_recon_surf_done(output_path / f"ses-01.long.{subject}")
-
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is False
-
-
-def test_fastsurfer_multi_session_incomplete_all_missing(tmp_path):
-    """Multi-session: returns False when no longitudinal done files exist."""
-    proc = _get_fastsurfer_proc()
-    subject = "sub-0001"
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    _make_bids_t1w(bids_root, subject, "ses-01")
-    _make_bids_t1w(bids_root, subject, "ses-02")
-
-    output_path = derivatives_root / "fastsurfer" / subject
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is False
-
-
-# ── no BIDS sessions / fallback ───────────────────────────────────────────────
-
-
-def test_fastsurfer_no_bids_sessions_returns_false(tmp_path):
-    """Returns False when no T1w sessions are found in BIDS."""
-    proc = _get_fastsurfer_proc()
-    subject = "sub-0001"
-    bids_root = tmp_path / "bids"
-    derivatives_root = tmp_path / "derivatives"
-
-    output_path = derivatives_root / "fastsurfer" / subject
-    assert is_complete(
-        proc, output_path,
-        bids_root=bids_root,
-        derivatives_root=derivatives_root,
-        subject=subject,
-    ) is False
-
-
-def test_fastsurfer_fallback_without_kwargs_nonempty(tmp_path):
-    """Without kwargs the check falls back to _dir_nonempty(output_path)."""
-    proc = _get_fastsurfer_proc()
-    output_path = tmp_path / "fastsurfer" / "sub-0001"
-    output_path.mkdir(parents=True)
-    (output_path / "somefile").touch()
-
-    assert is_complete(proc, output_path) is True
-
-
-def test_fastsurfer_fallback_without_kwargs_empty(tmp_path):
-    proc = _get_fastsurfer_proc()
-    output_path = tmp_path / "fastsurfer" / "sub-0001"
-    output_path.mkdir(parents=True)
-
-    assert is_complete(proc, output_path) is False
+# (FastSurfer checks removed — procedure replaced by FreeSurfer longitudinal pipeline)

@@ -78,27 +78,6 @@ def add_qsiprep(tmp_path, subject, session):
     (out / "dwi.nii.gz").touch()
 
 
-def add_fastsurfer_single(tmp_path, subject, session):
-    """Create the cross-sectional FastSurfer completion marker (recon-surf.done)."""
-    scripts = (
-        tmp_path / "derivatives" / "fastsurfer"
-        / subject / session / "scripts"
-    )
-    scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-surf.done").touch()
-
-
-def add_fastsurfer_multi(tmp_path, subject, sessions):
-    """Create longitudinal FastSurfer completion markers for all sessions."""
-    for ses in sessions:
-        scripts = (
-            tmp_path / "derivatives" / "fastsurfer"
-            / subject / f"{ses}.long.{subject}" / "scripts"
-        )
-        scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "recon-surf.done").touch()
-
-
 def _make_bids_t1w(tmp_path, subject, session):
     """Create a minimal BIDS T1w file so _count_bids_anat_sessions finds the session."""
     anat = tmp_path / "bids" / subject / session / "anat"
@@ -120,22 +99,47 @@ def add_defacing(tmp_path, subject, session):
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
-def add_freesurfer(tmp_path, subject):
-    """Create recon-all.done with CMDARGS matching T1w files in BIDS.
+def add_freesurfer(tmp_path, subject, sessions=None):
+    """Create FreeSurfer longitudinal completion markers.
 
-    Uses collect_images so that the same filtering rules (no defaced, prefer
-    rec-norm) apply here and in the completion check.
+    For single-session subjects, creates ``<subject>/scripts/recon-all.done``.
+    For multi-session subjects, creates cross-sectional, template, and
+    longitudinal done files for all sessions.
+
+    Parameters
+    ----------
+    sessions:
+        List of session labels.  When *None*, auto-discovers sessions from
+        the BIDS directory.  Defaults to ``["ses-01"]`` if no sessions found.
     """
-    from snbb_scheduler.freesurfer import collect_images
+    from snbb_scheduler.checks import _count_bids_anat_sessions
 
-    scripts = tmp_path / "derivatives" / "freesurfer" / subject / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
     bids_root = tmp_path / "bids"
-    t1w_files, _ = collect_images(bids_root, subject)
-    i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(len(t1w_files)))
-    (scripts / "recon-all.done").write_text(
-        f"#CMDARGS -subject {subject} -all {i_flags}\n"
-    )
+    subjects_dir = tmp_path / "derivatives" / "freesurfer"
+
+    if sessions is None:
+        sessions = _count_bids_anat_sessions(bids_root, subject) or ["ses-01"]
+
+    if len(sessions) == 1:
+        # Single session: cross-sectional at <subject>/
+        s = subjects_dir / subject / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+    else:
+        # Multi-session: all 3 pipeline steps
+        for ses in sessions:
+            s = subjects_dir / f"{subject}_{ses}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
+        # Template
+        s = subjects_dir / subject / "scripts"
+        s.mkdir(parents=True, exist_ok=True)
+        (s / "recon-all.done").touch()
+        # Longitudinal
+        for ses in sessions:
+            s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
+            s.mkdir(parents=True, exist_ok=True)
+            (s / "recon-all.done").touch()
 
 
 def mock_sbatch(job_id="1"):
@@ -256,11 +260,10 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_bids_post(tmp_path, "sub-0001", "ses-01")
     add_defacing(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
+    # FreeSurfer single-session: recon-all.done at <subject>/
+    _make_bids_t1w(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")
     add_qsirecon(tmp_path, "sub-0001", "ses-01")
-    # FastSurfer single-session (cross-sectional; recon-surf.done marker)
-    _make_bids_t1w(tmp_path, "sub-0001", "ses-01")
-    add_fastsurfer_single(tmp_path, "sub-0001", "ses-01")
 
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
@@ -365,19 +368,12 @@ def test_lifecycle_submit_poll_and_advance(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# FastSurfer longitudinal integration tests
+# FreeSurfer longitudinal integration tests
 # ---------------------------------------------------------------------------
 
 
-def mock_sbatch(job_id="12345"):
-    from unittest.mock import MagicMock
-    m = MagicMock()
-    m.stdout = f"Submitted batch job {job_id}\n"
-    return m
-
-
-def test_fastsurfer_appears_after_bids_post_complete(tmp_path):
-    """fastsurfer appears in manifest once bids_post is complete for all sessions."""
+def test_freesurfer_appears_after_bids_post_complete(tmp_path):
+    """freesurfer appears in manifest once bids_post is complete for all sessions."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
@@ -386,11 +382,11 @@ def test_fastsurfer_appears_after_bids_post_complete(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer" in set(manifest["procedure"])
+    assert "freesurfer" in set(manifest["procedure"])
 
 
-def test_fastsurfer_not_in_manifest_without_bids_post(tmp_path):
-    """fastsurfer must not appear until bids_post is complete."""
+def test_freesurfer_not_in_manifest_without_bids_post(tmp_path):
+    """freesurfer must not appear until bids_post is complete."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
@@ -399,11 +395,11 @@ def test_fastsurfer_not_in_manifest_without_bids_post(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer" not in set(manifest["procedure"])
+    assert "freesurfer" not in set(manifest["procedure"])
 
 
-def test_fastsurfer_deduplicated_per_subject(tmp_path):
-    """fastsurfer appears only once per subject even with two sessions."""
+def test_freesurfer_deduplicated_per_subject(tmp_path):
+    """freesurfer appears only once per subject even with two sessions."""
     cfg = make_config(tmp_path)
     for session in ("ses-01", "ses-02"):
         add_dicom(tmp_path, "sub-0001", session)
@@ -413,15 +409,15 @@ def test_fastsurfer_deduplicated_per_subject(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer" in set(manifest["procedure"])
-    fs_rows = manifest[manifest["procedure"] == "fastsurfer"]
+    assert "freesurfer" in set(manifest["procedure"])
+    fs_rows = manifest[manifest["procedure"] == "freesurfer"]
     assert len(fs_rows) == 1
     assert fs_rows.iloc[0]["subject"] == "sub-0001"
     assert fs_rows.iloc[0]["session"] == ""
 
 
-def test_fastsurfer_fires_for_single_session_subject(tmp_path):
-    """Single-session subjects DO trigger fastsurfer (cross-sectional mode)."""
+def test_freesurfer_fires_for_single_session_subject(tmp_path):
+    """Single-session subjects DO trigger freesurfer (cross-sectional mode)."""
     cfg = make_config(tmp_path)
     add_dicom(tmp_path, "sub-0001", "ses-01")
     add_bids(tmp_path, "sub-0001", "ses-01")
@@ -430,11 +426,11 @@ def test_fastsurfer_fires_for_single_session_subject(tmp_path):
     sessions = discover_sessions(cfg)
     manifest = build_manifest(sessions, cfg)
 
-    assert "fastsurfer" in set(manifest["procedure"])
+    assert "freesurfer" in set(manifest["procedure"])
 
 
-def test_fastsurfer_not_in_manifest_when_one_session_missing_bids_post(tmp_path):
-    """fastsurfer must not appear if any session's bids_post is still pending."""
+def test_freesurfer_not_in_manifest_when_one_session_missing_bids_post(tmp_path):
+    """freesurfer must not appear if any session's bids_post is still pending."""
     cfg = make_config(tmp_path)
     for session in ("ses-01", "ses-02"):
         add_dicom(tmp_path, "sub-0001", session)
@@ -450,5 +446,5 @@ def test_fastsurfer_not_in_manifest_when_one_session_missing_bids_post(tmp_path)
 
     sub01_procs = set(manifest[manifest["subject"] == "sub-0001"]["procedure"])
     sub02_procs = set(manifest[manifest["subject"] == "sub-0002"]["procedure"])
-    assert "fastsurfer" in sub01_procs
-    assert "fastsurfer" not in sub02_procs
+    assert "freesurfer" in sub01_procs
+    assert "freesurfer" not in sub02_procs
