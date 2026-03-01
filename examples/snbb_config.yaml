@@ -78,34 +78,25 @@ procedures:
       - "ses-*/dwi/*dir-AP*_dwi_preproc.bval"
       - "ses-*/dwi/*dir-AP*desc-image_qc.tsv"
 
-  # Cortical reconstruction (one run covers all sessions for a subject)
-  # Completion: recon-all writes this marker file when it finishes
+  # Cortical reconstruction — FreeSurfer longitudinal pipeline (subject-scoped).
+  # Single-session subjects: plain cross-sectional recon-all.
+  # Multi-session subjects: 3-step pipeline (cross-sectional → template → longitudinal).
+  # Completion: specialised check in checks.py detects all required recon-all.done markers.
   - name: freesurfer
     output_dir: freesurfer
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
-    scope: subject
-    depends_on: [bids]
-    completion_marker: "scripts/recon-all.done"
-
-  # FastSurfer cortical reconstruction (subject-scoped: one run covers all sessions)
-  # For subjects with 1 session: cross-sectional FastSurfer.
-  # For subjects with 2+ sessions: longitudinal long_fastsurfer.sh pipeline.
-  # Completion: specialised check in checks.py detects recon-surf.done markers.
-  - name: fastsurfer
-    output_dir: fastsurfer
-    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_fastsurfer.sh
     scope: subject
     depends_on: [post-bids]
     completion_marker: null
 
   # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
   # Completion: ses-* output dirs match qsiprep session count
-  # - name: qsirecon
-  #   output_dir: qsirecon-MRtrix3_act-HSVS
-  #   script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
-  #   scope: subject
-  #   depends_on: [qsiprep, freesurfer]
-  #   completion_marker: null
+  - name: qsirecon
+    output_dir: qsirecon-MRtrix3_act-HSVS
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
+    scope: subject
+    depends_on: [qsiprep, freesurfer]
+    completion_marker: null
 
   # fMRI preprocessing
   # Completion: fmriprep writes an HTML report on success
