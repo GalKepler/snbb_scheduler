@@ -151,19 +151,19 @@ def mark_freesurfer_complete(
     if len(sessions) == 1:
         s = subjects_dir / subject / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
     else:
         for ses in sessions:
             s = subjects_dir / f"{subject}_{ses}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         s = subjects_dir / subject / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         for ses in sessions:
             s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
 
 
 def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
@@ -180,10 +180,10 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         (qp / "out.nii.gz").touch()
         _make_bids_t1w(tmp_path, sub, "ses-01")
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
-        # qsirecon: session subdir count must match qsiprep
-        qr = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / sub / "ses-01"
-        qr.mkdir(parents=True)
-        (qr / "report.html").touch()
+        # qsirecon: HTML report per qsiprep session
+        qr_dir = tmp_path / "derivatives" / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
+        qr_dir.mkdir(parents=True, exist_ok=True)
+        (qr_dir / f"{sub}_ses-01.html").touch()
     sessions = make_sessions(cfg, tmp_path)
     manifest = build_manifest(sessions, cfg)
     assert manifest.empty
@@ -515,10 +515,10 @@ def test_reconcile_freesurfer_incomplete_missing_longitudinal(cfg, tmp_path):
     for ses in sessions:
         s = subjects_dir / f"{subject}_{ses}" / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
     s = subjects_dir / subject / "scripts"
     s.mkdir(parents=True, exist_ok=True)
-    (s / "recon-all.done").touch()
+    (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
     # Intentionally skip the longitudinal done files
 
     state = pd.DataFrame([make_state_row(subject, "", "freesurfer", "pending")])

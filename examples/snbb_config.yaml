@@ -87,12 +87,12 @@ procedures:
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
     scope: subject
     depends_on: [post-bids]
-    completion_marker: null
+    completion_marker: "scripts/recon-all.done"
 
   # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
   # Completion: ses-* output dirs match qsiprep session count
   - name: qsirecon
-    output_dir: qsirecon-MRtrix3_act-HSVS
+    output_dir: qsirecon
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
     scope: subject
     depends_on: [qsiprep, freesurfer]

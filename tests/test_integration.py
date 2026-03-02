@@ -86,10 +86,12 @@ def _make_bids_t1w(tmp_path, subject, session):
 
 
 def add_qsirecon(tmp_path, subject, session):
-    """Create qsirecon ses-* output dir matching the qsiprep session."""
-    out = tmp_path / "derivatives" / "qsirecon-MRtrix3_act-HSVS" / subject / session
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "report.html").touch()
+    """Create qsirecon HTML report for one session."""
+    pipeline_dir = (
+        tmp_path / "derivatives" / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
+    )
+    pipeline_dir.mkdir(parents=True, exist_ok=True)
+    (pipeline_dir / f"{subject}_{session}.html").touch()
 
 
 def add_defacing(tmp_path, subject, session):
@@ -124,22 +126,22 @@ def add_freesurfer(tmp_path, subject, sessions=None):
         # Single session: cross-sectional at <subject>/
         s = subjects_dir / subject / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
     else:
         # Multi-session: all 3 pipeline steps
         for ses in sessions:
             s = subjects_dir / f"{subject}_{ses}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         # Template
         s = subjects_dir / subject / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         # Longitudinal
         for ses in sessions:
             s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
 
 
 def mock_sbatch(job_id="1"):

@@ -100,7 +100,7 @@ def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
     if bids_root is None or subject is None:
         # Backward-compat fallback
-        return (output_path / "scripts" / "recon-all.done").exists()
+        return _recon_all_succeeded(output_path / "scripts" / "recon-all.done")
 
     sessions = _count_bids_anat_sessions(Path(bids_root), subject)
     if not sessions:
@@ -111,17 +111,17 @@ def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
     if len(sessions) == 1:
         # Single session: cross-sectional only, output at <subject>/
-        return (output_path / "scripts" / "recon-all.done").exists()
+        return _recon_all_succeeded(output_path / "scripts" / "recon-all.done")
 
     # Multi-session: verify all 3 pipeline steps
     # Step 1 — cross-sectional for each session
     for ses in sessions:
         cross_done = subjects_dir / f"{subject}_{ses}" / "scripts" / "recon-all.done"
-        if not cross_done.exists():
+        if not _recon_all_succeeded(cross_done):
             return False
 
     # Step 2 — template
-    if not (output_path / "scripts" / "recon-all.done").exists():
+    if not _recon_all_succeeded(output_path / "scripts" / "recon-all.done"):
         return False
 
     # Step 3 — longitudinal for each session
@@ -132,7 +132,7 @@ def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
             / "scripts"
             / "recon-all.done"
         )
-        if not long_done.exists():
+        if not _recon_all_succeeded(long_done):
             return False
 
     return True
@@ -157,8 +157,9 @@ def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
 @_register_check("qsirecon")
 def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """QSIRecon (subject-scoped) is complete when its ``ses-*`` subdirectory count
-    matches the number of processed QSIPrep sessions for the same subject.
+    """QSIRecon (subject-scoped) is complete when an HTML report exists at
+    ``<qsirecon_root>/derivatives/<pipeline>/<subject>_<session>.html``
+    for every session processed by QSIPrep.
 
     Falls back to ``_dir_nonempty`` when ``derivatives_root``/``subject`` are absent.
     """
@@ -167,16 +168,54 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     if derivatives_root is None or subject is None:
         return _dir_nonempty(output_path)
 
-    qsirecon_sessions = _count_subject_ses_dirs(output_path)
-    qsiprep_sessions = _count_subject_ses_dirs(
-        Path(derivatives_root) / "qsiprep" / subject
-    )
-    return qsirecon_sessions > 0 and qsirecon_sessions == qsiprep_sessions
+    qsiprep_dir = Path(derivatives_root) / "qsiprep" / subject
+    if not qsiprep_dir.exists():
+        return False
+
+    sessions = [
+        d.name for d in qsiprep_dir.iterdir()
+        if d.is_dir() and d.name.startswith("ses-")
+    ]
+    if not sessions:
+        return False
+
+    # HTML reports sit at <qsirecon_root>/derivatives/<pipeline>/<subject>_<session>.html
+    # output_path = <derivatives_root>/qsirecon/<subject>
+    qsirecon_root = output_path.parent
+    for ses in sessions:
+        if not any(qsirecon_root.glob(f"derivatives/*/{subject}_{ses}.html")):
+            return False
+
+    return True
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _recon_all_succeeded(done_file: Path) -> bool:
+    """Return True if *done_file* exists and indicates a successful run.
+
+    On success, FreeSurfer writes a multi-line metadata block starting with
+    ``-----...`` into ``scripts/recon-all.done``.  On failure, it writes just
+    the numeric exit code (e.g. ``1``).  We consider the run successful when
+    the file exists and its first line is *not* a bare integer.
+    """
+    if not done_file.exists():
+        return False
+    try:
+        first_line = done_file.read_text().split("\n", 1)[0].strip()
+        if not first_line:
+            return False
+        # A bare integer means recon-all exited with an error code
+        try:
+            int(first_line)
+            return False
+        except ValueError:
+            return True
+    except OSError:
+        return False
 
 
 def _is_glob(pattern: str) -> bool:

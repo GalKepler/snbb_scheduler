@@ -250,12 +250,22 @@ def test_bids_incomplete_no_files(tmp_path):
     assert is_complete(bids, bids_session) is False
 
 
-def _write_recon_all_done(scripts_dir, subject, n_t1w):
-    """Write a realistic recon-all.done file with *n_t1w* -i flags."""
+def _write_recon_all_done(scripts_dir, subject, n_t1w, success=True):
+    """Write a realistic recon-all.done file with *n_t1w* -i flags.
+
+    When *success* is True (default), writes the multi-line metadata format
+    that FreeSurfer produces on a successful run.  When False, writes just
+    the exit code ``1`` (matching the real failure format).
+    """
     scripts_dir.mkdir(parents=True, exist_ok=True)
+    if not success:
+        (scripts_dir / "recon-all.done").write_text("1\n")
+        return
     i_flags = " ".join(f"-i /fake/T1w_{k}.nii.gz" for k in range(n_t1w))
     (scripts_dir / "recon-all.done").write_text(
-        f"#CMDARGS -subject {subject} -all {i_flags}\n"
+        f"------------------------------\n"
+        f"SUBJECT {subject}\n"
+        f"CMDARGS -subject {subject} -all {i_flags}\n"
     )
 
 
@@ -309,7 +319,9 @@ def _touch_done(subjects_dir, subject_id):
     """Create scripts/recon-all.done for a FreeSurfer subject ID."""
     scripts = subjects_dir / subject_id / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
-    (scripts / "recon-all.done").touch()
+    (scripts / "recon-all.done").write_text(
+        f"------------------------------\nSUBJECT {subject_id}\n"
+    )
 
 
 # ── single-session (cross-sectional only) ─────────────────────────────────────
@@ -637,20 +649,20 @@ def test_qsiprep_fallback_nonempty(tmp_path):
 
 
 def test_qsirecon_complete_session_count_matches(tmp_path):
-    """QSIRecon complete when ses-* dirs match QSIPrep session count."""
+    """QSIRecon complete when HTML reports exist for all QSIPrep sessions."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
     subject = "sub-0001"
     derivatives_root = tmp_path / "derivatives"
-    qsiprep_subject = derivatives_root / "qsiprep" / subject
-    (qsiprep_subject / "ses-01").mkdir(parents=True)
+    (derivatives_root / "qsiprep" / subject / "ses-01").mkdir(parents=True)
 
-    qsirecon_subject = derivatives_root / "qsirecon-MRtrix3_act-HSVS" / subject
-    (qsirecon_subject / "ses-01").mkdir(parents=True)
-    (qsirecon_subject / "ses-01" / "report.html").touch()
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
+    pipeline_dir.mkdir(parents=True)
+    (pipeline_dir / f"{subject}_ses-01.html").touch()
 
+    qsirecon_subject = derivatives_root / "qsirecon" / subject
     assert (
         is_complete(
             qsirecon,
@@ -663,7 +675,7 @@ def test_qsirecon_complete_session_count_matches(tmp_path):
 
 
 def test_qsirecon_incomplete_missing_session(tmp_path):
-    """QSIRecon incomplete when fewer ses-* dirs than QSIPrep sessions."""
+    """QSIRecon incomplete when HTML report missing for a QSIPrep session."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
@@ -673,10 +685,12 @@ def test_qsirecon_incomplete_missing_session(tmp_path):
     for ses in ("ses-01", "ses-02"):
         (derivatives_root / "qsiprep" / subject / ses).mkdir(parents=True)
 
-    qsirecon_subject = derivatives_root / "qsirecon-MRtrix3_act-HSVS" / subject
-    (qsirecon_subject / "ses-01").mkdir(parents=True)
-    (qsirecon_subject / "ses-01" / "report.html").touch()
+    # Only ses-01 HTML created; ses-02 missing
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
+    pipeline_dir.mkdir(parents=True)
+    (pipeline_dir / f"{subject}_ses-01.html").touch()
 
+    qsirecon_subject = derivatives_root / "qsirecon" / subject
     assert (
         is_complete(
             qsirecon,
@@ -694,9 +708,9 @@ def test_qsirecon_fallback_nonempty(tmp_path):
 
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
-    subject_dir = tmp_path / "qsirecon-MRtrix3_act-HSVS" / "sub-0001"
-    (subject_dir / "ses-01").mkdir(parents=True)
-    (subject_dir / "ses-01" / "report.html").touch()
+    subject_dir = tmp_path / "qsirecon" / "sub-0001"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "something.txt").touch()
 
     assert is_complete(qsirecon, subject_dir) is True
 

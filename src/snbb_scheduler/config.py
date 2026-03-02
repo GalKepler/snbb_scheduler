@@ -96,7 +96,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
     # ─────────────────────────────────────────────────────────────────────────
     Procedure(
         name="qsirecon",
-        output_dir="qsirecon-MRtrix3_act-HSVS",
+        output_dir="qsirecon",
         script="snbb_run_qsirecon.sh",
         scope="subject",
         depends_on=["qsiprep", "freesurfer"],

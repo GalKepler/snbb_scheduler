@@ -85,12 +85,15 @@ def mark_qsiprep_complete(row: dict) -> None:
 
 
 def mark_qsirecon_complete(row: dict) -> None:
-    """Create qsirecon ses-* output dirs matching the qsiprep sessions."""
+    """Create qsirecon HTML reports matching the qsiprep sessions."""
+    subject = row["subject"]
+    # output_path = <derivatives_root>/qsirecon/<subject>
+    qsirecon_root = row["qsirecon_path"].parent
+    pipeline_dir = qsirecon_root / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
+    pipeline_dir.mkdir(parents=True, exist_ok=True)
     for ses_dir in row["qsiprep_path"].iterdir():
         if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
-            out = row["qsirecon_path"] / ses_dir.name
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "report.html").touch()
+            (pipeline_dir / f"{subject}_{ses_dir.name}.html").touch()
 
 
 def mark_defacing_complete(row: dict) -> None:
@@ -128,23 +131,23 @@ def mark_freesurfer_complete(row: dict, sessions: list[str] | None = None) -> No
         # Single session: cross-sectional output lives at <subject>/
         scripts = subjects_dir / subject / "scripts"
         scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "recon-all.done").touch()
+        (scripts / "recon-all.done").write_text("-----\nSUBJECT done\n")
     else:
         # Multi-session: all 3 pipeline steps
         for ses in sessions:
             # Step 1: cross-sectional
             s = subjects_dir / f"{subject}_{ses}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         # Step 2: template
         s = subjects_dir / subject / "scripts"
         s.mkdir(parents=True, exist_ok=True)
-        (s / "recon-all.done").touch()
+        (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
         # Step 3: longitudinal
         for ses in sessions:
             s = subjects_dir / f"{subject}_{ses}.long.{subject}" / "scripts"
             s.mkdir(parents=True, exist_ok=True)
-            (s / "recon-all.done").touch()
+            (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
 
 
 # ---------------------------------------------------------------------------

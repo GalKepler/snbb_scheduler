@@ -303,6 +303,12 @@ def build_longitudinal_command(
 ) -> list[str]:
     """Build a native ``recon-all -long`` longitudinal command.
 
+    Note: ``-parallel`` is intentionally omitted.  FreeSurfer 8.x has a bug
+    where ``reconbatchjobs`` fails at the Sphere step during ``-long`` runs
+    because the expected cmd files are never generated (sphere surfaces are
+    initialised from the template).  ``-openmp`` is kept for within-step
+    threading.
+
     Parameters
     ----------
     subject:
@@ -322,7 +328,6 @@ def build_longitudinal_command(
         "-sd",
         str(output_dir),
         "-all",
-        "-parallel",
         "-openmp",
         str(threads),
     ]
@@ -343,7 +348,6 @@ def _base_apptainer_cmd(
     return [
         "apptainer",
         "run",
-        "--cleanenv",
         "--env",
         "FS_LICENSE=/opt/fs_license.txt",
         "--bind",
@@ -428,7 +432,11 @@ def build_longitudinal_apptainer_command(
     session: str,
     threads: int,
 ) -> list[str]:
-    """Build an Apptainer ``recon-all -long`` longitudinal command."""
+    """Build an Apptainer ``recon-all -long`` longitudinal command.
+
+    Note: ``-parallel`` is intentionally omitted — see
+    :func:`build_longitudinal_command` for details.
+    """
     cmd = _base_apptainer_cmd(sif, fs_license, bids_dir, output_dir)
     cmd += [
         "recon-all",
@@ -438,7 +446,6 @@ def build_longitudinal_apptainer_command(
         "-sd",
         "/output",
         "-all",
-        "-parallel",
         "-openmp",
         str(threads),
     ]
@@ -566,7 +573,10 @@ def main(argv: list[str] | None = None) -> int:
         "--subject", required=True, help="BIDS subject label, e.g. sub-0001."
     )
     parser.add_argument(
-        "--threads", type=int, default=8, help="Number of parallel threads (default: 8)."
+        "--threads",
+        type=int,
+        default=8,
+        help="Number of parallel threads (default: 8).",
     )
     parser.add_argument(
         "--sif",
@@ -607,7 +617,9 @@ def main(argv: list[str] | None = None) -> int:
         t1w, t2w = sessions_images[ses]
         subject_id = args.subject  # output lands at <subject>/
 
-        print(f"[freesurfer] Single session ({ses}): running cross-sectional FreeSurfer.")
+        print(
+            f"[freesurfer] Single session ({ses}): running cross-sectional FreeSurfer."
+        )
 
         if _done(subjects_dir, subject_id):
             print(f"[freesurfer] {subject_id} already complete — skipping.")
@@ -674,7 +686,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Step 2 — Template
     if _done(subjects_dir, args.subject):
-        print(f"[freesurfer] Step 2 (template {args.subject}): already complete — skipping.")
+        print(
+            f"[freesurfer] Step 2 (template {args.subject}): already complete — skipping."
+        )
     else:
         if use_apptainer:
             cmd = build_template_apptainer_command(

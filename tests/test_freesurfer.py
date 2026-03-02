@@ -47,7 +47,7 @@ def _make_t2w(bids: Path, subject: str, session: str, name: str = "") -> Path:
 def _touch_done(subjects_dir: Path, subject_id: str) -> None:
     s = subjects_dir / subject_id / "scripts"
     s.mkdir(parents=True, exist_ok=True)
-    (s / "recon-all.done").touch()
+    (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +323,8 @@ def test_build_longitudinal_command(tmp_path):
     assert cmd[long_idx + 1] == "sub-0001_ses-01"
     # base (template) ID follows timepoint
     assert cmd[long_idx + 2] == "sub-0001"
-    assert "-parallel" in cmd
+    # -parallel is intentionally omitted for -long (FreeSurfer 8.x bug)
+    assert "-parallel" not in cmd
     assert "-openmp" in cmd
 
 
