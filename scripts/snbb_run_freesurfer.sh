@@ -1,33 +1,46 @@
 #!/usr/bin/env bash
-# snbb_run_freesurfer.sh — FreeSurfer recon-all via Apptainer container
-# Called by the snbb_scheduler as:  sbatch ... snbb_run_freesurfer.sh sub-XXXX ses-YY
+# snbb_run_freesurfer.sh — FreeSurfer longitudinal pipeline via Apptainer container
+# Called by the snbb_scheduler as:  sbatch ... snbb_run_freesurfer.sh sub-XXXX
+# (subject-scoped: one job processes all sessions for a subject)
 #
-# Runs recon-all inside a FreeSurfer Apptainer container. The helper script
-# snbb_recon_all_helper.py globbs all T1w (and T2w) NIfTI files for the
-# subject across all BIDS sessions and builds the -i argument list.
+# For subjects with ONE session:
+#   Runs a standard cross-sectional recon-all:
+#   recon-all -s <subject> -i <T1w> [-T2 <T2w> -T2pial] -sd <SUBJECTS_DIR> -all
+#
+# For subjects with TWO OR MORE sessions (longitudinal pipeline):
+#   Step 1 — cross-sectional per session:
+#   recon-all -s <subject>_<session> -i <T1w> -sd <SUBJECTS_DIR> -all
+#   Step 2 — unbiased template:
+#   recon-all -base <subject> -tp <subject>_<ses1> -tp <subject>_<ses2> -sd <SUBJECTS_DIR> -all
+#   Step 3 — longitudinal refinement per session:
+#   recon-all -long <subject>_<session> <subject> -sd <SUBJECTS_DIR> -all
+#
+# Already-completed steps (scripts/recon-all.done) are skipped automatically
+# so failed jobs can be resumed without reprocessing completed stages.
 #
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
 SNBB_FS_OUTPUT="${SNBB_FS_OUTPUT:-/media/storage/yalab-dev/snbb_scheduler/derivatives/freesurfer}"
-TMP_FS_OUTPUT="${SNBB_TMP_FS_OUTPUT:-/media/storage/yalab-dev/tmp/freesurfer}"  # FreeSurfer needs write access to SUBJECTS_DIR
 SNBB_FS_LICENSE="${SNBB_FS_LICENSE:-/home/galkepler/misc/freesurfer/license.txt}"
 SNBB_FREESURFER_SIF="${SNBB_FREESURFER_SIF:-/media/storage/apptainer/images/freesurfer-8.1.0.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/freesurfer/debug_submit.log}"
 # Optional: root of local scratch on compute nodes.
 # When set, subject BIDS input and FreeSurfer output are staged locally,
 # then rsynced back to the remote destination on success.
-# Leave empty (default) to use the existing TMP_FS_OUTPUT behaviour unchanged.
+# Leave empty (default) to use remote paths directly.
 SNBB_LOCAL_TMP_ROOT="${SNBB_LOCAL_TMP_ROOT:-}"
 # ─────────────────────────────────────────────────────────────────────────────
 
-#SBATCH --time=24:00:00
-#SBATCH --mem=20G
+# The longitudinal pipeline (3 sequential recon-all runs per session) can take
+# up to ~72 h for subjects with 2–4 sessions.
+#SBATCH --time=72:00:00
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=8
 
 set -euo pipefail
 
-SUBJECT="$1"          # e.g. sub-0001  ($2 = session, ignored — FreeSurfer is subject-scoped)
+SUBJECT="$1"          # e.g. sub-0001
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
@@ -35,7 +48,6 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
     echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ==="
     echo "SNBB_BIDS_ROOT:        ${SNBB_BIDS_ROOT}"
     echo "SNBB_FS_OUTPUT:        ${SNBB_FS_OUTPUT}"
-    echo "TMP_FS_OUTPUT:         ${TMP_FS_OUTPUT}"
     echo "SNBB_FS_LICENSE:       ${SNBB_FS_LICENSE}"
     echo "SNBB_FREESURFER_SIF:   ${SNBB_FREESURFER_SIF}"
     echo "SNBB_LOCAL_TMP_ROOT:   ${SNBB_LOCAL_TMP_ROOT:-<unset>}"
@@ -74,7 +86,16 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         [[ -e "${SNBB_BIDS_ROOT}/${f}" ]] && rsync -a "${SNBB_BIDS_ROOT}/${f}" "${LOCAL_BIDS}/${f}"
     done
 
-    # Run FreeSurfer against local paths
+    # Stage any existing FreeSurfer outputs for the subject (allows resume).
+    # Sync all directories whose names start with the subject label.
+    if [[ -d "${SNBB_FS_OUTPUT}" ]]; then
+        find "${SNBB_FS_OUTPUT}" -maxdepth 1 -type d -name "${SUBJECT}*" | while read -r d; do
+            name="$(basename "${d}")"
+            rsync -a "${d}/" "${LOCAL_FS_OUTPUT}/${name}/"
+        done
+    fi
+
+    # Run the FreeSurfer longitudinal helper against local paths
     mkdir -p "${SNBB_FS_OUTPUT}"
     python3 "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
         --bids-dir    "${LOCAL_BIDS}" \
@@ -84,38 +105,28 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         --sif         "${SNBB_FREESURFER_SIF}" \
         --fs-license  "${SNBB_FS_LICENSE}"
 
-    # Rsync results to remote destination; if this fails, preserve local output
+    # Rsync all subject-related output directories back to remote destination.
+    # This captures the cross-sectional, template, and longitudinal directories.
     CLEANUP_ON_EXIT=false
-    rsync -av "${LOCAL_FS_OUTPUT}/${SUBJECT}/" "${SNBB_FS_OUTPUT}/${SUBJECT}/" || {
-        echo "ERROR: rsync to remote destination failed. Local output preserved at ${LOCAL_FS_OUTPUT}/${SUBJECT}" >&2
-        exit 1
-    }
+    find "${LOCAL_FS_OUTPUT}" -maxdepth 1 -type d -name "${SUBJECT}*" | while read -r d; do
+        name="$(basename "${d}")"
+        rsync -av "${d}/" "${SNBB_FS_OUTPUT}/${name}/" || {
+            echo "ERROR: rsync failed for ${name}. Local output preserved at ${d}" >&2
+            exit 1
+        }
+    done
     CLEANUP_ON_EXIT=true
     # ─────────────────────────────────────────────────────────────────────────
 else
-    # ── Original behaviour (remote filesystem) ────────────────────────────────
+    # ── Remote filesystem mode ────────────────────────────────────────────────
     mkdir -p "${SNBB_FS_OUTPUT}"
-    mkdir -p "${TMP_FS_OUTPUT}"
-
-    # run freesurfer to the tmp output dir (must be writable), then move the results to the final output
-    # location (to avoid permission issues if the final output is on a read-only filesystem)
-    # (move using rsync to preserve permissions and avoid issues if the source and destination are on different filesystems)
 
     python3 "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
         --bids-dir    "${SNBB_BIDS_ROOT}" \
-        --output-dir  "${TMP_FS_OUTPUT}" \
+        --output-dir  "${SNBB_FS_OUTPUT}" \
         --subject     "${SUBJECT}" \
         --threads     "${SLURM_CPUS_PER_TASK:-8}" \
         --sif         "${SNBB_FREESURFER_SIF}" \
         --fs-license  "${SNBB_FS_LICENSE}"
-    rsync -av "${TMP_FS_OUTPUT}/${SUBJECT}/" "${SNBB_FS_OUTPUT}/${SUBJECT}/"
-
-    # if the data transferred successfully, remove the temporary output to save space.
-    # check for the sub-xx/scripts/recon-all.done file as a marker that the recon-all completed successfully before deleting.
-    if [[ -f "${SNBB_FS_OUTPUT}/${SUBJECT}/scripts/recon-all.done" ]]; then
-        rm -rf "${TMP_FS_OUTPUT}/${SUBJECT}"
-    else
-        echo "WARNING: recon-all completion marker not found. Temporary output not deleted: ${TMP_FS_OUTPUT}/${SUBJECT}" >&2
-    fi
     # ─────────────────────────────────────────────────────────────────────────
 fi

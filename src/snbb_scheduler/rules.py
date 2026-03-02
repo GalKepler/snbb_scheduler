@@ -38,9 +38,9 @@ def build_rules(
         Full sessions DataFrame produced by :func:`~snbb_scheduler.sessions.discover_sessions`.
         Required for correct evaluation of **cross-scope dependencies** —
         that is, a *subject*-scoped procedure that depends on a
-        *session*-scoped one.  When ``None``, cross-scope dependency
-        checking is skipped (safe for all currently-defined procedures
-        that do not have cross-scope dependencies).
+        *session*-scoped one (e.g. ``freesurfer`` depends on ``bids_post``).
+        When ``None``, cross-scope dependency checking is skipped (safe for
+        procedures without cross-scope dependencies).
     force:
         When ``True``, skip the self-completion check for matching procedures.
     force_procedures:
@@ -72,12 +72,6 @@ def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig)
         return {"bids_root": config.bids_root, "subject": subject}
     if proc.name == "qsirecon":
         return {"derivatives_root": config.derivatives_root, "subject": subject}
-    if proc.name == "fastsurfer":
-        return {
-            "bids_root": config.bids_root,
-            "derivatives_root": config.derivatives_root,
-            "subject": subject,
-        }
     return {}
 
 
@@ -97,19 +91,19 @@ def _make_rule(
     2. Every procedure in ``proc.depends_on`` is already complete on disk.
     3. This procedure's own output is **not** yet complete on disk.
 
-    Cross-scope dependencies (``fastsurfer`` only)
+    Cross-scope dependencies (``freesurfer`` only)
     -----------------------------------------------
-    ``fastsurfer`` is subject-scoped and depends on ``bids_post``
+    ``freesurfer`` is subject-scoped and depends on ``bids_post``
     (session-scoped).  A simple per-row check is insufficient — the
-    FastSurfer job should only start once **all** sessions of the subject
-    have ``bids_post`` complete.
+    FreeSurfer job should only start once **all** sessions of the subject
+    have ``bids_post`` complete (needed for the longitudinal pipeline).
 
     If *sessions_df* is provided, the rule iterates every session row for
     the current subject and requires ``bids_post`` to be complete in all
-    of them.  The script itself decides whether to run cross-sectional or
-    longitudinal based on the session count it discovers.
+    of them.  The helper script then decides whether to run cross-sectional
+    only (single session) or the full 3-step longitudinal pipeline.
 
-    Other subject-scoped procedures (e.g. ``qsiprep``, ``freesurfer``) use
+    Other subject-scoped procedures (e.g. ``qsiprep``, ``qsirecon``) use
     the standard per-row dependency check even when their dependency is
     session-scoped; this preserves the original one-session-at-a-time
     behaviour for those tools.
@@ -117,17 +111,17 @@ def _make_rule(
     # Pre-classify dependencies as same-scope or cross-scope once, outside
     # the inner closure, to avoid repeated work on every rule evaluation.
     #
-    # Cross-scope logic applies to ``fastsurfer``, which must wait until
+    # Cross-scope logic applies to ``freesurfer``, which must wait until
     # ALL sessions of the subject have their session-scoped dependency
     # (``bids_post``) complete before the subject-scoped run can start.
-    # Other subject-scoped procedures (e.g. ``qsiprep``, ``freesurfer``)
+    # Other subject-scoped procedures (e.g. ``qsiprep``, ``qsirecon``)
     # check the current session row's dependency path, which is the original
     # per-row behaviour.
     cross_scope_deps: list[str] = []
     same_scope_deps: list[str] = []
     for dep_name in proc.depends_on:
         dep_proc = config.get_procedure(dep_name)
-        if proc.name == "fastsurfer" and dep_proc.scope == "session":
+        if proc.name == "freesurfer" and dep_proc.scope == "session":
             cross_scope_deps.append(dep_name)
         else:
             same_scope_deps.append(dep_name)
