@@ -68,6 +68,9 @@ def load_sessions(
             f"Sessions CSV {csv_path!r} is missing required column(s): "
             f"{sorted(missing)}. Found: {sorted(df.columns.tolist())}"
         )
+    df = df.dropna(
+        subset=[subject_col, session_col], how="any"
+    )  # drop rows missing subject/session
     df["subject_code"] = df[subject_col].apply(sanitize_subject_code)
     df["session_id"] = df[session_col].apply(sanitize_session_id)
     return df.drop_duplicates(subset=["subject_code", "session_id"]).reset_index(
@@ -102,7 +105,9 @@ def discover_sessions(config: SchedulerConfig) -> pd.DataFrame:
         for session_dir in sorted(subject_dir.iterdir()):
             if not session_dir.is_dir() or not session_dir.name.startswith("ses-"):
                 continue
-            rows.append(_build_row(subject_dir.name, session_dir.name, session_dir, config))
+            rows.append(
+                _build_row(subject_dir.name, session_dir.name, session_dir, config)
+            )
 
     if not rows:
         return _empty_dataframe(config)
@@ -159,7 +164,9 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
         else:
             dicom_path = Path(str(raw_dicom))
             dicom_exists = True
-        rows.append(_build_row(subject, session, dicom_path, config, dicom_exists=dicom_exists))
+        rows.append(
+            _build_row(subject, session, dicom_path, config, dicom_exists=dicom_exists)
+        )
 
     return pd.DataFrame(rows)
 
