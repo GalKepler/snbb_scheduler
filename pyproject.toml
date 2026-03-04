@@ -12,6 +12,13 @@ dependencies = [
     "click>=8.0",
     "pyyaml>=6.0",
     "pyarrow>=14.0",
+    "nibabel>=5.4.0",
+    "nilearn>=0.13.1",
+    "numpy>=2.2.6",
+    "scipy>=1.15.3",
+    "seaborn>=0.13.2",
+    "matplotlib>=3.10.8",
+    "statsmodels>=0.14.6",
 ]
 
 [project.optional-dependencies]

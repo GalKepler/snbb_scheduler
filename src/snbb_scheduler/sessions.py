@@ -8,11 +8,7 @@ import pandas as pd
 
 from snbb_scheduler.config import SchedulerConfig
 
-# Columns required in the raw linked_sessions CSV (used by load_sessions)
-_REQUIRED_CSV_COLUMNS = {"SubjectCode", "ScanID", "dicom_path"}
-
-# Columns required in the pre-sanitized sessions file used by _discover_from_file
-# (columns: subject_code, session_id, dicom_path — dicom_path may be NaN)
+# Columns produced by load_sessions after sanitization (always fixed, regardless of input col names)
 _SESSION_FILE_COLUMNS = {"subject_code", "session_id", "dicom_path"}
 
 
@@ -36,10 +32,14 @@ def sanitize_session_id(session_id: str | int | float) -> str:
     return session_str.replace("-", "").replace("_", "").replace(" ", "").zfill(12)
 
 
-def load_sessions(csv_path: str | Path) -> pd.DataFrame:
+def load_sessions(
+    csv_path: str | Path,
+    subject_col: str = "UID",
+    session_col: str = "ScanID",
+) -> pd.DataFrame:
     """Load and sanitize a raw linked_sessions CSV file.
 
-    Expects columns ``SubjectCode``, ``ScanID``, and ``dicom_path``.
+    Expects columns *subject_col*, *session_col*, and ``dicom_path``.
     Returns a deduplicated DataFrame with ``subject_code``, ``session_id``,
     and ``dicom_path`` columns. Rows where ``dicom_path`` is NaN are retained
     (the caller may use NaN to infer that the DICOM directory does not exist).
@@ -48,22 +48,28 @@ def load_sessions(csv_path: str | Path) -> pd.DataFrame:
     ----------
     csv_path:
         Path to the linked_sessions.csv file.
+    subject_col:
+        Name of the CSV column to use as the subject identifier.
+        Defaults to ``"UID"``.
+    session_col:
+        Name of the CSV column to use as the session identifier.
+        Defaults to ``"ScanID"``.
 
     Raises
     ------
     ValueError
-        If the CSV is missing any of the required columns
-        (``SubjectCode``, ``ScanID``, ``dicom_path``).
+        If the CSV is missing any of the required columns.
     """
+    required = {subject_col, session_col, "dicom_path"}
     df = pd.read_csv(csv_path)
-    missing = _REQUIRED_CSV_COLUMNS - set(df.columns)
+    missing = required - set(df.columns)
     if missing:
         raise ValueError(
             f"Sessions CSV {csv_path!r} is missing required column(s): "
             f"{sorted(missing)}. Found: {sorted(df.columns.tolist())}"
         )
-    df["subject_code"] = df["SubjectCode"].apply(sanitize_subject_code)
-    df["session_id"] = df["ScanID"].apply(sanitize_session_id)
+    df["subject_code"] = df[subject_col].apply(sanitize_subject_code)
+    df["session_id"] = df[session_col].apply(sanitize_session_id)
     return df.drop_duplicates(subset=["subject_code", "session_id"]).reset_index(
         drop=True
     )
@@ -128,7 +134,11 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
         If ``config.sessions_file`` does not exist.
     """
     # dtype=str preserves zero-padded values (e.g. "0001" → "0001", not 1)
-    df_csv = load_sessions(config.sessions_file)  # also validates required columns and sanitizes
+    df_csv = load_sessions(
+        config.sessions_file,
+        subject_col=config.subject_col,
+        session_col=config.session_col,
+    )  # also validates required columns and sanitizes
     missing = _SESSION_FILE_COLUMNS - set(df_csv.columns)
     if missing:
         raise ValueError(

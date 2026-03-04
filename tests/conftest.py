@@ -104,8 +104,8 @@ def fake_sessions_csv(tmp_path):
     dicom2.mkdir(parents=True)
     csv = tmp_path / "sessions.csv"
     pd.DataFrame([
-        {"SubjectCode": "0001", "ScanID": "01", "dicom_path": str(dicom1)},
-        {"SubjectCode": "0002", "ScanID": "01", "dicom_path": str(dicom2)},
+        {"UID": "0001", "ScanID": "01", "dicom_path": str(dicom1)},
+        {"UID": "0002", "ScanID": "01", "dicom_path": str(dicom2)},
     ]).to_csv(csv, index=False)
     return tmp_path
 

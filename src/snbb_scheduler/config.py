@@ -134,6 +134,10 @@ class SchedulerConfig:
     # When set, filesystem scanning is skipped.
     sessions_file: Path | None = field(default=None)
 
+    # Column names in the sessions CSV to use as subject / session identifiers.
+    subject_col: str = "UID"
+    session_col: str = "ScanID"
+
     # Procedure registry — add new procedures here or via YAML
     procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
 

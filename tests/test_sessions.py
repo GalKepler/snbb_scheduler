@@ -274,7 +274,7 @@ def test_file_discovery_dicom_exists_false_from_nan_in_csv(tmp_path):
     csv = tmp_path / "sessions.csv"
     import math
     pd.DataFrame([
-        {"SubjectCode": "0001", "ScanID": "01", "dicom_path": math.nan},
+        {"UID": "0001", "ScanID": "01", "dicom_path": math.nan},
     ]).to_csv(csv, index=False)
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -323,7 +323,7 @@ def test_file_discovery_missing_csv_raises(tmp_path):
 
 def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame(columns=["SubjectCode", "ScanID", "dicom_path"]).to_csv(csv, index=False)
+    pd.DataFrame(columns=["UID", "ScanID", "dicom_path"]).to_csv(csv, index=False)
     (tmp_path / "dicom").mkdir()
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -346,7 +346,7 @@ def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
 def test_load_sessions_missing_column_raises_value_error(tmp_path):
     """load_sessions raises ValueError when a required column is missing."""
     csv = tmp_path / "bad.csv"
-    pd.DataFrame([{"SubjectCode": "sub0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
+    pd.DataFrame([{"UID": "sub0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
     # 'dicom_path' column is missing
     with pytest.raises(ValueError, match="dicom_path"):
         load_sessions(csv)
@@ -356,16 +356,15 @@ def test_load_sessions_error_lists_missing_columns(tmp_path):
     """ValueError message names each missing column."""
     csv = tmp_path / "bad.csv"
     pd.DataFrame([{"irrelevant": "x"}]).to_csv(csv, index=False)
-    with pytest.raises(ValueError, match="SubjectCode"):
+    with pytest.raises(ValueError, match="UID"):
         load_sessions(csv)
 
 
 def test_load_sessions_all_required_columns_present_does_not_raise(tmp_path):
     """A raw CSV with all required columns loads without error."""
     csv = tmp_path / "ok.csv"
-    # Use a non-numeric SubjectCode to prevent pandas from casting to int on read
     pd.DataFrame([
-        {"SubjectCode": "sub0001", "ScanID": "SCAN001", "dicom_path": "/data/SCAN001"},
+        {"UID": "sub0001", "ScanID": "SCAN001", "dicom_path": "/data/SCAN001"},
     ]).to_csv(csv, index=False)
     df = load_sessions(csv)
     assert len(df) == 1
@@ -379,7 +378,7 @@ def test_load_sessions_all_required_columns_present_does_not_raise(tmp_path):
 def test_sessions_file_missing_column_raises_value_error(tmp_path):
     """discover_sessions raises ValueError when the sessions file is missing a column."""
     csv = tmp_path / "sessions.csv"
-    pd.DataFrame([{"SubjectCode": "0001", "dicom_path": "/data/SCAN001"}]).to_csv(csv, index=False)
+    pd.DataFrame([{"UID": "0001", "dicom_path": "/data/SCAN001"}]).to_csv(csv, index=False)
     # 'ScanID' column is missing
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -390,3 +389,76 @@ def test_sessions_file_missing_column_raises_value_error(tmp_path):
     )
     with pytest.raises(ValueError, match="ScanID"):
         discover_sessions(cfg)
+
+
+# ---------------------------------------------------------------------------
+# Custom subject_col / session_col
+# ---------------------------------------------------------------------------
+
+
+def test_load_sessions_custom_subject_col(tmp_path):
+    """load_sessions uses a custom subject column name."""
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame([
+        {"SubjectCode": "0001", "ScanID": "01", "dicom_path": "/data/s1"},
+    ]).to_csv(csv, index=False)
+    df = load_sessions(csv, subject_col="SubjectCode")
+    assert df.iloc[0]["subject_code"] == "0001"
+
+
+def test_load_sessions_custom_session_col(tmp_path):
+    """load_sessions uses a custom session column name."""
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame([
+        {"UID": "0001", "SessionID": "01", "dicom_path": "/data/s1"},
+    ]).to_csv(csv, index=False)
+    df = load_sessions(csv, session_col="SessionID")
+    assert df.iloc[0]["session_id"] == "01".zfill(12)
+
+
+def test_load_sessions_custom_col_missing_raises(tmp_path):
+    """load_sessions raises ValueError when the custom column is absent."""
+    csv = tmp_path / "sessions.csv"
+    pd.DataFrame([{"UID": "0001", "ScanID": "01", "dicom_path": "/data/s1"}]).to_csv(csv, index=False)
+    with pytest.raises(ValueError, match="MySubject"):
+        load_sessions(csv, subject_col="MySubject")
+
+
+def test_discover_sessions_respects_config_subject_col(tmp_path):
+    """discover_sessions uses config.subject_col / session_col when loading CSV."""
+    csv = tmp_path / "sessions.csv"
+    dicom = tmp_path / "dicom" / "SCAN001"
+    dicom.mkdir(parents=True)
+    pd.DataFrame([
+        {"SubjectCode": "0001", "ScanID": "01", "dicom_path": str(dicom)},
+    ]).to_csv(csv, index=False)
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=csv,
+        subject_col="SubjectCode",
+    )
+    df = discover_sessions(cfg)
+    assert list(df["subject"]) == ["sub-0001"]
+
+
+def test_discover_sessions_respects_config_session_col(tmp_path):
+    """discover_sessions uses config.session_col when loading CSV."""
+    csv = tmp_path / "sessions.csv"
+    dicom = tmp_path / "dicom" / "SCAN001"
+    dicom.mkdir(parents=True)
+    pd.DataFrame([
+        {"UID": "0001", "MyScanID": "42", "dicom_path": str(dicom)},
+    ]).to_csv(csv, index=False)
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        sessions_file=csv,
+        session_col="MyScanID",
+    )
+    df = discover_sessions(cfg)
+    assert list(df["session"]) == [f"ses-{'42'.zfill(12)}"]
