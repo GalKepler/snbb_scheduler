@@ -1,5 +1,9 @@
 # snbb_scheduler
 
+<p align="center">
+  <img src="docs/assets/snbb_logo.png" alt="SNBB Scheduler" width="250"/>
+</p>
+
 A rule-based scheduler for the SNBB neuroimaging pipeline. Runs as a daily job: scans the filesystem, evaluates which processing steps are needed, and submits them to Slurm — automatically.
 
 ```

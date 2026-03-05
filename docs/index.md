@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/snbb_logo.png" alt="SNBB Scheduler" width="220"/>
+  <img src="assets/snbb_logo.png" alt="SNBB Scheduler" width="250"/>
 </p>
 
 # snbb-scheduler
