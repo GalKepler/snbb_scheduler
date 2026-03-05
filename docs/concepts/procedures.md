@@ -37,9 +37,9 @@ The scheduler ships with six built-in procedures:
 | `bids` | session | *(nothing)* | `bids_root/sub-XX/ses-YY/` |
 | `bids_post` | session | `bids` | `bids_root/sub-XX/ses-YY/fmap/` |
 | `defacing` | session | `bids_post` | `bids_root/sub-XX/ses-YY/anat/*acq-defaced*` |
-| `qsiprep` | **subject** | `bids_post` | `derivatives_root/qsiprep/sub-XX/` |
+| `qsiprep` | session | `bids_post` | `derivatives_root/qsiprep/sub-XX/ses-YY/` |
 | `freesurfer` | **subject** | `bids_post` | `derivatives_root/freesurfer/sub-XX/` |
-| `qsirecon` | **subject** | `qsiprep`, `freesurfer` | `derivatives_root/qsirecon-MRtrix3_act-HSVS/sub-XX/` |
+| `qsirecon` | session | `qsiprep`, `freesurfer` | `derivatives_root/qsirecon/sub-XX/ses-YY/` |
 
 ### Dependency graph
 

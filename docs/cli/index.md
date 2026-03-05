@@ -24,6 +24,7 @@ These options apply to all commands and are specified **before** the command nam
 | [`run`](run.md) | Discover sessions, evaluate rules, and submit jobs to Slurm |
 | [`manifest`](manifest.md) | Show the pending task table without submitting |
 | [`status`](status.md) | Show the full state file with current job statuses |
+| [`session-status`](session-status.md) | Show per-session status with output paths or log locations |
 | [`monitor`](monitor.md) | Poll sacct and update job statuses in the state file |
 | [`retry`](retry.md) | Clear failed entries so they are re-submitted on the next run |
 
@@ -41,6 +42,9 @@ snbb-scheduler --config /etc/snbb/config.yaml --slurm-mem 64G run
 
 # Check job statuses
 snbb-scheduler --config /etc/snbb/config.yaml status
+
+# Per-session overview (one row per session, one column per procedure)
+snbb-scheduler --config /etc/snbb/config.yaml session-status
 
 # Update statuses from sacct
 snbb-scheduler --config /etc/snbb/config.yaml monitor

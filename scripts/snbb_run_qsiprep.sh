@@ -16,7 +16,7 @@ SNBB_QSIPREP_SIF="${SNBB_QSIPREP_SIF:-/media/storage/apptainer/images/qsiprep-1.
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/qsiprep/debug_submit.log}"
 # Anatomical template and reference (override if your site uses a different space)
 SNBB_ANATOMICAL_TEMPLATE="${SNBB_ANATOMICAL_TEMPLATE:-MNI152NLin2009cAsym}"
-SNBB_SUBJECT_ANAT_REF="${SNBB_SUBJECT_ANAT_REF:-unbiased}"
+SNBB_SUBJECT_ANAT_REF="${SNBB_SUBJECT_ANAT_REF:-sessionwise}"
 # Optional BIDS filter file — set to restrict which runs QSIPrep processes
 SNBB_BIDS_FILTER_FILE="${SNBB_BIDS_FILTER_FILE:-/home/galkepler/Projects/snbb_scheduler/examples/bids_filters.json}"
 SNBB_TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME:-/media/storage/yalab-dev/snbb_scheduler/templateflow}"
@@ -35,6 +35,9 @@ set -euo pipefail
 
 SUBJECT="$1"          # e.g. sub-0001  ($2 = session, not used — QSIPrep is subject-scoped)
 PARTICIPANT="${SUBJECT#sub-}"
+
+SESSION="$2"          # e.g. ses-01 (not used by QSIPrep, but passed by scheduler)
+SESSION_ID="${SESSION#ses-}"
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
@@ -108,6 +111,7 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         "${LOCAL_OUTPUT}" \
         participant \
         --participant-label "${PARTICIPANT}" \
+        --session-id "${SESSION_ID}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --nprocs "${SLURM_CPUS_PER_TASK:-8}" \
         --mem-mb "${SLURM_MEM_PER_NODE:-16000}" \
@@ -142,14 +146,14 @@ else
         "${SNBB_DERIVATIVES}" \
         participant \
         --participant-label "${PARTICIPANT}" \
+        --session-id "${SESSION_ID}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --nprocs "${SLURM_CPUS_PER_TASK:-8}" \
         --mem-mb "${SLURM_MEM_PER_NODE:-16000}" \
         --work-dir "${SNBB_WORK_DIR}" \
         --output-resolution 1.6 \
         --anatomical-template "${SNBB_ANATOMICAL_TEMPLATE}" \
-        "${EXTRA_ARGS[@]}" \
-        # --subject-anatomical-reference "${SNBB_SUBJECT_ANAT_REF}" \
-        
+        --subject-anatomical-reference "${SNBB_SUBJECT_ANAT_REF}" \
+        "${EXTRA_ARGS[@]}"
     # ─────────────────────────────────────────────────────────────────────────
 fi

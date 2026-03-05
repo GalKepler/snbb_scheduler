@@ -70,6 +70,7 @@ nav:
       - run: cli/run.md
       - manifest: cli/manifest.md
       - status: cli/status.md
+      - session-status: cli/session-status.md
       - monitor: cli/monitor.md
       - retry: cli/retry.md
   - Guides:

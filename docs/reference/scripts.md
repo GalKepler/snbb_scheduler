@@ -58,8 +58,8 @@ Defaces T1w images in-place within the BIDS dataset, writing defaced images as `
 
 DWI preprocessing via [QSIPrep](https://qsiprep.readthedocs.io) using Apptainer.
 
-**Called as:** `sbatch ... snbb_run_qsiprep.sh sub-XXXX`
-(subject-scoped: processes all sessions for the subject in one job)
+**Called as:** `sbatch ... snbb_run_qsiprep.sh sub-XXXX ses-YY`
+(session-scoped: one job per session)
 
 **Environment variables:**
 
@@ -124,8 +124,8 @@ After `recon-all` completes, the script rsyncs results from the temporary direct
 
 Tractography and connectivity via [QSIRecon](https://qsirecon.readthedocs.io) using Apptainer.
 
-**Called as:** `sbatch ... snbb_run_qsirecon.sh sub-XXXX`
-(subject-scoped: processes all sessions for the subject)
+**Called as:** `sbatch ... snbb_run_qsirecon.sh sub-XXXX ses-YY`
+(session-scoped: one job per session)
 
 **Environment variables:**
 

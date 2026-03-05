@@ -15,7 +15,7 @@ from snbb_scheduler.manifest import (
     save_state,
 )
 from snbb_scheduler.monitor import update_state_from_sacct
-from snbb_scheduler.sessions import discover_sessions
+from snbb_scheduler.sessions import build_session_status_table, discover_sessions
 from snbb_scheduler.submit import submit_manifest
 
 
@@ -199,6 +199,49 @@ def status(ctx: click.Context) -> None:
         details["log_path"] = details.apply(_log_path, axis=1)
 
     click.echo(details.to_string(index=False))
+
+
+@main.command(name="session-status")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "csv"]),
+    default="table",
+    help="Output format.",
+)
+@click.option("--subject", default=None, help="Filter to a single subject.")
+@click.option("--procedure", default=None, help="Show only this procedure column.")
+@click.pass_context
+def session_status(
+    ctx: click.Context,
+    output_format: str,
+    subject: str | None,
+    procedure: str | None,
+) -> None:
+    """Show per-session status with output paths or log file locations."""
+    config: SchedulerConfig = ctx.obj["config"]
+    table = build_session_status_table(config)
+
+    if table.empty:
+        click.echo("No sessions found.")
+        return
+
+    if subject is not None:
+        table = table[table["subject"] == subject]
+
+    if procedure is not None:
+        keep = ["subject", "session"]
+        if procedure in table.columns:
+            keep.append(procedure)
+        else:
+            click.echo(f"Unknown procedure: {procedure}")
+            return
+        table = table[keep]
+
+    if output_format == "csv":
+        click.echo(table.to_csv(index=False))
+    else:
+        click.echo(table.to_string(index=False))
 
 
 @main.command()

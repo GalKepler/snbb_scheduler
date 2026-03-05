@@ -100,7 +100,7 @@ procedures:
   - name: qsiprep
     output_dir: qsiprep
     script: snbb_run_qsiprep.sh
-    scope: subject
+    scope: session
     depends_on: [bids_post]
     completion_marker:
       - "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz"
@@ -116,9 +116,9 @@ procedures:
     completion_marker: "scripts/recon-all.done"
 
   - name: qsirecon
-    output_dir: qsirecon-MRtrix3_act-HSVS
+    output_dir: qsirecon
     script: snbb_run_qsirecon.sh
-    scope: subject
+    scope: session
     depends_on: [qsiprep, freesurfer]
     completion_marker: null
 ```

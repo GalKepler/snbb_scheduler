@@ -9,7 +9,6 @@ from typing import Literal
 import yaml
 
 
-
 @dataclass
 class Procedure:
     """Declaration of a single processing procedure."""
@@ -68,7 +67,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         name="qsiprep",
         output_dir="qsiprep",
         script="snbb_run_qsiprep.sh",
-        scope="subject",
+        scope="session",
         depends_on=["bids_post"],
         completion_marker=[
             "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz",
@@ -98,7 +97,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         name="qsirecon",
         output_dir="qsirecon",
         script="snbb_run_qsirecon.sh",
-        scope="subject",
+        scope="session",
         depends_on=["qsiprep", "freesurfer"],
         completion_marker=None,
     ),
@@ -112,16 +111,20 @@ class SchedulerConfig:
     # Root directories
     dicom_root: Path = field(default_factory=lambda: Path("/data/snbb/dicom"))
     bids_root: Path = field(default_factory=lambda: Path("/data/snbb/bids"))
-    derivatives_root: Path = field(default_factory=lambda: Path("/data/snbb/derivatives"))
+    derivatives_root: Path = field(
+        default_factory=lambda: Path("/data/snbb/derivatives")
+    )
 
     # Slurm settings
     slurm_partition: str = "debug"
     slurm_account: str = "snbb"
-    slurm_mem: str | None = None           # e.g. "32G"; omitted from sbatch if None
+    slurm_mem: str | None = None  # e.g. "32G"; omitted from sbatch if None
     slurm_cpus_per_task: int | None = None  # e.g. 8; omitted from sbatch if None
 
     # State tracking
-    state_file: Path = field(default_factory=lambda: Path("/data/snbb/.scheduler_state.parquet"))
+    state_file: Path = field(
+        default_factory=lambda: Path("/data/snbb/.scheduler_state.parquet")
+    )
 
     # Slurm log directory — when set, --output / --error are added to sbatch commands.
     # Subdirectories are created per procedure: <slurm_log_dir>/<procedure>/
@@ -139,7 +142,9 @@ class SchedulerConfig:
     session_col: str = "ScanID"
 
     # Procedure registry — add new procedures here or via YAML
-    procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
+    procedures: list[Procedure] = field(
+        default_factory=lambda: list(DEFAULT_PROCEDURES)
+    )
 
     def __post_init__(self) -> None:
         """Validate that all ``depends_on`` entries reference known procedures.
@@ -194,8 +199,13 @@ class SchedulerConfig:
                 raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
 
         path_fields = {
-            "dicom_root", "bids_root", "derivatives_root",
-            "state_file", "sessions_file", "slurm_log_dir", "log_file",
+            "dicom_root",
+            "bids_root",
+            "derivatives_root",
+            "state_file",
+            "sessions_file",
+            "slurm_log_dir",
+            "log_file",
         }
         for key in path_fields:
             if data.get(key) is not None:

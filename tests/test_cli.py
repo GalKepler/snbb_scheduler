@@ -1,4 +1,6 @@
 """CLI smoke tests using Click's CliRunner."""
+import csv
+import io
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from snbb_scheduler.cli import main
-from snbb_scheduler.config import SchedulerConfig
+from snbb_scheduler.config import Procedure, SchedulerConfig
 from snbb_scheduler.manifest import save_state
 
 
@@ -608,3 +610,312 @@ def test_retry_filter_by_subject(runner, cfg_path, tmp_path):
     remaining = load_state(cfg)
     assert len(remaining) == 1
     assert remaining.iloc[0]["subject"] == "sub-0002"
+
+
+# ---------------------------------------------------------------------------
+# session-status
+# ---------------------------------------------------------------------------
+
+def _simple_procedures():
+    """Return a minimal 2-procedure list for session-status tests."""
+    return [
+        Procedure(name="bids", output_dir="", script="run_bids.sh", scope="session"),
+        Procedure(
+            name="freesurfer", output_dir="freesurfer", script="run_fs.sh",
+            scope="subject", depends_on=["bids"],
+        ),
+    ]
+
+
+def test_session_status_help(runner):
+    result = runner.invoke(main, ["session-status", "--help"])
+    assert result.exit_code == 0
+    assert "--format" in result.output
+    assert "--subject" in result.output
+    assert "--procedure" in result.output
+
+
+def test_session_status_no_sessions(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "session-status"])
+    assert result.exit_code == 0
+    assert "No sessions found" in result.output
+
+
+def test_session_status_output_exists(runner, tmp_path):
+    """When output exists on disk, the cell shows the output path."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    bids_dir = tmp_path / "bids" / "sub-0001" / "ses-01"
+    bids_dir.mkdir(parents=True)
+    # Touch a file so the dir is non-empty (exists check)
+    (bids_dir / "anat").mkdir()
+    (bids_dir / "anat" / "T1w.nii.gz").touch()
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    assert str(bids_dir) in result.output
+
+
+def test_session_status_log_path_when_state_with_job_id(runner, tmp_path):
+    """Missing output + state with job_id + slurm_log_dir → shows log path."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    log_dir = tmp_path / "slurm_logs"
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"slurm_log_dir: {log_dir}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+        procedures=_simple_procedures()[:1],
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "running", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "12345",
+    }])
+    save_state(state, cfg)
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    assert "bids_sub-0001_ses-01_12345.out" in result.output
+
+
+def test_session_status_shows_status_string_without_log_dir(runner, tmp_path):
+    """Missing output + state but no slurm_log_dir → shows status string."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        procedures=_simple_procedures()[:1],
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "failed", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "99",
+    }])
+    save_state(state, cfg)
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    assert "failed" in result.output
+
+
+def test_session_status_dash_when_no_state(runner, tmp_path):
+    """No state entry at all → shows '-'."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    # The cell for bids should be "-"
+    assert "-" in result.output
+
+
+def test_session_status_subject_scoped_same_for_all_sessions(runner, tmp_path):
+    """Subject-scoped procedure shows same value for all sessions of a subject."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    (tmp_path / "dicom" / "sub-0001" / "ses-02").mkdir(parents=True)
+    log_dir = tmp_path / "slurm_logs"
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"slurm_log_dir: {log_dir}\n"
+        f"procedures:\n"
+        f"  - name: freesurfer\n"
+        f"    output_dir: freesurfer\n"
+        f"    script: run_fs.sh\n"
+        f"    scope: subject\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        slurm_log_dir=log_dir,
+        procedures=[Procedure(
+            name="freesurfer", output_dir="freesurfer",
+            script="run_fs.sh", scope="subject",
+        )],
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "", "procedure": "freesurfer",
+        "status": "running", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "555",
+    }])
+    save_state(state, cfg)
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    # Both sessions should show the same log path
+    lines = [l for l in result.output.strip().split("\n") if "sub-0001" in l]
+    assert len(lines) == 2
+    # Extract the freesurfer column value — should be identical
+    fs_values = set()
+    for line in lines:
+        parts = line.split()
+        # Last part is the freesurfer column
+        fs_values.add(parts[-1])
+    assert len(fs_values) == 1
+    assert "555" in fs_values.pop()
+
+
+def test_session_status_subject_filter(runner, tmp_path):
+    """--subject filters rows."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    (tmp_path / "dicom" / "sub-0002" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--subject", "sub-0001"],
+    )
+    assert result.exit_code == 0
+    assert "sub-0001" in result.output
+    assert "sub-0002" not in result.output
+
+
+def test_session_status_procedure_filter(runner, tmp_path):
+    """--procedure shows only that procedure column."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+        f"  - name: freesurfer\n"
+        f"    output_dir: freesurfer\n"
+        f"    script: run_fs.sh\n"
+        f"    scope: subject\n"
+        f"    depends_on:\n"
+        f"      - bids\n"
+    )
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--procedure", "bids"],
+    )
+    assert result.exit_code == 0
+    assert "bids" in result.output
+    assert "freesurfer" not in result.output
+
+
+def test_session_status_unknown_procedure_filter(runner, tmp_path):
+    """--procedure with unknown name shows error."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--procedure", "nope"],
+    )
+    assert result.exit_code == 0
+    assert "Unknown procedure" in result.output
+
+
+def test_session_status_csv_format(runner, tmp_path):
+    """--format csv outputs valid CSV."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--format", "csv"],
+    )
+    assert result.exit_code == 0
+    reader = csv.reader(io.StringIO(result.output))
+    rows = list(reader)
+    assert rows[0] == ["subject", "session", "bids"]
+    assert len(rows) >= 2  # header + at least one data row

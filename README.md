@@ -3,7 +3,7 @@
 A rule-based scheduler for the SNBB neuroimaging pipeline. Runs as a daily job: scans the filesystem, evaluates which processing steps are needed, and submits them to Slurm — automatically.
 
 ```
-discover → evaluate → filter → submit
+discover → evaluate → filter → submit → monitor
 ```
 
 ---
@@ -30,6 +30,12 @@ snbb-scheduler --config /path/to/config.yaml run
 # Check what's in the queue
 snbb-scheduler --config /path/to/config.yaml status
 
+# Per-session overview (one row per session, one column per procedure)
+snbb-scheduler --config /path/to/config.yaml session-status
+
+# Update job statuses from Slurm
+snbb-scheduler --config /path/to/config.yaml monitor
+
 # Show the full pending task table
 snbb-scheduler --config /path/to/config.yaml manifest
 ```
@@ -53,7 +59,7 @@ slurm_partition: debug   # omit or set to "" to skip --partition flag
 slurm_account:   snbb
 ```
 
-With no `procedures` key the built-in defaults run: **bids → qsiprep** and **bids → freesurfer**.
+With no `procedures` key the built-in defaults run: **bids → bids_post → defacing**, **bids_post → qsiprep**, **bids_post → freesurfer**, **qsiprep + freesurfer → qsirecon**.
 
 > **`slurm_partition`** is optional. When set to a non-empty string the `--partition=<value>` flag is passed to `sbatch`. Leave it empty (or omit the key) for clusters that do not use Slurm partitions.
 
@@ -76,19 +82,40 @@ procedures:
     depends_on: []
     completion_marker: "**/*.nii.gz"
 
+  - name: bids_post
+    output_dir: ""
+    script: snbb_run_bids_post.sh
+    scope: session
+    depends_on: [bids]
+    completion_marker: "fmap/*acq-dwi*_epi.nii.gz"
+
+  - name: defacing
+    output_dir: ""
+    script: snbb_run_defacing.sh
+    scope: session
+    depends_on: [bids_post]
+    completion_marker: "anat/*acq-defaced*_T1w.nii.gz"
+
   - name: qsiprep
     output_dir: qsiprep
     script: snbb_run_qsiprep.sh
     scope: session
-    depends_on: [bids]
+    depends_on: [bids_post]
     completion_marker: null  # non-empty directory = complete
 
   - name: freesurfer
     output_dir: freesurfer
     script: snbb_run_freesurfer.sh
     scope: subject           # one run per subject, not per session
-    depends_on: [bids]
-    completion_marker: "scripts/recon-all.done"
+    depends_on: [bids_post]
+    completion_marker: null  # specialised check in checks.py
+
+  - name: qsirecon
+    output_dir: qsirecon
+    script: snbb_run_qsirecon.sh
+    scope: session
+    depends_on: [qsiprep, freesurfer]
+    completion_marker: null
 ```
 
 ### `completion_marker` values
@@ -213,6 +240,25 @@ snbb-scheduler --config config.yaml status
    sub-0002   ses-01        bids    failed  2024-11-01 06:00:00   10235
 ```
 
+### `session-status`
+
+Shows a per-session view with one row per session and one column per procedure. Each cell shows the output path (if complete), the Slurm log path (if running/pending with `slurm_log_dir` set), the status string, or `-` if no state entry exists.
+
+```bash
+snbb-scheduler --config config.yaml session-status
+snbb-scheduler --config config.yaml session-status --format csv
+snbb-scheduler --config config.yaml session-status --subject sub-0001
+snbb-scheduler --config config.yaml session-status --procedure qsiprep
+```
+
+### `monitor`
+
+Polls `sacct` for in-flight job statuses and updates the state file. Also reconciles with the filesystem to mark jobs as complete when output appears on disk.
+
+```bash
+snbb-scheduler --config config.yaml monitor
+```
+
 ### `retry`
 
 Clears failed entries from the state file so they are re-submitted on the next run. Accepts optional `--procedure` and `--subject` filters.
@@ -262,7 +308,7 @@ pending → running → complete
 | `complete` | Output verified complete by the completion marker |
 | `failed` | Slurm reported failure or output is absent after job completion |
 
-> **Note:** The scheduler does **not** poll Slurm automatically. Status transitions from `pending` to `running`/`complete`/`failed` must be managed by an external process (e.g. a Slurm epilog script or a separate monitoring cron job). Failed entries can be cleared with `snbb-scheduler retry` so they are re-submitted on the next run.
+> **Note:** The `run` command automatically polls `sacct` before submission (skip with `--skip-monitor`). You can also update statuses manually with `snbb-scheduler monitor`. Failed entries can be cleared with `snbb-scheduler retry` so they are re-submitted on the next run.
 
 ### Inspecting the state file directly
 

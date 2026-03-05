@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-__all__ = ["discover_sessions"]
+__all__ = ["discover_sessions", "build_session_status_table"]
 
 from pathlib import Path
 
 import pandas as pd
 
 from snbb_scheduler.config import SchedulerConfig
+from snbb_scheduler.manifest import load_state
+from snbb_scheduler.submit import _build_job_name
 
 # Columns produced by load_sessions after sanitization (always fixed, regardless of input col names)
 _SESSION_FILE_COLUMNS = {"subject_code", "session_id", "dicom_path"}
@@ -238,3 +240,81 @@ def _empty_dataframe(config: SchedulerConfig) -> pd.DataFrame:
     for proc in config.procedures:
         columns += [f"{proc.name}_path", f"{proc.name}_exists"]
     return pd.DataFrame(columns=columns)
+
+
+def build_session_status_table(config: SchedulerConfig) -> pd.DataFrame:
+    """Build a per-session status table showing output paths or log/status info.
+
+    For each session and procedure, the cell value is:
+    1. Output path — if the procedure output exists on disk.
+    2. Log file path — if output is missing but a state entry with job_id
+       exists and ``config.slurm_log_dir`` is set.
+    3. Status string — if output is missing and a state entry exists but
+       no log dir is configured.
+    4. ``"-"`` — if there is no state entry at all.
+
+    Returns a DataFrame with columns: ``subject``, ``session``, then one
+    column per procedure name.
+    """
+    sessions = discover_sessions(config)
+    if sessions.empty:
+        cols = ["subject", "session"] + [p.name for p in config.procedures]
+        return pd.DataFrame(columns=cols)
+
+    state = load_state(config)
+
+    # Pre-process state: for each (subject, session/blank, procedure), keep
+    # the most recent entry by submitted_at.
+    if not state.empty:
+        state = (
+            state.sort_values("submitted_at", ascending=False)
+            .drop_duplicates(subset=["subject", "session", "procedure"], keep="first")
+        )
+
+    rows = []
+    for _, sess_row in sessions.iterrows():
+        subject = sess_row["subject"]
+        session = sess_row["session"]
+        out: dict = {"subject": subject, "session": session}
+
+        for proc in config.procedures:
+            exists = sess_row.get(f"{proc.name}_exists", False)
+            proc_path = sess_row.get(f"{proc.name}_path")
+
+            if exists:
+                out[proc.name] = str(proc_path)
+                continue
+
+            # Look up state entry
+            if state.empty:
+                out[proc.name] = "-"
+                continue
+
+            if proc.scope == "subject":
+                mask = (state["subject"] == subject) & (state["procedure"] == proc.name)
+            else:
+                mask = (
+                    (state["subject"] == subject)
+                    & (state["session"] == session)
+                    & (state["procedure"] == proc.name)
+                )
+
+            matched = state[mask]
+            if matched.empty:
+                out[proc.name] = "-"
+                continue
+
+            entry = matched.iloc[0]
+            job_id = entry.get("job_id")
+
+            if job_id and config.slurm_log_dir is not None:
+                # Build log path using _build_job_name
+                job_name = _build_job_name(entry, proc.scope)
+                log_subdir = config.slurm_log_dir / proc.name
+                out[proc.name] = str(log_subdir / f"{job_name}_{job_id}.out")
+            else:
+                out[proc.name] = str(entry["status"])
+
+        rows.append(out)
+
+    return pd.DataFrame(rows)

@@ -106,12 +106,12 @@ Raw T1w images may allow facial re-identification. SNBB shares derivatives publi
 ## `qsiprep` — DWI preprocessing
 
 **Tool:** [QSIPrep](https://qsiprep.readthedocs.io/) 1.1.1 via Apptainer
-**Scope:** subject (all sessions processed together in one job)
+**Scope:** session
 **Slurm resources:** 12 h, 20 GB RAM, 8 CPUs
 
 ### What it does
 
-[QSIPrep](https://qsiprep.readthedocs.io/) is a BIDS-App for preprocessing diffusion MRI data. For each subject it:
+[QSIPrep](https://qsiprep.readthedocs.io/) is a BIDS-App for preprocessing diffusion MRI data. For each session it:
 
 1. **Reads all DWI sessions** from the BIDS dataset simultaneously, enabling across-session head motion correction
 2. **Susceptibility distortion correction (SDC)** using the `acq-dwi` EPI fieldmap produced by `bids_post` (Pepolar / TOPUP method: AP + PA b0 pair)
@@ -180,7 +180,7 @@ derivatives/freesurfer/sub-0001/
 
 **Tool:** [QSIRecon](https://qsirecon.readthedocs.io/) 1.2.0 via Apptainer
 **Reconstruction spec:** `scripts/qsirecon_full_spec.yaml` (`gal_multishell_scalars`)
-**Scope:** subject (depends on both `qsiprep` and `freesurfer`)
+**Scope:** session (depends on both `qsiprep` and `freesurfer`)
 **Slurm resources:** 12 h, 32 GB RAM, 8 CPUs
 
 ### What it does

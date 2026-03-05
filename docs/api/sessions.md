@@ -3,7 +3,7 @@
 Session discovery and sanitization.
 
 ```python
-from snbb_scheduler.sessions import discover_sessions, load_sessions
+from snbb_scheduler.sessions import discover_sessions, load_sessions, build_session_status_table
 ```
 
 ---
@@ -84,6 +84,42 @@ Convert to string, strip special characters, and zero-pad to 12 digits.
 sanitize_session_id("202407110849")  # → "202407110849"
 sanitize_session_id(202407110849)    # → "202407110849"
 sanitize_session_id("2024-07-11")    # → "000020240711"
+```
+
+---
+
+## `build_session_status_table(config)`
+
+Build a per-session status table showing output paths or log/status info for each procedure.
+
+```python
+from snbb_scheduler.sessions import build_session_status_table
+
+table = build_session_status_table(cfg)
+```
+
+**Returns:** `pd.DataFrame` with columns:
+- `subject` — BIDS subject label
+- `session` — BIDS session label
+- One column per procedure, containing:
+    1. Output path (if output exists on disk)
+    2. Slurm log file path (if output missing + state entry with job ID + `slurm_log_dir` configured)
+    3. Status string (if output missing + state entry but no log dir)
+    4. `"-"` (if no state entry)
+
+### Example
+
+```python
+from snbb_scheduler.config import SchedulerConfig
+from snbb_scheduler.sessions import build_session_status_table
+
+cfg = SchedulerConfig.from_yaml("/etc/snbb/config.yaml")
+table = build_session_status_table(cfg)
+
+print(table[["subject", "session", "bids", "qsiprep"]].to_string())
+#      subject           session  bids                                      qsiprep
+#   sub-0001  ses-202407110849   /data/snbb/bids/sub-0001/ses-202407110849  running
+#   sub-0002  ses-202407110849   failed                                     -
 ```
 
 ---
