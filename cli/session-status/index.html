@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/cli/status/">
+        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/cli/session-status/">
       
       
-        <link rel="prev" href="../manifest/">
+        <link rel="prev" href="../status/">
       
       
-        <link rel="next" href="../session-status/">
+        <link rel="next" href="../monitor/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>status - snbb-scheduler</title>
+        <title>session-status - snbb-scheduler</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#status" class="md-skip">
+        <a href="#session-status" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              status
+              session-status
             
           </span>
         </div>
@@ -937,6 +937,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -956,7 +984,7 @@
   <span class="md-ellipsis">
     
   
-    status
+    session-status
   
 
     
@@ -974,7 +1002,7 @@
   <span class="md-ellipsis">
     
   
-    status
+    session-status
   
 
     
@@ -1000,6 +1028,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-shows" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1022,10 +1061,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#with-log-paths" class="md-nav__link">
+  <a href="#csv-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With log paths
+        CSV output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering
       
     </span>
   </a>
@@ -1047,34 +1097,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../session-status/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    session-status
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1851,6 +1873,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-shows" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1873,10 +1906,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#with-log-paths" class="md-nav__link">
+  <a href="#csv-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With log paths
+        CSV output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering
       
     </span>
   </a>
@@ -1914,47 +1958,92 @@
   
 
 
-<h1 id="status"><code>status</code><a class="headerlink" href="#status" title="Permanent link">&para;</a></h1>
-<p>Show the current job state — all submitted jobs and their statuses.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>CONFIG<span class="w"> </span>status
+<h1 id="session-status"><code>session-status</code><a class="headerlink" href="#session-status" title="Permanent link">&para;</a></h1>
+<p>Show per-session status with output paths or log file locations.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>CONFIG<span class="w"> </span>session-status<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </code></pre></div>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format {table,csv}</code></td>
+<td>Output format (default: <code>table</code>)</td>
+</tr>
+<tr>
+<td><code>--subject SUBJECT</code></td>
+<td>Filter to a single subject (e.g. <code>sub-0001</code>)</td>
+</tr>
+<tr>
+<td><code>--procedure PROCEDURE</code></td>
+<td>Show only this procedure column</td>
+</tr>
+</tbody>
+</table>
 <h2 id="what-it-shows">What it shows<a class="headerlink" href="#what-it-shows" title="Permanent link">&para;</a></h2>
-<p>Reads the state file and prints:</p>
-<ol>
-<li>A <strong>summary table</strong> grouped by procedure and status with counts</li>
-<li>The <strong>full details table</strong> with one row per submitted job</li>
-</ol>
-<p>When <code>slurm_log_dir</code> is configured, a <code>log_path</code> column is added showing the expected <code>.out</code> log file path for each job.</p>
+<p>A table with one row per session and one column per procedure. Each cell shows:</p>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Value shown</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Output path</td>
+<td>Procedure output exists on disk</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Log file path</td>
+<td>Output missing, but a state entry with a job ID exists and <code>slurm_log_dir</code> is configured</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Status string</td>
+<td>Output missing, state entry exists, but no log dir configured</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>-</code></td>
+<td>No state entry at all</td>
+</tr>
+</tbody>
+</table>
+<p>For <strong>subject-scoped</strong> procedures (e.g. <code>freesurfer</code>), all sessions of the same subject show the same value.</p>
 <h2 id="example-output">Example output<a class="headerlink" href="#example-output" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Summary:
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    procedure    status  count
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>         bids  complete     12
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>     bids_post  complete     10
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>     bids_post   running      2
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>      qsiprep  complete      8
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>      qsiprep   pending      1
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>   freesurfer  complete      7
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>   freesurfer   running      1
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    subject                session   procedure    status           submitted_at  job_id
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>   sub-0001  ses-202407110849        bids       complete  2024-11-01 06:00:00   10234
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>   sub-0001  ses-202407110849        bids_post  complete  2024-11-01 06:00:00   10235
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>   sub-0001                          qsiprep    complete  2024-11-02 06:00:00   10891
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>   sub-0002  ses-202407110849        bids       complete  2024-11-01 06:00:00   10236
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>   sub-0002  ses-202407110849        bids_post  running   2024-11-03 06:00:00   11042
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>   sub-0003  ses-202410100845        bids       complete  2024-11-01 06:00:00   10237
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>   sub-0003  ses-202410100845        bids_post   failed   2024-11-01 06:00:00   10238
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>   subject                session  bids                                    qsiprep                              freesurfer
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  sub-0001  ses-202407110849       /data/snbb/bids/sub-0001/ses-20240…    /data/snbb/logs/slurm/qsiprep/…      /data/snbb/derivatives/freesurfer/sub-0001
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  sub-0001  ses-202410100845       /data/snbb/bids/sub-0001/ses-20241…    -                                    /data/snbb/derivatives/freesurfer/sub-0001
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  sub-0002  ses-202407110849       failed                                  -                                    -
 </code></pre></div>
-<h2 id="with-log-paths">With log paths<a class="headerlink" href="#with-log-paths" title="Permanent link">&para;</a></h2>
-<p>When <code>slurm_log_dir</code> is set in config, a <code>log_path</code> column appears:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>   subject   procedure    status  job_id  log_path
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  sub-0001    qsiprep    running   10891  /data/snbb/logs/slurm/qsiprep/qsiprep_sub-0001_10891.out
+<h2 id="csv-output">CSV output<a class="headerlink" href="#csv-output" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--format<span class="w"> </span>csv
+</code></pre></div>
+<p>Outputs comma-separated values suitable for piping or spreadsheet import.</p>
+<h2 id="filtering">Filtering<a class="headerlink" href="#filtering" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Show only one subject</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--subject<span class="w"> </span>sub-0001
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Show only the qsiprep column</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--procedure<span class="w"> </span>qsiprep
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Combine filters</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--subject<span class="w"> </span>sub-0001<span class="w"> </span>--procedure<span class="w"> </span>qsiprep
 </code></pre></div>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>status</code> reads the state file as-is — it does not poll Slurm. Use <code>monitor</code> to get fresh statuses from sacct.</li>
-<li>To clear failed entries, use <code>retry</code>.</li>
-<li>The state file can also be read directly with pandas: <code>pd.read_parquet(config.state_file)</code></li>
+<li>This command discovers sessions from <code>dicom_root</code> (or <code>sessions_file</code>) and cross-references with the state file.</li>
+<li>Unlike <code>status</code>, which shows one row per submitted job, <code>session-status</code> shows one row per session with all procedures as columns — making it easy to see overall progress at a glance.</li>
+<li>Use <code>monitor</code> first to get fresh statuses from sacct before checking session status.</li>
 </ul>
 
 

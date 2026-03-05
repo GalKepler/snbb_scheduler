@@ -963,6 +963,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../cli/session-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    session-status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../cli/monitor/" class="md-nav__link">
         
   
@@ -1630,6 +1658,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#build_session_status_tableconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build_session_status_table(config)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="build_session_status_table(config)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sessions-csv-format" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1912,6 +1968,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#build_session_status_tableconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build_session_status_table(config)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="build_session_status_table(config)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sessions-csv-format" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1944,7 +2028,7 @@
 
 <h1 id="snbb_schedulersessions"><code>snbb_scheduler.sessions</code><a class="headerlink" href="#snbb_schedulersessions" title="Permanent link">&para;</a></h1>
 <p>Session discovery and sanitization.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">discover_sessions</span><span class="p">,</span> <span class="n">load_sessions</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">discover_sessions</span><span class="p">,</span> <span class="n">load_sessions</span><span class="p">,</span> <span class="n">build_session_status_table</span>
 </code></pre></div>
 <hr />
 <h2 id="discover_sessionsconfig"><code>discover_sessions(config)</code><a class="headerlink" href="#discover_sessionsconfig" title="Permanent link">&para;</a></h2>
@@ -1997,6 +2081,33 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">&quot;202407110849&quot;</span><span class="p">)</span>  <span class="c1"># → &quot;202407110849&quot;</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="mi">202407110849</span><span class="p">)</span>    <span class="c1"># → &quot;202407110849&quot;</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">&quot;2024-07-11&quot;</span><span class="p">)</span>    <span class="c1"># → &quot;000020240711&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="build_session_status_tableconfig"><code>build_session_status_table(config)</code><a class="headerlink" href="#build_session_status_tableconfig" title="Permanent link">&para;</a></h2>
+<p>Build a per-session status table showing output paths or log/status info for each procedure.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_session_status_table</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">table</span> <span class="o">=</span> <span class="n">build_session_status_table</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Returns:</strong> <code>pd.DataFrame</code> with columns:
+- <code>subject</code> — BIDS subject label
+- <code>session</code> — BIDS session label
+- One column per procedure, containing:
+    1. Output path (if output exists on disk)
+    2. Slurm log file path (if output missing + state entry with job ID + <code>slurm_log_dir</code> configured)
+    3. Status string (if output missing + state entry but no log dir)
+    4. <code>"-"</code> (if no state entry)</p>
+<h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerConfig</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_session_status_table</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">table</span> <span class="o">=</span> <span class="n">build_session_status_table</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">table</span><span class="p">[[</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span> <span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;bids&quot;</span><span class="p">,</span> <span class="s2">&quot;qsiprep&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1">#      subject           session  bids                                      qsiprep</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1">#   sub-0001  ses-202407110849   /data/snbb/bids/sub-0001/ses-202407110849  running</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1">#   sub-0002  ses-202407110849   failed                                     -</span>
 </code></pre></div>
 <hr />
 <h2 id="sessions-csv-format">Sessions CSV format<a class="headerlink" href="#sessions-csv-format" title="Permanent link">&para;</a></h2>

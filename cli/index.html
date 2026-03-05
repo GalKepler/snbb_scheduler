@@ -1048,6 +1048,34 @@
   
   
     <li class="md-nav__item">
+      <a href="session-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    session-status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="monitor/" class="md-nav__link">
         
   
@@ -1918,6 +1946,10 @@
 <td>Show the full state file with current job statuses</td>
 </tr>
 <tr>
+<td><a href="session-status/"><code>session-status</code></a></td>
+<td>Show per-session status with output paths or log locations</td>
+</tr>
+<tr>
 <td><a href="monitor/"><code>monitor</code></a></td>
 <td>Poll sacct and update job statuses in the state file</td>
 </tr>
@@ -1940,11 +1972,14 @@
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Check job statuses</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>status
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Update statuses from sacct</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>monitor
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Per-session overview (one row per session, one column per procedure)</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>session-status
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Retry all failed bids jobs for one subject</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>retry<span class="w"> </span>--procedure<span class="w"> </span>bids<span class="w"> </span>--subject<span class="w"> </span>sub-0002
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Update statuses from sacct</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>monitor
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># Retry all failed bids jobs for one subject</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>retry<span class="w"> </span>--procedure<span class="w"> </span>bids<span class="w"> </span>--subject<span class="w"> </span>sub-0002
 </code></pre></div>
 
 

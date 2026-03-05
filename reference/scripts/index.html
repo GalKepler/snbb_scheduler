@@ -963,6 +963,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../cli/session-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    session-status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../cli/monitor/" class="md-nav__link">
         
   
@@ -2077,8 +2105,8 @@
 <hr />
 <h2 id="snbb_run_qsiprepsh"><code>snbb_run_qsiprep.sh</code><a class="headerlink" href="#snbb_run_qsiprepsh" title="Permanent link">&para;</a></h2>
 <p>DWI preprocessing via <a href="https://qsiprep.readthedocs.io">QSIPrep</a> using Apptainer.</p>
-<p><strong>Called as:</strong> <code>sbatch ... snbb_run_qsiprep.sh sub-XXXX</code>
-(subject-scoped: processes all sessions for the subject in one job)</p>
+<p><strong>Called as:</strong> <code>sbatch ... snbb_run_qsiprep.sh sub-XXXX ses-YY</code>
+(session-scoped: one job per session)</p>
 <p><strong>Environment variables:</strong></p>
 <table>
 <thead>
@@ -2205,8 +2233,8 @@
 <hr />
 <h2 id="snbb_run_qsireconsh"><code>snbb_run_qsirecon.sh</code><a class="headerlink" href="#snbb_run_qsireconsh" title="Permanent link">&para;</a></h2>
 <p>Tractography and connectivity via <a href="https://qsirecon.readthedocs.io">QSIRecon</a> using Apptainer.</p>
-<p><strong>Called as:</strong> <code>sbatch ... snbb_run_qsirecon.sh sub-XXXX</code>
-(subject-scoped: processes all sessions for the subject)</p>
+<p><strong>Called as:</strong> <code>sbatch ... snbb_run_qsirecon.sh sub-XXXX ses-YY</code>
+(session-scoped: one job per session)</p>
 <p><strong>Environment variables:</strong></p>
 <table>
 <thead>

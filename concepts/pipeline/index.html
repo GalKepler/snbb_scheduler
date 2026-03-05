@@ -1376,6 +1376,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../cli/session-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    session-status
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../cli/monitor/" class="md-nav__link">
         
   
@@ -2614,10 +2642,10 @@ Some heudiconv versions write <code>.bvec</code>/<code>.bval</code> alongside EP
 <hr />
 <h2 id="qsiprep-dwi-preprocessing"><code>qsiprep</code> — DWI preprocessing<a class="headerlink" href="#qsiprep-dwi-preprocessing" title="Permanent link">&para;</a></h2>
 <p><strong>Tool:</strong> <a href="https://qsiprep.readthedocs.io/">QSIPrep</a> 1.1.1 via Apptainer
-<strong>Scope:</strong> subject (all sessions processed together in one job)
+<strong>Scope:</strong> session
 <strong>Slurm resources:</strong> 12 h, 20 GB RAM, 8 CPUs</p>
 <h3 id="what-it-does_3">What it does<a class="headerlink" href="#what-it-does_3" title="Permanent link">&para;</a></h3>
-<p><a href="https://qsiprep.readthedocs.io/">QSIPrep</a> is a BIDS-App for preprocessing diffusion MRI data. For each subject it:</p>
+<p><a href="https://qsiprep.readthedocs.io/">QSIPrep</a> is a BIDS-App for preprocessing diffusion MRI data. For each session it:</p>
 <ol>
 <li><strong>Reads all DWI sessions</strong> from the BIDS dataset simultaneously, enabling across-session head motion correction</li>
 <li><strong>Susceptibility distortion correction (SDC)</strong> using the <code>acq-dwi</code> EPI fieldmap produced by <code>bids_post</code> (Pepolar / TOPUP method: AP + PA b0 pair)</li>
@@ -2688,7 +2716,7 @@ Some heudiconv versions write <code>.bvec</code>/<code>.bval</code> alongside EP
 <h2 id="qsirecon-tractography-and-connectivity"><code>qsirecon</code> — Tractography and connectivity<a class="headerlink" href="#qsirecon-tractography-and-connectivity" title="Permanent link">&para;</a></h2>
 <p><strong>Tool:</strong> <a href="https://qsirecon.readthedocs.io/">QSIRecon</a> 1.2.0 via Apptainer
 <strong>Reconstruction spec:</strong> <code>scripts/qsirecon_full_spec.yaml</code> (<code>gal_multishell_scalars</code>)
-<strong>Scope:</strong> subject (depends on both <code>qsiprep</code> and <code>freesurfer</code>)
+<strong>Scope:</strong> session (depends on both <code>qsiprep</code> and <code>freesurfer</code>)
 <strong>Slurm resources:</strong> 12 h, 32 GB RAM, 8 CPUs</p>
 <h3 id="what-it-does_5">What it does<a class="headerlink" href="#what-it-does_5" title="Permanent link">&para;</a></h3>
 <p><a href="https://qsirecon.readthedocs.io/">QSIRecon</a> orchestrates a multi-step diffusion MRI reconstruction workflow defined in a YAML specification. The SNBB spec (<code>gal_multishell_scalars</code>) runs four stages:</p>
