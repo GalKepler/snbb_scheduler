@@ -1,8 +1,10 @@
 from snbb_scheduler.checks import (
+    FileCheckResult,
     _count_available_t1w,
     _count_bids_dwi_sessions,
     _count_recon_all_inputs,
     _count_subject_ses_dirs,
+    check_detailed,
     is_complete,
 )
 from snbb_scheduler.config import Procedure
@@ -580,67 +582,62 @@ def test_count_bids_dwi_sessions_subject_missing(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# QSIPrep specialized check
+# QSIPrep completion check (session-scoped, list-marker)
 # ---------------------------------------------------------------------------
 
 
-def test_qsiprep_complete_session_count_matches(tmp_path):
-    """QSIPrep complete when ses-* dirs match BIDS DWI session count."""
+def _create_qsiprep_session_files(session_dir, subject, session):
+    """Create all expected QSIPrep session-level output files."""
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / f"{subject}_{session}.html").touch()
+    dwi = session_dir / "dwi"
+    dwi.mkdir(exist_ok=True)
+    stem = f"{subject}_{session}_dwi_preproc"
+    (dwi / f"{stem}.nii.gz").touch()
+    (dwi / f"{stem}.bvec").touch()
+    (dwi / f"{stem}.bval").touch()
+    (dwi / f"{subject}_{session}_desc-image_qc.tsv").touch()
+
+
+def test_qsiprep_complete_with_html_and_dwi(tmp_path):
+    """QSIPrep complete when HTML + all DWI preproc files present at session level."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
-    subject = "sub-0001"
-    bids_root = tmp_path / "bids"
-    dwi = bids_root / subject / "ses-01" / "dwi"
-    dwi.mkdir(parents=True)
-    (dwi / f"{subject}_ses-01_dir-AP_dwi.nii.gz").touch()
+    subject, session = "sub-0001", "ses-01"
+    session_dir = tmp_path / "derivatives" / "qsiprep" / subject / session
+    _create_qsiprep_session_files(session_dir, subject, session)
 
-    qsiprep_subject = tmp_path / "derivatives" / "qsiprep" / subject
-    (qsiprep_subject / "ses-01").mkdir(parents=True)
-    (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
-
-    assert (
-        is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject)
-        is True
-    )
+    assert is_complete(qsiprep, session_dir) is True
 
 
-def test_qsiprep_incomplete_missing_session(tmp_path):
-    """QSIPrep incomplete when fewer ses-* dirs than BIDS DWI sessions."""
+def test_qsiprep_incomplete_missing_html(tmp_path):
+    """QSIPrep incomplete when HTML report is absent even if DWI files exist."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
-    subject = "sub-0001"
-    bids_root = tmp_path / "bids"
-    for ses in ("ses-01", "ses-02"):
-        dwi = bids_root / subject / ses / "dwi"
-        dwi.mkdir(parents=True)
-        (dwi / f"{subject}_{ses}_dir-AP_dwi.nii.gz").touch()
+    subject, session = "sub-0001", "ses-01"
+    session_dir = tmp_path / "derivatives" / "qsiprep" / subject / session
+    _create_qsiprep_session_files(session_dir, subject, session)
+    (session_dir / f"{subject}_{session}.html").unlink()
 
-    qsiprep_subject = tmp_path / "derivatives" / "qsiprep" / subject
-    (qsiprep_subject / "ses-01").mkdir(parents=True)
-    (qsiprep_subject / "ses-01" / "dwi.nii.gz").touch()
-    # ses-02 not yet processed
-
-    assert (
-        is_complete(qsiprep, qsiprep_subject, bids_root=bids_root, subject=subject)
-        is False
-    )
+    assert is_complete(qsiprep, session_dir) is False
 
 
-def test_qsiprep_fallback_nonempty(tmp_path):
-    """Without kwargs, qsiprep falls back to dir-nonempty check."""
+def test_qsiprep_incomplete_missing_dwi_file(tmp_path):
+    """QSIPrep incomplete when one DWI preproc file is absent."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
-    subject_dir = tmp_path / "qsiprep" / "sub-0001"
-    (subject_dir / "ses-01").mkdir(parents=True)
-    (subject_dir / "ses-01" / "dwi.nii.gz").touch()
+    subject, session = "sub-0001", "ses-01"
+    session_dir = tmp_path / "derivatives" / "qsiprep" / subject / session
+    _create_qsiprep_session_files(session_dir, subject, session)
+    (session_dir / "dwi" / f"{subject}_{session}_dwi_preproc.bval").unlink()
 
-    assert is_complete(qsiprep, subject_dir) is True
+    assert is_complete(qsiprep, session_dir) is False
 
 
 # ---------------------------------------------------------------------------
@@ -648,19 +645,18 @@ def test_qsiprep_fallback_nonempty(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_qsirecon_complete_session_count_matches(tmp_path):
-    """QSIRecon complete when HTML reports exist for all QSIPrep sessions."""
+def test_qsirecon_complete_wildcard_fallback(tmp_path):
+    """QSIRecon complete via wildcard when no recon_spec given but HTML exists."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
-    subject = "sub-0001"
+    subject, session = "sub-0001", "ses-01"
     derivatives_root = tmp_path / "derivatives"
-    (derivatives_root / "qsiprep" / subject / "ses-01").mkdir(parents=True)
 
     pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
     pipeline_dir.mkdir(parents=True)
-    (pipeline_dir / f"{subject}_ses-01.html").touch()
+    (pipeline_dir / f"{subject}_{session}.html").touch()
 
     qsirecon_subject = derivatives_root / "qsirecon" / subject
     assert (
@@ -669,21 +665,20 @@ def test_qsirecon_complete_session_count_matches(tmp_path):
             qsirecon_subject,
             derivatives_root=derivatives_root,
             subject=subject,
+            session=session,
         )
         is True
     )
 
 
-def test_qsirecon_incomplete_missing_session(tmp_path):
-    """QSIRecon incomplete when HTML report missing for a QSIPrep session."""
+def test_qsirecon_incomplete_missing_session_html(tmp_path):
+    """QSIRecon incomplete when HTML report is absent for the requested session."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
 
-    subject = "sub-0001"
+    subject, session = "sub-0001", "ses-02"
     derivatives_root = tmp_path / "derivatives"
-    for ses in ("ses-01", "ses-02"):
-        (derivatives_root / "qsiprep" / subject / ses).mkdir(parents=True)
 
     # Only ses-01 HTML created; ses-02 missing
     pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
@@ -697,6 +692,7 @@ def test_qsirecon_incomplete_missing_session(tmp_path):
             qsirecon_subject,
             derivatives_root=derivatives_root,
             subject=subject,
+            session=session,
         )
         is False
     )
@@ -772,19 +768,124 @@ def test_defacing_incomplete_when_session_dir_missing(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Legacy qsiprep/qsirecon nonempty tests (kept for backward compat coverage)
+# QSIRecon with recon_spec (per-suffix HTML verification)
 # ---------------------------------------------------------------------------
 
 
-def test_qsiprep_complete_nonempty(tmp_path):
-    """qsiprep uses completion_marker=None → non-empty directory."""
+def test_qsirecon_complete_with_recon_spec(tmp_path):
+    """QSIRecon complete when HTML exists for every suffix in the spec."""
+    import yaml as _yaml
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+    suffixes = ["DIPYDKI", "MRtrix3_act-HSVS"]
+
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(_yaml.dump({"nodes": [{"qsirecon_suffix": s} for s in suffixes]}))
+
+    qsirecon_root = derivatives_root / "qsirecon"
+    for s in suffixes:
+        d = qsirecon_root / "derivatives" / f"qsirecon-{s}"
+        d.mkdir(parents=True)
+        (d / f"{subject}_{session}.html").touch()
+
+    qsirecon_subject = qsirecon_root / subject
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            recon_spec=spec,
+        )
+        is True
+    )
+
+
+def test_qsirecon_incomplete_missing_one_suffix_html(tmp_path):
+    """QSIRecon incomplete when one suffix HTML is absent."""
+    import yaml as _yaml
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+    suffixes = ["DIPYDKI", "MRtrix3_act-HSVS"]
+
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(_yaml.dump({"nodes": [{"qsirecon_suffix": s} for s in suffixes]}))
+
+    # Only create HTML for the first suffix; second is missing
+    qsirecon_root = derivatives_root / "qsirecon"
+    d = qsirecon_root / "derivatives" / f"qsirecon-{suffixes[0]}"
+    d.mkdir(parents=True)
+    (d / f"{subject}_{session}.html").touch()
+
+    qsirecon_subject = qsirecon_root / subject
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            recon_spec=spec,
+        )
+        is False
+    )
+
+
+def test_qsirecon_recon_spec_empty_falls_back_to_wildcard(tmp_path):
+    """When spec has no qsirecon_suffix nodes, falls back to wildcard HTML check."""
+    import yaml as _yaml
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(_yaml.dump({"nodes": [{"action": "some_action"}]}))  # no suffixes
+
+    qsirecon_root = derivatives_root / "qsirecon"
+    d = qsirecon_root / "derivatives" / "qsirecon-SomePipeline"
+    d.mkdir(parents=True)
+    (d / f"{subject}_{session}.html").touch()
+
+    qsirecon_subject = qsirecon_root / subject
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            recon_spec=spec,
+        )
+        is True
+    )
+
+
+# ---------------------------------------------------------------------------
+# Legacy qsiprep session-level marker tests
+# ---------------------------------------------------------------------------
+
+
+def test_qsiprep_complete_session_files(tmp_path):
+    """QSIPrep complete when HTML + all DWI preproc outputs are present."""
     from snbb_scheduler.config import DEFAULT_PROCEDURES
 
     qsiprep = next(p for p in DEFAULT_PROCEDURES if p.name == "qsiprep")
 
-    qsiprep_session = tmp_path / "qsiprep" / "sub-0001" / "ses-01"
-    qsiprep_session.mkdir(parents=True)
-    (qsiprep_session / "dwi.nii.gz").touch()
+    subject, session = "sub-0001", "ses-01"
+    qsiprep_session = tmp_path / "qsiprep" / subject / session
+    _create_qsiprep_session_files(qsiprep_session, subject, session)
 
     assert is_complete(qsiprep, qsiprep_session) is True
 
@@ -801,3 +902,191 @@ def test_qsiprep_incomplete_empty_dir(tmp_path):
 
 
 # (FastSurfer checks removed — procedure replaced by FreeSurfer longitudinal pipeline)
+
+
+# ---------------------------------------------------------------------------
+# FileCheckResult dataclass
+# ---------------------------------------------------------------------------
+
+
+def test_file_check_result_fields():
+    fc = FileCheckResult(pattern="anat/*.nii.gz", found=True, matched_files=["/a/b.nii.gz"])
+    assert fc.pattern == "anat/*.nii.gz"
+    assert fc.found is True
+    assert fc.matched_files == ["/a/b.nii.gz"]
+
+
+def test_file_check_result_default_matched_files():
+    fc = FileCheckResult(pattern="done.txt", found=False)
+    assert fc.matched_files == []
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — nonexistent path
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_nonexistent_none_marker(tmp_path):
+    results = check_detailed(proc_nonempty(), tmp_path / "missing")
+    assert len(results) == 1
+    assert not results[0].found
+    assert results[0].pattern == "<directory>"
+
+
+def test_check_detailed_nonexistent_single_marker(tmp_path):
+    results = check_detailed(proc_marker(), tmp_path / "missing")
+    assert len(results) == 1
+    assert not results[0].found
+    assert results[0].pattern == "done.txt"
+
+
+def test_check_detailed_nonexistent_glob(tmp_path):
+    results = check_detailed(proc_glob(), tmp_path / "missing")
+    assert len(results) == 1
+    assert not results[0].found
+
+
+def test_check_detailed_nonexistent_list_marker(tmp_path):
+    proc = Procedure(
+        name="test", output_dir="test", script="t.sh",
+        completion_marker=["anat/*.nii.gz", "dwi/*.nii.gz"]
+    )
+    results = check_detailed(proc, tmp_path / "missing")
+    assert len(results) == 2
+    assert all(not r.found for r in results)
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — none marker (directory non-empty)
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_none_marker_empty_dir(tmp_path):
+    d = tmp_path / "out"
+    d.mkdir()
+    results = check_detailed(proc_nonempty(), d)
+    assert len(results) == 1
+    assert not results[0].found
+
+
+def test_check_detailed_none_marker_populated_dir(tmp_path):
+    d = tmp_path / "out"
+    d.mkdir()
+    (d / "file.txt").touch()
+    results = check_detailed(proc_nonempty(), d)
+    assert len(results) == 1
+    assert results[0].found
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — single file marker
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_single_marker_missing(tmp_path):
+    d = tmp_path / "out"
+    d.mkdir()
+    results = check_detailed(proc_marker(), d)
+    assert not results[0].found
+    assert results[0].matched_files == []
+
+
+def test_check_detailed_single_marker_present(tmp_path):
+    d = tmp_path / "out"
+    d.mkdir()
+    (d / "done.txt").touch()
+    results = check_detailed(proc_marker(), d)
+    assert results[0].found
+    assert len(results[0].matched_files) == 1
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — glob marker
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_glob_no_matches(tmp_path):
+    d = tmp_path / "out"
+    d.mkdir()
+    results = check_detailed(proc_glob(), d)
+    assert not results[0].found
+    assert results[0].matched_files == []
+
+
+def test_check_detailed_glob_with_matches(tmp_path):
+    d = tmp_path / "out"
+    (d / "anat").mkdir(parents=True)
+    (d / "anat" / "T1w.nii.gz").touch()
+    results = check_detailed(proc_glob(), d)
+    assert results[0].found
+    assert len(results[0].matched_files) >= 1
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — list marker
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_list_marker_all_found(tmp_path):
+    proc = Procedure(
+        name="test", output_dir="test", script="t.sh",
+        completion_marker=["anat/*.nii.gz", "dwi/*.bvec"]
+    )
+    d = tmp_path / "out"
+    (d / "anat").mkdir(parents=True)
+    (d / "anat" / "T1w.nii.gz").touch()
+    (d / "dwi").mkdir()
+    (d / "dwi" / "run.bvec").touch()
+    results = check_detailed(proc, d)
+    assert len(results) == 2
+    assert all(r.found for r in results)
+
+
+def test_check_detailed_list_marker_partial(tmp_path):
+    proc = Procedure(
+        name="test", output_dir="test", script="t.sh",
+        completion_marker=["anat/*.nii.gz", "dwi/*.bvec"]
+    )
+    d = tmp_path / "out"
+    (d / "anat").mkdir(parents=True)
+    (d / "anat" / "T1w.nii.gz").touch()
+    # dwi missing
+    results = check_detailed(proc, d)
+    assert results[0].found
+    assert not results[1].found
+
+
+def test_check_detailed_list_returns_one_entry_per_pattern(tmp_path):
+    proc = Procedure(
+        name="test", output_dir="test", script="t.sh",
+        completion_marker=["a/*.txt", "b/*.txt", "c/*.txt"]
+    )
+    d = tmp_path / "out"
+    d.mkdir()
+    results = check_detailed(proc, d)
+    assert len(results) == 3
+
+
+# ---------------------------------------------------------------------------
+# check_detailed — specialized checks (freesurfer, qsirecon)
+# ---------------------------------------------------------------------------
+
+
+def test_check_detailed_specialized_freesurfer_returns_single_entry(tmp_path):
+    proc = Procedure(
+        name="freesurfer", output_dir="freesurfer", script="s.sh",
+        completion_marker=None
+    )
+    results = check_detailed(proc, tmp_path / "freesurfer" / "sub-0001")
+    assert len(results) == 1
+    assert results[0].pattern == "freesurfer"
+
+
+def test_check_detailed_specialized_qsirecon_returns_single_entry(tmp_path):
+    proc = Procedure(
+        name="qsirecon", output_dir="qsirecon", script="s.sh",
+        completion_marker=None
+    )
+    results = check_detailed(proc, tmp_path / "qsirecon" / "sub-0001" / "ses-01")
+    assert len(results) == 1
+    assert results[0].pattern == "qsirecon"

@@ -1,11 +1,23 @@
 from __future__ import annotations
 
-__all__ = ["is_complete"]
+__all__ = ["is_complete", "check_detailed", "FileCheckResult"]
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+import yaml
+
 from snbb_scheduler.config import Procedure
+
+
+@dataclass
+class FileCheckResult:
+    """Result of a single completion-marker pattern check."""
+
+    pattern: str
+    found: bool
+    matched_files: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +78,70 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
         return any(output_path.glob(marker))
 
     return (output_path / marker).exists()
+
+
+def check_detailed(
+    proc: Procedure, output_path: Path, **kwargs
+) -> list[FileCheckResult]:
+    """Per-pattern check results instead of a single boolean.
+
+    For list completion_markers: checks each pattern individually.
+    For specialized checks (freesurfer, qsirecon): returns a single entry
+    with the overall is_complete() result.
+    For None marker: returns a single entry checking if the directory is non-empty.
+    For a single glob/file marker: returns a single entry for that pattern.
+
+    Does NOT modify existing is_complete() behavior.
+    """
+    if proc.name in _SPECIALIZED_CHECKS:
+        overall = _SPECIALIZED_CHECKS[proc.name](proc, output_path, **kwargs)
+        return [FileCheckResult(pattern=proc.name, found=overall)]
+
+    if not output_path.exists():
+        marker = proc.completion_marker
+        if marker is None:
+            return [FileCheckResult(pattern="<directory>", found=False)]
+        patterns = marker if isinstance(marker, list) else [marker]
+        return [FileCheckResult(pattern=p, found=False) for p in patterns]
+
+    marker = proc.completion_marker
+
+    if marker is None:
+        found = _dir_nonempty(output_path)
+        files = [str(p) for p in output_path.iterdir()] if found else []
+        return [FileCheckResult(pattern="<directory>", found=found, matched_files=files)]
+
+    if isinstance(marker, list):
+        results = []
+        for pat in marker:
+            matched = list(output_path.glob(pat))
+            results.append(
+                FileCheckResult(
+                    pattern=pat,
+                    found=bool(matched),
+                    matched_files=[str(m) for m in matched],
+                )
+            )
+        return results
+
+    if _is_glob(marker):
+        matched = list(output_path.glob(marker))
+        return [
+            FileCheckResult(
+                pattern=marker,
+                found=bool(matched),
+                matched_files=[str(m) for m in matched],
+            )
+        ]
+
+    target = output_path / marker
+    return [
+        FileCheckResult(
+            pattern=marker,
+            found=target.exists(),
+            matched_files=[str(target)] if target.exists() else [],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -138,60 +214,86 @@ def _freesurfer_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     return True
 
 
-@_register_check("qsiprep")
-def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """QSIPrep (subject-scoped) is complete when a processed ``ses-*`` subdirectory
-    exists for every BIDS session that has DWI data.
+# @_register_check("qsiprep")
+# def _qsiprep_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
+#     """QSIPrep (subject-scoped) is complete when a processed ``ses-*`` subdirectory
+#     exists for every BIDS session that has DWI data.
 
-    Falls back to ``_dir_nonempty`` when ``bids_root``/``subject`` are absent.
-    """
-    bids_root = kwargs.get("bids_root")
-    subject = kwargs.get("subject")
-    if bids_root is None or subject is None:
-        return _dir_nonempty(output_path)
+#     Falls back to ``_dir_nonempty`` when ``bids_root``/``subject`` are absent.
+#     """
+#     bids_root = kwargs.get("bids_root")
+#     subject = kwargs.get("subject")
+#     if bids_root is None or subject is None:
+#         return _dir_nonempty(output_path)
 
-    qsiprep_sessions = _count_subject_ses_dirs(output_path)
-    dwi_sessions = _count_bids_dwi_sessions(Path(bids_root), subject)
-    return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
+#     qsiprep_sessions = _count_subject_ses_dirs(output_path)
+#     dwi_sessions = _count_bids_dwi_sessions(Path(bids_root), subject)
+#     return qsiprep_sessions > 0 and qsiprep_sessions == dwi_sessions
 
 
 @_register_check("qsirecon")
 def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
-    """QSIRecon (subject-scoped) is complete when an HTML report exists at
-    ``<qsirecon_root>/derivatives/<pipeline>/<subject>_<session>.html``
-    for every session processed by QSIPrep.
+    """QSIRecon (session-scoped) is complete when an HTML report exists at
+    ``<qsirecon_root>/derivatives/qsirecon-<suffix>/<subject>_<session>.html``
+    for every workflow suffix listed in the QSIRecon spec YAML.
 
-    Falls back to ``_dir_nonempty`` when ``derivatives_root``/``subject`` are absent.
+    Falls back to a wildcard HTML glob when no ``recon_spec`` is given, and to
+    ``_dir_nonempty`` when ``derivatives_root``, ``subject``, or ``session``
+    are absent.
     """
     derivatives_root = kwargs.get("derivatives_root")
     subject = kwargs.get("subject")
-    if derivatives_root is None or subject is None:
+    session = kwargs.get("session")
+    if derivatives_root is None or subject is None or session is None:
         return _dir_nonempty(output_path)
 
-    qsiprep_dir = Path(derivatives_root) / "qsiprep" / subject
-    if not qsiprep_dir.exists():
-        return False
+    qsirecon_root = Path(derivatives_root) / "qsirecon"
+    recon_spec = kwargs.get("recon_spec")
 
-    sessions = [
-        d.name for d in qsiprep_dir.iterdir()
-        if d.is_dir() and d.name.startswith("ses-")
-    ]
-    if not sessions:
-        return False
+    if recon_spec is not None:
+        suffixes = _parse_qsirecon_suffixes(Path(recon_spec))
+        if suffixes:
+            for suffix in suffixes:
+                html = (
+                    qsirecon_root
+                    / "derivatives"
+                    / f"qsirecon-{suffix}"
+                    / f"{subject}_{session}.html"
+                )
+                if not html.exists():
+                    return False
+            return True
+        # spec missing/empty → fall through to wildcard
 
-    # HTML reports sit at <qsirecon_root>/derivatives/<pipeline>/<subject>_<session>.html
-    # output_path = <derivatives_root>/qsirecon/<subject>
-    qsirecon_root = output_path.parent
-    for ses in sessions:
-        if not any(qsirecon_root.glob(f"derivatives/*/{subject}_{ses}.html")):
-            return False
-
-    return True
+    # Fallback: any matching HTML under derivatives/
+    return any(qsirecon_root.glob(f"derivatives/*/{subject}_{session}.html"))
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _parse_qsirecon_suffixes(recon_spec: Path) -> list[str]:
+    """Return unique ``qsirecon_suffix`` values from a QSIRecon workflow YAML.
+
+    Reads *recon_spec*, iterates ``nodes``, and collects the ``qsirecon_suffix``
+    field where present (order-preserving, duplicates removed).  Returns an
+    empty list if the file is missing, unreadable, or contains no suffixes.
+    """
+    try:
+        data = yaml.safe_load(recon_spec.read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return []
+
+    seen: list[str] = []
+    seen_set: set[str] = set()
+    for node in data.get("nodes", []):
+        suffix = node.get("qsirecon_suffix")
+        if suffix and suffix not in seen_set:
+            seen.append(suffix)
+            seen_set.add(suffix)
+    return seen
 
 
 def _recon_all_succeeded(done_file: Path) -> bool:

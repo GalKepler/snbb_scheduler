@@ -172,6 +172,14 @@ def status(ctx: click.Context) -> None:
         click.echo("No state recorded yet.")
         return
 
+    # Poll sacct for cancelled/failed jobs, then reconcile with filesystem
+    audit = get_logger(config)
+    updated = update_state_from_sacct(state, audit)
+    updated = reconcile_with_filesystem(updated, config, audit)
+    if not updated.equals(state):
+        save_state(updated, config)
+        state = updated
+
     # Summary table: procedure | status | count
     summary = (
         state.groupby(["procedure", "status"], sort=False)
@@ -186,6 +194,7 @@ def status(ctx: click.Context) -> None:
     details = state.copy()
     if config.slurm_log_dir is not None:
         from snbb_scheduler.submit import _build_job_name
+
         def _log_path(row: pd.Series) -> str:
             try:
                 proc = config.get_procedure(row["procedure"])
@@ -281,11 +290,176 @@ def monitor(ctx: click.Context) -> None:
 
 
 @main.command()
+@click.option(
+    "--session",
+    "session_filter",
+    default=None,
+    metavar="SUB/SES",
+    help="Audit a single session, e.g. sub-0001/ses-01.",
+)
+@click.option("--subject", "subject_filter", default=None, help="Audit all sessions for a subject.")
+@click.option("--procedure", "procedure_filter", default=None, help="Procedure-level audit view.")
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["table", "markdown", "html", "json"]),
+    default="table",
+    show_default=True,
+    help="Output format.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(),
+    default=None,
+    help="Save report to file.",
+)
+@click.option("--email", is_flag=True, default=False, help="Send report via email.")
+@click.option("--dicom-only", is_flag=True, default=False, help="Only check DICOM source data.")
+@click.option("--logs-only", is_flag=True, default=False, help="Only analyze Slurm logs.")
+@click.option(
+    "--history",
+    is_flag=True,
+    default=False,
+    help="Include comparison with previous audit report.",
+)
+@click.pass_context
+def audit(
+    ctx: click.Context,
+    session_filter: str | None,
+    subject_filter: str | None,
+    procedure_filter: str | None,
+    fmt: str,
+    output_path: str | None,
+    email: bool,
+    dicom_only: bool,
+    logs_only: bool,
+    history: bool,
+) -> None:
+    """Validate outputs, analyze logs, and generate audit reports."""
+    from pathlib import Path
+
+    from snbb_scheduler.auditor import run_full_audit
+    from snbb_scheduler.report import (
+        compare_reports,
+        load_previous_report,
+        render_html,
+        render_json,
+        render_markdown,
+        save_report,
+        send_report_email,
+    )
+
+    config: SchedulerConfig = ctx.obj["config"]
+
+    # Full audit (may be filtered below for display)
+    report = run_full_audit(config)
+
+    # Filter by subject/session/procedure if requested
+    if subject_filter:
+        report.session_results = [
+            s for s in report.session_results if s.subject == subject_filter
+        ]
+    if session_filter:
+        parts = session_filter.split("/", 1)
+        subj = parts[0] if len(parts) > 0 else ""
+        ses = parts[1] if len(parts) > 1 else ""
+        report.session_results = [
+            s for s in report.session_results
+            if s.subject == subj and s.session == ses
+        ]
+    if procedure_filter:
+        report.procedure_summaries = [
+            ps for ps in report.procedure_summaries
+            if ps.procedure == procedure_filter
+        ]
+        for s in report.session_results:
+            if procedure_filter in s.procedures:
+                s.procedures = {procedure_filter: s.procedures[procedure_filter]}
+
+    # dicom-only: strip procedure detail
+    if dicom_only:
+        for s in report.session_results:
+            s.procedures = {}
+        report.procedure_summaries = []
+
+    # logs-only: strip DICOM and file check detail
+    if logs_only:
+        for s in report.session_results:
+            for pr in s.procedures.values():
+                pr.file_checks = []
+
+    # History comparison
+    trend_text = ""
+    if history and config.audit.report_dir:
+        prev = load_previous_report(config.audit.report_dir)
+        if prev:
+            delta = compare_reports(report, prev)
+            trend_text = (
+                f"\nTrend vs previous: health {delta['health_trend']:+.1%}, "
+                f"+{delta['sessions_added']} sessions, "
+                f"{len(delta['new_completions'])} new completions, "
+                f"{len(delta['new_failures'])} new failures.\n"
+            )
+
+    # Render
+    if fmt == "json":
+        rendered = render_json(report)
+    elif fmt == "markdown":
+        rendered = trend_text + render_markdown(report)
+    elif fmt == "html":
+        rendered = render_html(report)
+    else:  # table (default)
+        rendered = trend_text + render_markdown(report)
+
+    # Output
+    if output_path:
+        Path(output_path).write_text(rendered, encoding="utf-8")
+        click.echo(f"Report written to {output_path}")
+    else:
+        click.echo(rendered)
+
+    # Save JSON report for history
+    if config.audit.report_dir and not (dicom_only or logs_only):
+        saved = save_report(report, config.audit.report_dir, fmt="json")
+        click.echo(f"Report saved to {saved}")
+
+    # Email
+    if email:
+        recipients = config.audit.email_recipients
+        if not recipients:
+            click.echo("Warning: no email_recipients configured, skipping email.")
+        else:
+            send_report_email(report, recipients, from_address=config.audit.email_from)
+            click.echo(f"Report emailed to {', '.join(recipients)}")
+
+
+@main.command()
 @click.option("--procedure", default=None, help="Procedure name to retry (e.g. bids).")
 @click.option("--subject", default=None, help="Subject to retry (e.g. sub-0001).")
+@click.option(
+    "--status",
+    "target_status",
+    default="failed",
+    type=click.Choice(["failed", "pending", "running", "all"]),
+    show_default=True,
+    help=(
+        "Which status to clear. Use 'pending' or 'running' to force-requeue "
+        "jobs that are stuck (e.g. silently cancelled by Slurm)."
+    ),
+)
 @click.pass_context
-def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> None:
-    """Remove failed state entries so they are retried on the next run."""
+def retry(
+    ctx: click.Context,
+    procedure: str | None,
+    subject: str | None,
+    target_status: str,
+) -> None:
+    """Remove state entries so they are retried on the next run.
+
+    By default clears 'failed' entries. Use --status pending to requeue
+    jobs that appear stuck (e.g. cancelled by Slurm but still showing as pending).
+    """
     config: SchedulerConfig = ctx.obj["config"]
     audit = get_logger(config)
     state = load_state(config)
@@ -294,7 +468,10 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
         click.echo("No state recorded yet.")
         return
 
-    mask = state["status"] == "failed"
+    if target_status == "all":
+        mask = pd.Series(True, index=state.index)
+    else:
+        mask = state["status"] == target_status
     if procedure:
         mask &= state["procedure"] == procedure
     if subject:
@@ -302,7 +479,7 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
 
     n = mask.sum()
     if n == 0:
-        click.echo("No matching failed entries found.")
+        click.echo(f"No matching {target_status} entries found.")
         return
 
     cleared = state[mask]
@@ -313,9 +490,9 @@ def retry(ctx: click.Context, procedure: str | None, subject: str | None) -> Non
             session=row["session"],
             procedure=row["procedure"],
             job_id=row.get("job_id"),
-            old_status="failed",
+            old_status=str(row["status"]),
         )
 
     state = state[~mask].reset_index(drop=True)
     save_state(state, config)
-    click.echo(f"Cleared {n} failed entry/entries. They will be retried on the next run.")
+    click.echo(f"Cleared {n} {target_status} entry/entries. They will be retried on the next run.")

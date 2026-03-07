@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["Procedure", "DEFAULT_PROCEDURES", "SchedulerConfig"]
+__all__ = ["Procedure", "DEFAULT_PROCEDURES", "SchedulerConfig", "AuditConfig"]
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,10 +70,11 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         scope="session",
         depends_on=["bids_post"],
         completion_marker=[
-            "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz",
-            "ses-*/dwi/*dir-AP*_dwi_preproc.bvec",
-            "ses-*/dwi/*dir-AP*_dwi_preproc.bval",
-            "ses-*/dwi/*dir-AP*desc-image_qc.tsv",
+            "*.html",
+            "dwi/*_dwi_preproc.nii.gz",
+            "dwi/*_dwi_preproc.bvec",
+            "dwi/*_dwi_preproc.bval",
+            "dwi/*desc-image_qc.tsv",
         ],
     ),
     # ── FreeSurfer longitudinal pipeline ─────────────────────────────────────
@@ -105,6 +106,17 @@ DEFAULT_PROCEDURES: list[Procedure] = [
 
 
 @dataclass
+class AuditConfig:
+    """Settings for the audit engine."""
+
+    dicom_min_files: int = 10
+    stale_job_threshold_hours: int = 168  # 7 days
+    report_dir: Path | None = None
+    email_recipients: list[str] = field(default_factory=list)
+    email_from: str = "snbb-scheduler@localhost"
+
+
+@dataclass
 class SchedulerConfig:
     """All path conventions and settings in one place."""
 
@@ -133,6 +145,10 @@ class SchedulerConfig:
     # JSONL audit log path. Defaults to <state_file parent>/scheduler_audit.jsonl at runtime.
     log_file: Path | None = None
 
+    # Optional path to a QSIRecon workflow YAML (spec file).
+    # When set, the qsirecon completion check verifies one HTML per listed suffix.
+    qsirecon_spec: Path | None = None
+
     # Optional CSV for session discovery (subject_code, session_id, ScanID).
     # When set, filesystem scanning is skipped.
     sessions_file: Path | None = field(default=None)
@@ -145,6 +161,9 @@ class SchedulerConfig:
     procedures: list[Procedure] = field(
         default_factory=lambda: list(DEFAULT_PROCEDURES)
     )
+
+    # Audit settings
+    audit: AuditConfig = field(default_factory=AuditConfig)
 
     def __post_init__(self) -> None:
         """Validate that all ``depends_on`` entries reference known procedures.
@@ -206,6 +225,7 @@ class SchedulerConfig:
             "sessions_file",
             "slurm_log_dir",
             "log_file",
+            "qsirecon_spec",
         }
         for key in path_fields:
             if data.get(key) is not None:
@@ -213,5 +233,11 @@ class SchedulerConfig:
 
         if "procedures" in data:
             data["procedures"] = [Procedure(**p) for p in data["procedures"]]
+
+        if "audit" in data:
+            audit_data = data["audit"] or {}
+            if "report_dir" in audit_data and audit_data["report_dir"] is not None:
+                audit_data["report_dir"] = Path(audit_data["report_dir"])
+            data["audit"] = AuditConfig(**audit_data)
 
         return cls(**data)
