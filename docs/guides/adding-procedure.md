@@ -42,13 +42,14 @@ procedures:
   - name: qsiprep
     output_dir: qsiprep
     script: snbb_run_qsiprep.sh
-    scope: subject
+    scope: session
     depends_on: [bids_post]
     completion_marker:
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bvec"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bval"
-      - "ses-*/dwi/*dir-AP*desc-image_qc.tsv"
+      - "*.html"
+      - "dwi/*_dwi_preproc.nii.gz"
+      - "dwi/*_dwi_preproc.bvec"
+      - "dwi/*_dwi_preproc.bval"
+      - "dwi/*desc-image_qc.tsv"
 
   - name: freesurfer
     output_dir: freesurfer
@@ -58,11 +59,11 @@ procedures:
     completion_marker: "scripts/recon-all.done"
 
   - name: qsirecon
-    output_dir: qsirecon-MRtrix3_act-HSVS
+    output_dir: qsirecon
     script: snbb_run_qsirecon.sh
-    scope: subject
+    scope: session
     depends_on: [qsiprep, freesurfer]
-    completion_marker: null
+    completion_marker: null  # specialised check verifies per-suffix HTML reports
 
   # ─── New procedure ─────────────────────────────────────────────────────────
   - name: fmriprep

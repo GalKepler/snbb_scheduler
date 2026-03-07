@@ -75,25 +75,31 @@ def mark_bids_post_complete(row: dict) -> None:
 
 
 def mark_qsiprep_complete(row: dict) -> None:
-    """Create qsiprep ses-* output dirs matching the BIDS DWI sessions."""
-    subject_bids = row["bids_path"].parent  # bids_root/subject
-    for ses_dir in subject_bids.iterdir():
-        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
-            out = row["qsiprep_path"] / ses_dir.name
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "dwi.nii.gz").touch()
+    """Create qsiprep session-level output files matching the completion_marker."""
+    session_dir = row["qsiprep_path"]
+    subject = row["subject"]
+    session = row["session"]
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / f"{subject}_{session}.html").touch()
+    dwi = session_dir / "dwi"
+    dwi.mkdir(exist_ok=True)
+    stem = f"{subject}_{session}_dwi_preproc"
+    (dwi / f"{stem}.nii.gz").touch()
+    (dwi / f"{stem}.bvec").touch()
+    (dwi / f"{stem}.bval").touch()
+    (dwi / f"{subject}_{session}_desc-image_qc.tsv").touch()
 
 
 def mark_qsirecon_complete(row: dict) -> None:
-    """Create qsirecon HTML reports matching the qsiprep sessions."""
+    """Create qsirecon HTML report for this session."""
     subject = row["subject"]
-    # output_path = <derivatives_root>/qsirecon/<subject>
-    qsirecon_root = row["qsirecon_path"].parent
+    session = row["session"]
+    # qsirecon_path = <derivatives>/qsirecon/<subject>/<session>
+    # qsirecon_root = <derivatives>/qsirecon
+    qsirecon_root = row["qsirecon_path"].parent.parent
     pipeline_dir = qsirecon_root / "derivatives" / "qsirecon-MRtrix3_act-HSVS"
     pipeline_dir.mkdir(parents=True, exist_ok=True)
-    for ses_dir in row["qsiprep_path"].iterdir():
-        if ses_dir.is_dir() and ses_dir.name.startswith("ses-"):
-            (pipeline_dir / f"{subject}_{ses_dir.name}.html").touch()
+    (pipeline_dir / f"{subject}_{session}.html").touch()
 
 
 def mark_defacing_complete(row: dict) -> None:

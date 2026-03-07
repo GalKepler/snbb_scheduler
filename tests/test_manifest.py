@@ -174,10 +174,16 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
     mark_bids_post_complete(tmp_path, "sub-0002", "ses-01")
     for sub in ("sub-0001", "sub-0002"):
         mark_defacing_complete(tmp_path, sub, "ses-01")
-        # qsiprep: subject-scoped, session subdir matches BIDS DWI sessions
+        # qsiprep: session-scoped, create completion_marker files at session level
         qp = tmp_path / "derivatives" / "qsiprep" / sub / "ses-01"
-        qp.mkdir(parents=True)
-        (qp / "out.nii.gz").touch()
+        qp.mkdir(parents=True, exist_ok=True)
+        (qp / f"{sub}_ses-01.html").touch()
+        dwi = qp / "dwi"
+        dwi.mkdir(exist_ok=True)
+        (dwi / f"{sub}_ses-01_dwi_preproc.nii.gz").touch()
+        (dwi / f"{sub}_ses-01_dwi_preproc.bvec").touch()
+        (dwi / f"{sub}_ses-01_dwi_preproc.bval").touch()
+        (dwi / f"{sub}_ses-01_desc-image_qc.tsv").touch()
         _make_bids_t1w(tmp_path, sub, "ses-01")
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
         # qsirecon: HTML report per qsiprep session

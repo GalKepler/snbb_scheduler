@@ -72,10 +72,17 @@ def add_bids_post(tmp_path, subject, session):
 
 
 def add_qsiprep(tmp_path, subject, session):
-    """Create qsiprep ses-* output dir for one session (subject-scoped layout)."""
+    """Create qsiprep session-level output files matching the completion_marker."""
     out = tmp_path / "derivatives" / "qsiprep" / subject / session
     out.mkdir(parents=True, exist_ok=True)
-    (out / "dwi.nii.gz").touch()
+    (out / f"{subject}_{session}.html").touch()
+    dwi = out / "dwi"
+    dwi.mkdir(exist_ok=True)
+    stem = f"{subject}_{session}_dwi_preproc"
+    (dwi / f"{stem}.nii.gz").touch()
+    (dwi / f"{stem}.bvec").touch()
+    (dwi / f"{stem}.bval").touch()
+    (dwi / f"{subject}_{session}_desc-image_qc.tsv").touch()
 
 
 def _make_bids_t1w(tmp_path, subject, session):
@@ -288,8 +295,8 @@ def test_two_sessions_same_subject_share_freesurfer_path(tmp_path):
 
     # freesurfer should not appear — already done for this subject
     assert "freesurfer" not in set(manifest["procedure"])
-    # qsiprep is subject-scoped: one row per subject (not per session)
-    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 1
+    # qsiprep is session-scoped: one row per session (2 sessions → 2 rows)
+    assert len(manifest[manifest["procedure"] == "qsiprep"]) == 2
 
 
 # ---------------------------------------------------------------------------

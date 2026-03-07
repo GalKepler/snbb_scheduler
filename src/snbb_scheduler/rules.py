@@ -48,7 +48,8 @@ def build_rules(
     """
     return {
         proc.name: _make_rule(
-            proc, config,
+            proc,
+            config,
             sessions_df=sessions_df,
             force=force,
             force_procedures=force_procedures,
@@ -57,7 +58,9 @@ def build_rules(
     }
 
 
-def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig) -> dict:
+def _completion_kwargs(
+    proc: Procedure, row: pd.Series, config: SchedulerConfig
+) -> dict:
     """Return extra keyword arguments for ``is_complete`` based on procedure name.
 
     Some specialised checks require additional context (e.g. the BIDS root
@@ -71,7 +74,14 @@ def _completion_kwargs(proc: Procedure, row: pd.Series, config: SchedulerConfig)
     if proc.name in ("freesurfer", "qsiprep"):
         return {"bids_root": config.bids_root, "subject": subject}
     if proc.name == "qsirecon":
-        return {"derivatives_root": config.derivatives_root, "subject": subject}
+        kwargs: dict = {
+            "derivatives_root": config.derivatives_root,
+            "subject": subject,
+            "session": row["session"],
+        }
+        if config.qsirecon_spec is not None:
+            kwargs["recon_spec"] = config.qsirecon_spec
+        return kwargs
     return {}
 
 
@@ -153,7 +163,9 @@ def _make_rule(
                         return False  # any incomplete session → not ready
 
         # ── Self-completion check ─────────────────────────────────────────
-        should_force = force and (force_procedures is None or proc.name in force_procedures)
+        should_force = force and (
+            force_procedures is None or proc.name in force_procedures
+        )
         if should_force:
             return True
         self_kwargs = _completion_kwargs(proc, row, config)

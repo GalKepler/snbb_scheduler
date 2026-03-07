@@ -58,9 +58,9 @@ The built-in procedure list, in dependency order:
 ```python
 DEFAULT_PROCEDURES: list[Procedure] = [
     # bids → bids_post → defacing
-    # bids_post → qsiprep (subject-scoped)
+    # bids_post → qsiprep (session-scoped)
     # bids_post → freesurfer (subject-scoped)
-    # qsiprep + freesurfer → qsirecon (subject-scoped)
+    # qsiprep + freesurfer → qsirecon (session-scoped)
 ]
 ```
 
@@ -94,6 +94,7 @@ class SchedulerConfig:
     state_file: Path = Path("/data/snbb/.scheduler_state.parquet")
     slurm_log_dir: Path | None = None
     log_file: Path | None = None
+    qsirecon_spec: Path | None = None
     sessions_file: Path | None = None
     procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
 ```
