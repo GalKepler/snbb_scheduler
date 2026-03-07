@@ -114,6 +114,11 @@ class AuditConfig:
     report_dir: Path | None = None
     email_recipients: list[str] = field(default_factory=list)
     email_from: str = "snbb-scheduler@localhost"
+    smtp_host: str = "localhost"
+    smtp_port: int = 25
+    smtp_tls: bool = False
+    smtp_username: str | None = None
+    smtp_password: str | None = None
 
 
 @dataclass

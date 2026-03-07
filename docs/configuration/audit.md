@@ -15,6 +15,11 @@ audit:
     - pi@example.com
     - data-manager@example.com
   email_from: snbb-scheduler@localhost
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_tls: true
+  smtp_username: your@gmail.com
+  smtp_password: your-app-password
 ```
 
 All fields are optional. Omitting the `audit:` block entirely uses the defaults shown above.
@@ -30,6 +35,11 @@ All fields are optional. Omitting the `audit:` block entirely uses the defaults 
 | `report_dir` | path | `null` | Directory where JSON audit reports are saved after each run. Required for `--history`. When `null`, reports are not persisted. |
 | `email_recipients` | list of str | `[]` | Email addresses to send the report to when `--email` is passed |
 | `email_from` | str | `"snbb-scheduler@localhost"` | Sender address used in outgoing emails |
+| `smtp_host` | str | `"localhost"` | SMTP server hostname |
+| `smtp_port` | int | `25` | SMTP server port (use `587` for STARTTLS) |
+| `smtp_tls` | bool | `false` | Issue STARTTLS after connecting |
+| `smtp_username` | str | `null` | Username for SMTP authentication; omit for unauthenticated relays |
+| `smtp_password` | str | `null` | Password for SMTP authentication; omit for unauthenticated relays |
 
 ---
 
@@ -101,21 +111,37 @@ find /data/snbb/audit_reports -name "audit_*.json" -mtime +30 -delete
 
 ## Email delivery
 
-The `--email` flag sends a multipart HTML + plain-text email via the local MTA (sendmail or Postfix) on `localhost:25`. No authentication or TLS is used — this is designed for internal HPC environments where a local relay is available.
+The `--email` flag sends a multipart HTML + plain-text email. By default it connects to `localhost:25` (a local Postfix/sendmail relay), but you can point it at any SMTP server including Gmail, Outlook, or a hosted relay.
+
+See the full setup guide: [Email setup](../guides/email-setup.md).
 
 ### Requirements
 
-- A local MTA must be running and accepting mail on port 25 (e.g. `systemctl status postfix`)
 - `email_recipients` must be set in the config
+- The SMTP server must be reachable from the machine running the scheduler
 
 ### Configuration
 
+**Local relay (HPC default)**
 ```yaml
 audit:
   email_recipients:
     - pi@example.com
-    - data-manager@example.com
   email_from: snbb-scheduler@hpc.example.com
+  # smtp_host/port default to localhost:25 — no auth, no TLS
+```
+
+**External SMTP (e.g. Gmail)**
+```yaml
+audit:
+  email_recipients:
+    - pi@example.com
+  email_from: your@gmail.com
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_tls: true
+  smtp_username: your@gmail.com
+  smtp_password: your-app-password   # use a Gmail App Password, not your login password
 ```
 
 ### Usage
@@ -130,11 +156,12 @@ snbb-scheduler --config config.yaml audit --format html --output report.html --e
 
 ### Troubleshooting
 
-If email delivery fails, check:
+If email delivery fails:
 
-1. `systemctl status postfix` (or your MTA)
-2. `/var/log/mail.log` for delivery errors
-3. That the `email_from` address is accepted by your relay
+1. Check you are passing `--config` — the default config has no `email_recipients` and will print a warning instead of sending.
+2. For local relay: `systemctl status postfix` and `/var/log/mail.log`
+3. For external SMTP: verify host/port/TLS/credentials and that the server is reachable (`telnet smtp.gmail.com 587`)
+4. For Gmail: ensure you are using an [App Password](https://myaccount.google.com/apppasswords), not your Google account password
 
 ---
 
@@ -154,7 +181,12 @@ audit:
   email_recipients:
     - pi@example.com
     - data-manager@example.com
-  email_from: snbb-scheduler@localhost
+  email_from: snbb-scheduler@hpc.example.com
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_tls: true
+  smtp_username: your@gmail.com
+  smtp_password: your-app-password
 ```
 
 With `slurm_log_dir` set and `report_dir` configured, a full daily audit via cron looks like:
@@ -169,5 +201,6 @@ With `slurm_log_dir` set and `report_dir` configured, a full daily audit via cro
 ## See also
 
 - [`audit` CLI command](../cli/audit.md) — all command options and report sections
+- [Email setup guide](../guides/email-setup.md) — step-by-step for Gmail, Outlook, and local relay
 - [Slurm log configuration](slurm.md) — setting up `slurm_log_dir`
 - [Cron setup](../guides/cron-setup.md) — scheduling daily runs

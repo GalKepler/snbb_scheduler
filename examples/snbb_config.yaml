@@ -18,6 +18,19 @@ state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parqu
 # sessions_file: /home/galkepler/Downloads/linked_sessions.csv
 sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/linked_sessions.csv
 
+audit:
+  dicom_min_files: 10
+  stale_job_threshold_hours: 168
+  report_dir: /media/storage/yalab-dev/snbb_scheduler/audit_reports
+  email_recipients:
+    - galkepler@gmail.com
+  email_from: snbb-scheduler@localhost
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  smtp_tls: true
+  smtp_username: your@gmail.com
+  smtp_password: your-app-password
+
 # ---------------------------------------------------------------------------
 # Slurm settings
 # ---------------------------------------------------------------------------

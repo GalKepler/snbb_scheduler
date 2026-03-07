@@ -299,6 +299,65 @@ def test_send_report_email_multiple_recipients(tmp_path):
         assert "b@x.com" in args[1]
 
 
+def test_send_report_email_custom_smtp_host_port(tmp_path):
+    report = _make_report()
+    with patch("snbb_scheduler.report.smtplib.SMTP") as mock_smtp_cls:
+        mock_smtp = MagicMock()
+        mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        send_report_email(
+            report, ["a@x.com"], smtp_host="smtp.example.com", smtp_port=587
+        )
+
+        mock_smtp_cls.assert_called_once_with("smtp.example.com", 587)
+
+
+def test_send_report_email_tls(tmp_path):
+    report = _make_report()
+    with patch("snbb_scheduler.report.smtplib.SMTP") as mock_smtp_cls:
+        mock_smtp = MagicMock()
+        mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        send_report_email(report, ["a@x.com"], smtp_tls=True)
+
+        mock_smtp.starttls.assert_called_once()
+        mock_smtp.login.assert_not_called()
+
+
+def test_send_report_email_auth(tmp_path):
+    report = _make_report()
+    with patch("snbb_scheduler.report.smtplib.SMTP") as mock_smtp_cls:
+        mock_smtp = MagicMock()
+        mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        send_report_email(
+            report,
+            ["a@x.com"],
+            smtp_tls=True,
+            smtp_username="user@example.com",
+            smtp_password="secret",
+        )
+
+        mock_smtp.starttls.assert_called_once()
+        mock_smtp.login.assert_called_once_with("user@example.com", "secret")
+
+
+def test_send_report_email_no_tls_no_auth(tmp_path):
+    report = _make_report()
+    with patch("snbb_scheduler.report.smtplib.SMTP") as mock_smtp_cls:
+        mock_smtp = MagicMock()
+        mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        send_report_email(report, ["a@x.com"])
+
+        mock_smtp.starttls.assert_not_called()
+        mock_smtp.login.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # load_previous_report & compare_reports
 # ---------------------------------------------------------------------------

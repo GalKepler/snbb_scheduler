@@ -430,7 +430,16 @@ def audit(
         if not recipients:
             click.echo("Warning: no email_recipients configured, skipping email.")
         else:
-            send_report_email(report, recipients, from_address=config.audit.email_from)
+            send_report_email(
+                report,
+                recipients,
+                from_address=config.audit.email_from,
+                smtp_host=config.audit.smtp_host,
+                smtp_port=config.audit.smtp_port,
+                smtp_tls=config.audit.smtp_tls,
+                smtp_username=config.audit.smtp_username,
+                smtp_password=config.audit.smtp_password,
+            )
             click.echo(f"Report emailed to {', '.join(recipients)}")
 
 

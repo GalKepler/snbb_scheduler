@@ -367,12 +367,15 @@ def save_report(
 def send_report_email(
     report: AuditReport,
     recipients: list[str],
+    *,
     from_address: str = "snbb-scheduler@localhost",
+    smtp_host: str = "localhost",
+    smtp_port: int = 25,
+    smtp_tls: bool = False,
+    smtp_username: str | None = None,
+    smtp_password: str | None = None,
 ) -> None:
-    """Send the audit report as an HTML email via localhost SMTP.
-
-    Requires a local MTA (sendmail/postfix) listening on port 25.
-    No authentication is performed.
+    """Send the audit report as an HTML email via SMTP.
 
     Parameters
     ----------
@@ -382,13 +385,23 @@ def send_report_email(
         List of email addresses to send to.
     from_address:
         Sender address.
+    smtp_host:
+        SMTP server hostname (default: ``"localhost"``).
+    smtp_port:
+        SMTP server port (default: ``25``; use ``587`` for STARTTLS).
+    smtp_tls:
+        If ``True``, issue STARTTLS after connecting.
+    smtp_username:
+        Username for SMTP authentication. Leave ``None`` to skip auth.
+    smtp_password:
+        Password for SMTP authentication. Leave ``None`` to skip auth.
 
     Raises
     ------
     smtplib.SMTPException
         On SMTP errors.
     OSError
-        If the local MTA is not reachable.
+        If the SMTP server is not reachable.
     """
     html_body = render_html(report)
     text_body = render_markdown(report)
@@ -401,7 +414,11 @@ def send_report_email(
     msg.attach(MIMEText(text_body, "plain", "utf-8"))
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    with smtplib.SMTP("localhost", 25) as smtp:
+    with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+        if smtp_tls:
+            smtp.starttls()
+        if smtp_username and smtp_password:
+            smtp.login(smtp_username, smtp_password)
         smtp.sendmail(from_address, recipients, msg.as_string())
 
 

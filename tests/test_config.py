@@ -397,6 +397,11 @@ def test_audit_config_defaults():
     assert audit.report_dir is None
     assert audit.email_recipients == []
     assert audit.email_from == "snbb-scheduler@localhost"
+    assert audit.smtp_host == "localhost"
+    assert audit.smtp_port == 25
+    assert audit.smtp_tls is False
+    assert audit.smtp_username is None
+    assert audit.smtp_password is None
 
 
 def test_scheduler_config_has_audit():
