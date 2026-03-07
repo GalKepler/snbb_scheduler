@@ -1970,7 +1970,7 @@
 <td><code>report_dir</code></td>
 <td>path</td>
 <td><code>null</code></td>
-<td>Directory where JSON audit reports are saved after each run. Required for <code>--history</code>. When <code>null</code>, reports are not persisted.</td>
+<td>Directory where audit output is saved. Two files are written here: a timestamped JSON report after each <code>audit</code> run (required for <code>--history</code>), and <code>audit_report.html</code> — an HTML summary of the scheduler event log that is updated automatically after every submitted, status-change, or error event. When <code>null</code>, neither file is written.</td>
 </tr>
 <tr>
 <td><code>email_recipients</code></td>
@@ -2043,7 +2043,9 @@
 </code></pre></div>
 <hr />
 <h2 id="report-persistence-and-history">Report persistence and history<a class="headerlink" href="#report-persistence-and-history" title="Permanent link">&para;</a></h2>
-<p>When <code>report_dir</code> is set, each audit run saves a timestamped JSON report:</p>
+<p>When <code>report_dir</code> is set, two types of files are written there:</p>
+<p><strong><code>audit_report.html</code></strong> — An HTML summary of the scheduler event log (submissions, status changes, errors). This file is updated automatically after every scheduler event during normal <code>run</code>, <code>retry</code>, and <code>monitor</code> operations — no extra commands needed.</p>
+<p><strong>Timestamped JSON reports</strong> — Each <code>snbb-scheduler audit</code> run saves a snapshot:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/data/snbb/audit_reports/audit_20241115_060000.json
 </code></pre></div>
 <p>These files are used by <code>--history</code> to compute deltas between the current and previous run. The history comparison shows:</p>

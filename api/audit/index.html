@@ -1786,6 +1786,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#auditlogevent-subject-session-procedure-job_id-old_status-new_status-detail-extra" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1819,10 +1830,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#output-record" class="md-nav__link">
+  <a href="#output-record-jsonl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output record
+        Output record (JSONL)
       
     </span>
   </a>
@@ -1831,6 +1842,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1911,6 +1933,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#auditlogevent-subject-session-procedure-job_id-old_status-new_status-detail-extra" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1944,10 +1977,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#output-record" class="md-nav__link">
+  <a href="#output-record-jsonl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output record
+        Output record (JSONL)
       
     </span>
   </a>
@@ -1956,6 +1989,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1991,7 +2035,7 @@
 
 
 <h1 id="snbb_scheduleraudit"><code>snbb_scheduler.audit</code><a class="headerlink" href="#snbb_scheduleraudit" title="Permanent link">&para;</a></h1>
-<p>JSONL audit logging for all scheduler events.</p>
+<p>JSONL audit logging for all scheduler events, with optional HTML report generation.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.audit</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditLogger</span><span class="p">,</span> <span class="n">get_logger</span>
 </code></pre></div>
 <hr />
@@ -2001,14 +2045,52 @@
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
-<p>Uses <code>config.log_file</code> if set; otherwise defaults to <code>&lt;state_file_parent&gt;/scheduler_audit.jsonl</code>.</p>
+<ul>
+<li>Uses <code>config.log_file</code> if set; otherwise defaults to <code>&lt;state_file_parent&gt;/scheduler_audit.jsonl</code>.</li>
+<li>Passes <code>config.audit.report_dir</code> to <code>AuditLogger</code> so that HTML reports are written automatically whenever <code>report_dir</code> is configured.</li>
+</ul>
 <hr />
 <h2 id="auditlogger"><code>AuditLogger</code><a class="headerlink" href="#auditlogger" title="Permanent link">&para;</a></h2>
-<p>Appends JSONL records to a log file. One record per event.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">AuditLogger</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/scheduler_audit.jsonl&quot;</span><span class="p">))</span>
+<p>Appends JSONL records to a log file and, optionally, keeps an HTML report up to date.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.audit</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditLogger</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># JSONL only</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">AuditLogger</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/scheduler_audit.jsonl&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># JSONL + HTML report</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">AuditLogger</span><span class="p">(</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/scheduler_audit.jsonl&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">report_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/audit_reports&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">)</span>
 </code></pre></div>
+<h3 id="constructor-parameters">Constructor parameters<a class="headerlink" href="#constructor-parameters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log_file</code></td>
+<td><code>Path</code></td>
+<td>—</td>
+<td>Path to the JSONL log file (created on first write)</td>
+</tr>
+<tr>
+<td><code>report_dir</code></td>
+<td><code>Path</code> or <code>None</code></td>
+<td><code>None</code></td>
+<td>Directory where <code>audit_report.html</code> is written after every event. <code>None</code> disables HTML output.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="auditlogevent-subject-session-procedure-job_id-old_status-new_status-detail-extra"><code>audit.log(event, *, subject, session, procedure, job_id, old_status, new_status, detail, **extra)</code><a class="headerlink" href="#auditlogevent-subject-session-procedure-job_id-old_status-new_status-detail-extra" title="Permanent link">&para;</a></h3>
-<p>Append a single JSONL record.</p>
+<p>Append a single JSONL record and refresh the HTML report (if <code>report_dir</code> is set).</p>
 <p><strong>Parameters:</strong></p>
 <table>
 <thead>
@@ -2117,29 +2199,32 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.audit</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditLogger</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">AuditLogger</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/scheduler_audit.jsonl&quot;</span><span class="p">))</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Log a submission</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">audit</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="s2">&quot;submitted&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-202407110849&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">procedure</span><span class="o">=</span><span class="s2">&quot;bids&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">job_id</span><span class="o">=</span><span class="s2">&quot;12345&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="p">)</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="c1"># Log a status change</span>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">audit</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="s2">&quot;status_change&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-202407110849&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="n">procedure</span><span class="o">=</span><span class="s2">&quot;bids&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="n">job_id</span><span class="o">=</span><span class="s2">&quot;12345&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="n">old_status</span><span class="o">=</span><span class="s2">&quot;pending&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="n">new_status</span><span class="o">=</span><span class="s2">&quot;complete&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">audit</span> <span class="o">=</span> <span class="n">AuditLogger</span><span class="p">(</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/scheduler_audit.jsonl&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">report_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/audit_reports&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1"># Log a submission — also updates audit_report.html</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">audit</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="s2">&quot;submitted&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-202407110849&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="n">procedure</span><span class="o">=</span><span class="s2">&quot;bids&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">job_id</span><span class="o">=</span><span class="s2">&quot;12345&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="c1"># Log a status change</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="n">audit</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="s2">&quot;status_change&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-202407110849&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="n">procedure</span><span class="o">=</span><span class="s2">&quot;bids&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    <span class="n">job_id</span><span class="o">=</span><span class="s2">&quot;12345&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="n">old_status</span><span class="o">=</span><span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="n">new_status</span><span class="o">=</span><span class="s2">&quot;complete&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="p">)</span>
 </code></pre></div>
-<h3 id="output-record">Output record<a class="headerlink" href="#output-record" title="Permanent link">&para;</a></h3>
+<h3 id="output-record-jsonl">Output record (JSONL)<a class="headerlink" href="#output-record-jsonl" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-11-01T06:00:12.345678+00:00&quot;</span><span class="p">,</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;submitted&quot;</span><span class="p">,</span>
@@ -2150,12 +2235,21 @@
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">}</span>
 </code></pre></div>
 <hr />
+<h2 id="html-report">HTML report<a class="headerlink" href="#html-report" title="Permanent link">&para;</a></h2>
+<p>When <code>report_dir</code> is set, every call to <code>log()</code> regenerates <code>&lt;report_dir&gt;/audit_report.html</code>. The report is a self-contained HTML page with a styled table of all events recorded in the JSONL log, colour-coded by event type.</p>
+<p>The file is <strong>overwritten</strong> on each update — it always reflects the full history of the JSONL log.</p>
+<p>Configure via YAML:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">report_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/audit_reports</span>
+</code></pre></div>
+<p>The file is then available at <code>/data/snbb/audit_reports/audit_report.html</code> after the first scheduler event.</p>
+<hr />
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The log file's parent directory is created automatically if it doesn't exist</li>
-<li>Records are appended (never overwritten) — the file grows indefinitely</li>
-<li>Set up log rotation if the scheduler runs daily (see <a href="../../guides/cron-setup/">Cron Setup</a>)</li>
-<li>See <a href="../../reference/audit-log/">Audit Log reference</a> for querying and tailing the log</li>
+<li>Both <code>log_file</code> and <code>report_dir</code> parent directories are created automatically if they don't exist.</li>
+<li>JSONL records are appended (never overwritten) — the file grows indefinitely.</li>
+<li>Set up log rotation if the scheduler runs daily (see <a href="../../guides/cron-setup/">Cron Setup</a>).</li>
+<li>See <a href="../../reference/audit-log/">Audit Log reference</a> for querying and tailing the JSONL log.</li>
 </ul>
 
 
