@@ -32,7 +32,7 @@ All fields are optional. Omitting the `audit:` block entirely uses the defaults 
 |---|---|---|---|
 | `dicom_min_files` | int | `10` | Sessions with fewer total DICOM files than this threshold are flagged as suspicious in the report |
 | `stale_job_threshold_hours` | int | `168` | Jobs in `pending` or `running` for longer than this many hours are listed in the Stale Jobs section (default: 7 days) |
-| `report_dir` | path | `null` | Directory where JSON audit reports are saved after each run. Required for `--history`. When `null`, reports are not persisted. |
+| `report_dir` | path | `null` | Directory where audit output is saved. Two files are written here: a timestamped JSON report after each `audit` run (required for `--history`), and `audit_report.html` — an HTML summary of the scheduler event log that is updated automatically after every submitted, status-change, or error event. When `null`, neither file is written. |
 | `email_recipients` | list of str | `[]` | Email addresses to send the report to when `--email` is passed |
 | `email_from` | str | `"snbb-scheduler@localhost"` | Sender address used in outgoing emails |
 | `smtp_host` | str | `"localhost"` | SMTP server hostname |
@@ -82,7 +82,11 @@ audit:
 
 ## Report persistence and history
 
-When `report_dir` is set, each audit run saves a timestamped JSON report:
+When `report_dir` is set, two types of files are written there:
+
+**`audit_report.html`** — An HTML summary of the scheduler event log (submissions, status changes, errors). This file is updated automatically after every scheduler event during normal `run`, `retry`, and `monitor` operations — no extra commands needed.
+
+**Timestamped JSON reports** — Each `snbb-scheduler audit` run saves a snapshot:
 
 ```
 /data/snbb/audit_reports/audit_20241115_060000.json

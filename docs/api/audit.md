@@ -1,6 +1,6 @@
 # `snbb_scheduler.audit`
 
-JSONL audit logging for all scheduler events.
+JSONL audit logging for all scheduler events, with optional HTML report generation.
 
 ```python
 from snbb_scheduler.audit import AuditLogger, get_logger
@@ -18,21 +18,39 @@ from snbb_scheduler.audit import get_logger
 audit = get_logger(cfg)
 ```
 
-Uses `config.log_file` if set; otherwise defaults to `<state_file_parent>/scheduler_audit.jsonl`.
+- Uses `config.log_file` if set; otherwise defaults to `<state_file_parent>/scheduler_audit.jsonl`.
+- Passes `config.audit.report_dir` to `AuditLogger` so that HTML reports are written automatically whenever `report_dir` is configured.
 
 ---
 
 ## `AuditLogger`
 
-Appends JSONL records to a log file. One record per event.
+Appends JSONL records to a log file and, optionally, keeps an HTML report up to date.
 
 ```python
+from pathlib import Path
+from snbb_scheduler.audit import AuditLogger
+
+# JSONL only
 audit = AuditLogger(Path("/data/snbb/scheduler_audit.jsonl"))
+
+# JSONL + HTML report
+audit = AuditLogger(
+    Path("/data/snbb/scheduler_audit.jsonl"),
+    report_dir=Path("/data/snbb/audit_reports"),
+)
 ```
+
+### Constructor parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `log_file` | `Path` | — | Path to the JSONL log file (created on first write) |
+| `report_dir` | `Path` or `None` | `None` | Directory where `audit_report.html` is written after every event. `None` disables HTML output. |
 
 ### `audit.log(event, *, subject, session, procedure, job_id, old_status, new_status, detail, **extra)`
 
-Append a single JSONL record.
+Append a single JSONL record and refresh the HTML report (if `report_dir` is set).
 
 **Parameters:**
 
@@ -64,9 +82,12 @@ Append a single JSONL record.
 from pathlib import Path
 from snbb_scheduler.audit import AuditLogger
 
-audit = AuditLogger(Path("/data/snbb/scheduler_audit.jsonl"))
+audit = AuditLogger(
+    Path("/data/snbb/scheduler_audit.jsonl"),
+    report_dir=Path("/data/snbb/audit_reports"),
+)
 
-# Log a submission
+# Log a submission — also updates audit_report.html
 audit.log(
     "submitted",
     subject="sub-0001",
@@ -87,7 +108,7 @@ audit.log(
 )
 ```
 
-### Output record
+### Output record (JSONL)
 
 ```json
 {
@@ -102,9 +123,26 @@ audit.log(
 
 ---
 
+## HTML report
+
+When `report_dir` is set, every call to `log()` regenerates `<report_dir>/audit_report.html`. The report is a self-contained HTML page with a styled table of all events recorded in the JSONL log, colour-coded by event type.
+
+The file is **overwritten** on each update — it always reflects the full history of the JSONL log.
+
+Configure via YAML:
+
+```yaml
+audit:
+  report_dir: /data/snbb/audit_reports
+```
+
+The file is then available at `/data/snbb/audit_reports/audit_report.html` after the first scheduler event.
+
+---
+
 ## Notes
 
-- The log file's parent directory is created automatically if it doesn't exist
-- Records are appended (never overwritten) — the file grows indefinitely
-- Set up log rotation if the scheduler runs daily (see [Cron Setup](../guides/cron-setup.md))
-- See [Audit Log reference](../reference/audit-log.md) for querying and tailing the log
+- Both `log_file` and `report_dir` parent directories are created automatically if they don't exist.
+- JSONL records are appended (never overwritten) — the file grows indefinitely.
+- Set up log rotation if the scheduler runs daily (see [Cron Setup](../guides/cron-setup.md)).
+- See [Audit Log reference](../reference/audit-log.md) for querying and tailing the JSONL log.

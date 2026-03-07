@@ -1,6 +1,6 @@
 # Audit Log
 
-Every significant scheduler event is appended to a JSONL (newline-delimited JSON) file. One record per event, human-readable, easily processed with standard tools.
+Every significant scheduler event is appended to a JSONL (newline-delimited JSON) file. One record per event, human-readable, easily processed with standard tools. When `audit.report_dir` is configured, an HTML report is also written automatically after every event.
 
 ## Location
 
@@ -45,6 +45,19 @@ Every record has these fields:
 {"timestamp": "2024-11-01T07:30:44.223344+00:00", "event": "status_change", "subject": "sub-0002", "session": "ses-202407110849", "procedure": "bids", "job_id": "10235", "old_status": "pending", "new_status": "failed"}
 {"timestamp": "2024-11-02T06:00:05.000000+00:00", "event": "retry_cleared", "subject": "sub-0002", "session": "ses-202407110849", "procedure": "bids", "job_id": "10235", "old_status": "failed"}
 ```
+
+## HTML report
+
+When `audit.report_dir` is set in the config, the scheduler writes `<report_dir>/audit_report.html` after every logged event. The report is a self-contained HTML page with a colour-coded table of all events in the JSONL log.
+
+```yaml
+audit:
+  report_dir: /data/snbb/audit_reports
+```
+
+The file `/data/snbb/audit_reports/audit_report.html` is overwritten on each update and always reflects the full JSONL history. No extra commands are needed — the report is kept current automatically during normal `run`, `retry`, and `monitor` operations.
+
+---
 
 ## Tailing the log
 

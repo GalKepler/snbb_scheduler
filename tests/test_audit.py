@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from snbb_scheduler.audit import AuditLogger, get_logger
-from snbb_scheduler.config import SchedulerConfig
+from snbb_scheduler.config import AuditConfig, SchedulerConfig
 
 
 @pytest.fixture
@@ -123,3 +123,81 @@ def test_get_logger_defaults_to_state_file_parent(tmp_path):
     a = get_logger(cfg)
     a.log("submitted")
     assert (tmp_path / "scheduler_audit.jsonl").exists()
+
+
+# ---------------------------------------------------------------------------
+# HTML report
+# ---------------------------------------------------------------------------
+
+def test_html_report_written_when_report_dir_set(tmp_path):
+    report_dir = tmp_path / "reports"
+    a = AuditLogger(tmp_path / "audit.jsonl", report_dir=report_dir)
+    a.log("submitted", subject="sub-0001", session="ses-01", procedure="bids")
+    assert (report_dir / "audit_report.html").exists()
+
+
+def test_html_report_contains_event(tmp_path):
+    report_dir = tmp_path / "reports"
+    a = AuditLogger(tmp_path / "audit.jsonl", report_dir=report_dir)
+    a.log("submitted", subject="sub-0001", session="ses-01", procedure="bids", job_id="42")
+    html = (report_dir / "audit_report.html").read_text()
+    assert "submitted" in html
+    assert "sub-0001" in html
+    assert "ses-01" in html
+    assert "bids" in html
+    assert "42" in html
+
+
+def test_html_report_not_written_without_report_dir(tmp_path):
+    a = AuditLogger(tmp_path / "audit.jsonl")
+    a.log("submitted", subject="sub-0001", session="ses-01", procedure="bids")
+    assert not any(tmp_path.glob("*.html"))
+
+
+def test_html_report_updated_on_each_log(tmp_path):
+    report_dir = tmp_path / "reports"
+    a = AuditLogger(tmp_path / "audit.jsonl", report_dir=report_dir)
+    a.log("submitted", subject="sub-0001", session="ses-01", procedure="bids")
+    a.log("submitted", subject="sub-0002", session="ses-01", procedure="bids")
+    html = (report_dir / "audit_report.html").read_text()
+    assert "sub-0001" in html
+    assert "sub-0002" in html
+
+
+def test_html_report_shows_status_change(tmp_path):
+    report_dir = tmp_path / "reports"
+    a = AuditLogger(tmp_path / "audit.jsonl", report_dir=report_dir)
+    a.log(
+        "status_change",
+        subject="sub-0001", session="ses-01", procedure="bids",
+        old_status="pending", new_status="complete",
+    )
+    html = (report_dir / "audit_report.html").read_text()
+    assert "pending" in html
+    assert "complete" in html
+
+
+def test_get_logger_passes_report_dir(tmp_path):
+    report_dir = tmp_path / "reports"
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        audit=AuditConfig(report_dir=report_dir),
+    )
+    a = get_logger(cfg)
+    a.log("submitted", subject="sub-0001", session="ses-01", procedure="bids")
+    assert (report_dir / "audit_report.html").exists()
+
+
+def test_get_logger_no_report_dir_by_default(tmp_path):
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    a = get_logger(cfg)
+    a.log("submitted")
+    assert not any(tmp_path.glob("**/*.html"))

@@ -25,11 +25,11 @@ audit:
   email_recipients:
     - galkepler@gmail.com
   email_from: snbb-scheduler@localhost
-  smtp_host: smtp.gmail.com
-  smtp_port: 587
-  smtp_tls: true
-  smtp_username: your@gmail.com
-  smtp_password: your-app-password
+  # smtp_host: smtp.gmail.com
+  # smtp_port: 587
+  # smtp_tls: true
+  # smtp_username: your@gmail.com
+  # smtp_password: your-app-password
 
 # ---------------------------------------------------------------------------
 # Slurm settings
