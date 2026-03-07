@@ -1687,17 +1687,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#qsiprep" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        qsiprep
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#qsirecon" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1969,17 +1958,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#qsiprep" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        qsiprep
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#qsirecon" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2098,31 +2076,56 @@
 </code></pre></div>
 <hr />
 <h2 id="specialized-checks">Specialized checks<a class="headerlink" href="#specialized-checks" title="Permanent link">&para;</a></h2>
-<p>Three procedures use custom completion logic that goes beyond the marker pattern:</p>
+<p>Two procedures use custom completion logic that goes beyond the marker pattern:</p>
 <h3 id="freesurfer"><code>freesurfer</code><a class="headerlink" href="#freesurfer" title="Permanent link">&para;</a></h3>
-<p><code>is_complete(proc, path, bids_root=..., subject=...)</code> checks:
-1. <code>scripts/recon-all.done</code> must exist
-2. The number of <code>-i</code> inputs recorded in <code>recon-all.done</code>'s <code>#CMDARGS</code> line must equal the number of T1w NIfTI files currently available in the BIDS dataset for that subject</p>
-<p>Without <code>bids_root</code> and <code>subject</code>, falls back to checking only for the marker file.</p>
-<h3 id="qsiprep"><code>qsiprep</code><a class="headerlink" href="#qsiprep" title="Permanent link">&para;</a></h3>
-<p><code>is_complete(proc, path, bids_root=..., subject=...)</code> checks:
-1. At least one <code>ses-*</code> subdirectory exists in the QSIPrep subject output
-2. The count of <code>ses-*</code> subdirectories equals the count of BIDS sessions with DWI data</p>
+<p><code>is_complete(proc, path, bids_root=..., subject=...)</code> checks the full longitudinal pipeline:</p>
+<ul>
+<li><strong>Single-session subjects</strong>: <code>&lt;subject&gt;/scripts/recon-all.done</code> exists and is a success marker</li>
+<li><strong>Multi-session subjects</strong>: verifies all three pipeline steps:</li>
+<li>Cross-sectional — <code>&lt;subject&gt;_&lt;session&gt;/scripts/recon-all.done</code> for every BIDS session</li>
+<li>Template — <code>&lt;subject&gt;/scripts/recon-all.done</code></li>
+<li>Longitudinal — <code>&lt;subject&gt;_&lt;session&gt;.long.&lt;subject&gt;/scripts/recon-all.done</code> for every BIDS session</li>
+</ul>
+<p>Without <code>bids_root</code> and <code>subject</code>, falls back to checking only <code>&lt;path&gt;/scripts/recon-all.done</code>.</p>
 <h3 id="qsirecon"><code>qsirecon</code><a class="headerlink" href="#qsirecon" title="Permanent link">&para;</a></h3>
-<p><code>is_complete(proc, path, derivatives_root=..., subject=...)</code> checks:
-1. At least one <code>ses-*</code> subdirectory exists in the QSIRecon subject output
-2. The count matches the number of <code>ses-*</code> subdirectories in the corresponding QSIPrep output</p>
+<p><code>is_complete(proc, path, derivatives_root=..., subject=..., session=..., recon_spec=None)</code> checks:</p>
+<ul>
+<li><strong>With <code>recon_spec</code></strong> (path to a QSIRecon workflow YAML): reads the unique <code>qsirecon_suffix</code> values from the YAML's <code>nodes</code> list and requires that <code>&lt;qsirecon_root&gt;/derivatives/qsirecon-&lt;suffix&gt;/&lt;subject&gt;_&lt;session&gt;.html</code> exists for every suffix. If the spec is unreadable or has no suffixes, falls back to wildcard.</li>
+<li><strong>Without <code>recon_spec</code></strong> (or empty spec): checks that any file matching <code>&lt;qsirecon_root&gt;/derivatives/*/&lt;subject&gt;_&lt;session&gt;.html</code> exists.</li>
+<li><strong>Without <code>derivatives_root</code>, <code>subject</code>, or <code>session</code></strong>: falls back to <code>_dir_nonempty(output_path)</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.checks</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_complete</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">proc</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure</span><span class="p">(</span><span class="s2">&quot;qsirecon&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure_root</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;sub-0001&quot;</span> <span class="o">/</span> <span class="s2">&quot;ses-01&quot;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Basic wildcard check</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span><span class="n">proc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">derivatives_root</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">derivatives_root</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">))</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1"># Spec-driven check (verifies every suffix HTML)</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span><span class="n">proc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">derivatives_root</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">derivatives_root</span><span class="p">,</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">recon_spec</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/path/to/qsirecon_spec.yaml&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="p">))</span>
+</code></pre></div>
 <hr />
 <h2 id="registering-a-custom-specialized-check">Registering a custom specialized check<a class="headerlink" href="#registering-a-custom-specialized-check" title="Permanent link">&para;</a></h2>
 <p>If you add a procedure with complex completion logic, register a specialized check:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.checks</span><span class="w"> </span><span class="kn">import</span> <span class="n">_register_check</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Procedure</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nd">@_register_check</span><span class="p">(</span><span class="s2">&quot;myprocedure&quot;</span><span class="p">)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">_check_myprocedure</span><span class="p">(</span><span class="n">proc</span><span class="p">:</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="c1"># Custom logic here</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="k">return</span> <span class="p">(</span><span class="n">output_path</span> <span class="o">/</span> <span class="s2">&quot;DONE&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.checks</span><span class="w"> </span><span class="kn">import</span> <span class="n">_register_check</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Procedure</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nd">@_register_check</span><span class="p">(</span><span class="s2">&quot;myprocedure&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">_check_myprocedure</span><span class="p">(</span><span class="n">proc</span><span class="p">:</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1"># Custom logic here</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">return</span> <span class="p">(</span><span class="n">output_path</span> <span class="o">/</span> <span class="s2">&quot;DONE&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

@@ -870,6 +870,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Specialized checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#freesurfer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        freesurfer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qsirecon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        qsirecon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1959,6 +1987,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Specialized checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#freesurfer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        freesurfer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qsirecon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        qsirecon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1999,7 +2055,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
 </code></pre></div>
 <p>The output directory must exist <strong>and</strong> contain at least one file or subdirectory.</p>
-<p><strong>Used by:</strong> <code>qsirecon</code></p>
+<p><strong>Used by:</strong> <code>freesurfer</code> (the specialized check overrides this; <code>null</code> here signals "use the registered check")</p>
 <hr />
 <h3 id="single-glob-pattern">Single glob pattern<a class="headerlink" href="#single-glob-pattern" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;**/*.nii.gz&quot;</span>
@@ -2024,7 +2080,7 @@ Otherwise it is treated as a literal relative path inside the output directory.<
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;dwi/*dir-AP*_dwi.bval&quot;</span>
 </code></pre></div>
 <p>Every pattern in the list must match at least one file. If any pattern has no match, the procedure is considered incomplete.</p>
-<p><strong>Used by:</strong> <code>bids</code> (checks all expected modalities), <code>qsiprep</code> (checks all output DWI files)</p>
+<p><strong>Used by:</strong> <code>bids</code> (checks all expected modalities), <code>qsiprep</code> (checks HTML report + all preproc DWI files)</p>
 <hr />
 <h2 id="output-path-context">Output path context<a class="headerlink" href="#output-path-context" title="Permanent link">&para;</a></h2>
 <p>The marker is evaluated relative to the procedure's <strong>output directory</strong> for the given subject/session:</p>
@@ -2051,13 +2107,18 @@ Otherwise it is treated as a literal relative path inside the output directory.<
 - <code>derivatives_root/&lt;output_dir&gt;</code> otherwise</p>
 <hr />
 <h2 id="specialized-checks">Specialized checks<a class="headerlink" href="#specialized-checks" title="Permanent link">&para;</a></h2>
-<p>For <code>freesurfer</code>, <code>qsiprep</code>, and <code>qsirecon</code> the completion marker is augmented by specialized logic that also checks <strong>session count consistency</strong>:</p>
+<p>Two procedures use registered specialized checks that replace marker evaluation entirely:</p>
+<h3 id="freesurfer"><code>freesurfer</code><a class="headerlink" href="#freesurfer" title="Permanent link">&para;</a></h3>
+<p>Checks the full longitudinal FreeSurfer pipeline. For single-session subjects, verifies <code>&lt;subject&gt;/scripts/recon-all.done</code>. For multi-session subjects, verifies all three pipeline steps (cross-sectional, template, longitudinal) across every session.</p>
+<p>Kwargs: <code>bids_root</code>, <code>subject</code> (both optional; falls back to checking <code>&lt;path&gt;/scripts/recon-all.done</code>).</p>
+<h3 id="qsirecon"><code>qsirecon</code><a class="headerlink" href="#qsirecon" title="Permanent link">&para;</a></h3>
+<p>Session-scoped check. Verifies that an HTML report exists at <code>&lt;qsirecon_root&gt;/derivatives/qsirecon-&lt;suffix&gt;/&lt;subject&gt;_&lt;session&gt;.html</code>:</p>
 <ul>
-<li><strong>freesurfer</strong>: <code>scripts/recon-all.done</code> must exist, <strong>and</strong> the number of <code>-i</code> inputs in <code>recon-all.done</code>'s <code>CMDARGS</code> line must equal the number of T1w files currently available in the BIDS dataset for that subject</li>
-<li><strong>qsiprep</strong>: at least one <code>ses-*</code> subdirectory must exist in the output, <strong>and</strong> the count must equal the number of BIDS sessions with DWI data for that subject</li>
-<li><strong>qsirecon</strong>: similar to qsiprep but compares against the number of QSIPrep sessions</li>
+<li><strong>With <code>recon_spec</code></strong>: reads unique <code>qsirecon_suffix</code> values from the QSIRecon workflow YAML and checks each one individually (all must exist)</li>
+<li><strong>Without <code>recon_spec</code></strong>: wildcard — any <code>derivatives/*/&lt;subject&gt;_&lt;session&gt;.html</code> match suffices</li>
+<li><strong>Without session context</strong>: falls back to non-empty directory check</li>
 </ul>
-<p>These checks prevent a procedure from appearing "complete" when new sessions have been added after it was originally run.</p>
+<p>Kwargs: <code>derivatives_root</code>, <code>subject</code>, <code>session</code> (required for session-level check); <code>recon_spec</code> (optional path to the QSIRecon workflow YAML).</p>
 <hr />
 <h2 id="choosing-the-right-marker">Choosing the right marker<a class="headerlink" href="#choosing-the-right-marker" title="Permanent link">&para;</a></h2>
 <table>
