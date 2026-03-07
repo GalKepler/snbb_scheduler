@@ -49,6 +49,10 @@
          <lastmod>2026-03-07</lastmod>
     </url>
     <url>
+         <loc>https://galkepler.github.io/snbb_scheduler/cli/audit/</loc>
+         <lastmod>2026-03-07</lastmod>
+    </url>
+    <url>
          <loc>https://galkepler.github.io/snbb_scheduler/cli/manifest/</loc>
          <lastmod>2026-03-07</lastmod>
     </url>
@@ -90,6 +94,10 @@
     </url>
     <url>
          <loc>https://galkepler.github.io/snbb_scheduler/configuration/</loc>
+         <lastmod>2026-03-07</lastmod>
+    </url>
+    <url>
+         <loc>https://galkepler.github.io/snbb_scheduler/configuration/audit/</loc>
          <lastmod>2026-03-07</lastmod>
     </url>
     <url>

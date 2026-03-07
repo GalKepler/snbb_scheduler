@@ -1608,6 +1608,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#auditconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AuditConfig
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AuditConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#default_procedures" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1957,6 +1996,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#auditconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AuditConfig
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AuditConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fields_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#default_procedures" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2050,7 +2128,7 @@
 
 <h1 id="snbb_schedulerconfig"><code>snbb_scheduler.config</code><a class="headerlink" href="#snbb_schedulerconfig" title="Permanent link">&para;</a></h1>
 <p>Procedure declarations and scheduler configuration.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">SchedulerConfig</span><span class="p">,</span> <span class="n">DEFAULT_PROCEDURES</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">SchedulerConfig</span><span class="p">,</span> <span class="n">AuditConfig</span><span class="p">,</span> <span class="n">DEFAULT_PROCEDURES</span>
 </code></pre></div>
 <hr />
 <h2 id="procedure"><code>Procedure</code><a class="headerlink" href="#procedure" title="Permanent link">&para;</a></h2>
@@ -2119,45 +2197,112 @@
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">)</span>
 </code></pre></div>
 <hr />
+<h2 id="auditconfig"><code>AuditConfig</code><a class="headerlink" href="#auditconfig" title="Permanent link">&para;</a></h2>
+<p>Settings for the audit engine.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">AuditConfig</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">dicom_min_files</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">stale_job_threshold_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">168</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">report_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">email_recipients</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">email_from</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;snbb-scheduler@localhost&quot;</span>
+</code></pre></div>
+<h3 id="fields_1">Fields<a class="headerlink" href="#fields_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dicom_min_files</code></td>
+<td><code>int</code></td>
+<td><code>10</code></td>
+<td>Sessions with fewer total DICOM files are flagged as suspicious</td>
+</tr>
+<tr>
+<td><code>stale_job_threshold_hours</code></td>
+<td><code>int</code></td>
+<td><code>168</code></td>
+<td>Jobs stuck in <code>pending</code>/<code>running</code> beyond this age (hours) are flagged as stale</td>
+</tr>
+<tr>
+<td><code>report_dir</code></td>
+<td><code>Path</code> or <code>None</code></td>
+<td><code>None</code></td>
+<td>Directory for saved JSON audit reports; required for <code>--history</code></td>
+</tr>
+<tr>
+<td><code>email_recipients</code></td>
+<td><code>list[str]</code></td>
+<td><code>[]</code></td>
+<td>Addresses to send email reports to when <code>--email</code> is passed</td>
+</tr>
+<tr>
+<td><code>email_from</code></td>
+<td><code>str</code></td>
+<td><code>"snbb-scheduler@localhost"</code></td>
+<td>Sender address for outgoing audit emails</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuditConfig</span><span class="p">,</span> <span class="n">SchedulerConfig</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="p">(</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">audit</span><span class="o">=</span><span class="n">AuditConfig</span><span class="p">(</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">dicom_min_files</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">stale_job_threshold_hours</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">report_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/audit_reports&quot;</span><span class="p">),</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">email_recipients</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pi@example.com&quot;</span><span class="p">],</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="p">)</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="p">)</span>
+</code></pre></div>
+<hr />
 <h2 id="default_procedures"><code>DEFAULT_PROCEDURES</code><a class="headerlink" href="#default_procedures" title="Permanent link">&para;</a></h2>
 <p>The built-in procedure list, in dependency order:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">DEFAULT_PROCEDURES</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Procedure</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># bids → bids_post → defacing</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="c1"># bids_post → qsiprep (session-scoped)</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="c1"># bids_post → freesurfer (subject-scoped)</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="c1"># qsiprep + freesurfer → qsirecon (session-scoped)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">DEFAULT_PROCEDURES</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Procedure</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="c1"># bids → bids_post → defacing</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="c1"># bids_post → qsiprep (session-scoped)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="c1"># bids_post → freesurfer (subject-scoped)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="c1"># qsiprep + freesurfer → qsirecon (session-scoped)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">]</span>
 </code></pre></div>
 <p>To add procedures without losing the defaults:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_PROCEDURES</span><span class="p">,</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">SchedulerConfig</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">extra</span> <span class="o">=</span> <span class="n">Procedure</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;fmriprep&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="p">(</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">procedures</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">DEFAULT_PROCEDURES</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">extra</span><span class="p">],</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_PROCEDURES</span><span class="p">,</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">SchedulerConfig</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">extra</span> <span class="o">=</span> <span class="n">Procedure</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;fmriprep&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="p">(</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">procedures</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">DEFAULT_PROCEDURES</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">extra</span><span class="p">],</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="schedulerconfig"><code>SchedulerConfig</code><a class="headerlink" href="#schedulerconfig" title="Permanent link">&para;</a></h2>
 <p>All path conventions and settings in one dataclass.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@dataclass</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">SchedulerConfig</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">dicom_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/dicom&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">bids_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/bids&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">derivatives_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/derivatives&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">slurm_partition</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">slurm_account</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;snbb&quot;</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">slurm_mem</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">slurm_cpus_per_task</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">state_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/.scheduler_state.parquet&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">slurm_log_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">log_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">qsirecon_spec</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="n">sessions_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    <span class="n">procedures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Procedure</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">DEFAULT_PROCEDURES</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">SchedulerConfig</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">dicom_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/dicom&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">bids_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/bids&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">derivatives_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/derivatives&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">slurm_partition</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">slurm_account</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;snbb&quot;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">slurm_mem</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">slurm_cpus_per_task</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="n">state_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/.scheduler_state.parquet&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">slurm_log_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">log_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">qsirecon_spec</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">sessions_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">procedures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Procedure</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">DEFAULT_PROCEDURES</span><span class="p">))</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="n">audit</span><span class="p">:</span> <span class="n">AuditConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">AuditConfig</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="schedulerconfigfrom_yamlpath"><code>SchedulerConfig.from_yaml(path)</code><a class="headerlink" href="#schedulerconfigfrom_yamlpath" title="Permanent link">&para;</a></h3>
 <p>Load config from a YAML file, overriding defaults.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Raises:</strong>
 - <code>FileNotFoundError</code> — if the path does not exist
@@ -2165,22 +2310,22 @@
 - <code>ValueError</code> — if any <code>depends_on</code> references an unknown procedure name</p>
 <h3 id="schedulerconfigget_procedurename"><code>SchedulerConfig.get_procedure(name)</code><a class="headerlink" href="#schedulerconfigget_procedurename" title="Permanent link">&para;</a></h3>
 <p>Look up a procedure by name.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">proc</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure</span><span class="p">(</span><span class="s2">&quot;freesurfer&quot;</span><span class="p">)</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># raises KeyError if not found</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">proc</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure</span><span class="p">(</span><span class="s2">&quot;freesurfer&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># raises KeyError if not found</span>
 </code></pre></div>
 <h3 id="schedulerconfigget_procedure_rootproc"><code>SchedulerConfig.get_procedure_root(proc)</code><a class="headerlink" href="#schedulerconfigget_procedure_rootproc" title="Permanent link">&para;</a></h3>
 <p>Return the base output directory for a procedure.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">root</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure_root</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># proc.output_dir == &quot;&quot;  →  returns cfg.bids_root</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># proc.output_dir != &quot;&quot;  →  returns cfg.derivatives_root / proc.output_dir</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">root</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure_root</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># proc.output_dir == &quot;&quot;  →  returns cfg.bids_root</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># proc.output_dir != &quot;&quot;  →  returns cfg.derivatives_root / proc.output_dir</span>
 </code></pre></div>
 <h3 id="__post_init__-validation"><code>__post_init__</code> validation<a class="headerlink" href="#__post_init__-validation" title="Permanent link">&para;</a></h3>
 <p>On construction, <code>SchedulerConfig</code> validates that every procedure's <code>depends_on</code> references a known procedure name. This prevents silent misconfiguration:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># This raises ValueError at construction time:</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">SchedulerConfig</span><span class="p">(</span><span class="n">procedures</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">Procedure</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;qsiprep&quot;</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;typo_name&quot;</span><span class="p">],</span> <span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="p">])</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># ValueError: Procedure &#39;qsiprep&#39; depends on &#39;typo_name&#39;, which is not in the procedures list.</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># This raises ValueError at construction time:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">SchedulerConfig</span><span class="p">(</span><span class="n">procedures</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">Procedure</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;qsiprep&quot;</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;typo_name&quot;</span><span class="p">],</span> <span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">])</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># ValueError: Procedure &#39;qsiprep&#39; depends on &#39;typo_name&#39;, which is not in the procedures list.</span>
 </code></pre></div>
 
 
