@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/configuration/audit/">
+        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/guides/email-setup/">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>Audit Configuration - snbb-scheduler</title>
+        <title>Email setup - snbb-scheduler</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#audit-configuration" class="md-skip">
+        <a href="#email-setup" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Audit Configuration
+              Email setup
             
           </span>
         </div>
@@ -282,7 +282,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../" class="md-tabs__link">
+        <a href="../../configuration/" class="md-tabs__link">
           
   
   
@@ -322,7 +322,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../guides/getting-started/" class="md-tabs__link">
+        <a href="../getting-started/" class="md-tabs__link">
           
   
   
@@ -702,7 +702,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../configuration/" class="md-nav__link">
         
   
   
@@ -730,7 +730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../completion-markers/" class="md-nav__link">
+      <a href="../../configuration/completion-markers/" class="md-nav__link">
         
   
   
@@ -758,7 +758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../slurm/" class="md-nav__link">
+      <a href="../../configuration/slurm/" class="md-nav__link">
         
   
   
@@ -1100,7 +1100,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/getting-started/" class="md-nav__link">
+      <a href="../getting-started/" class="md-nav__link">
         
   
   
@@ -1128,7 +1128,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/adding-procedure/" class="md-nav__link">
+      <a href="../adding-procedure/" class="md-nav__link">
         
   
   
@@ -1156,7 +1156,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/forcing-rerun/" class="md-nav__link">
+      <a href="../forcing-rerun/" class="md-nav__link">
         
   
   
@@ -1184,7 +1184,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/monitoring-jobs/" class="md-nav__link">
+      <a href="../monitoring-jobs/" class="md-nav__link">
         
   
   
@@ -1212,7 +1212,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/debugging/" class="md-nav__link">
+      <a href="../debugging/" class="md-nav__link">
         
   
   
@@ -1240,7 +1240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/cron-setup/" class="md-nav__link">
+      <a href="../cron-setup/" class="md-nav__link">
         
   
   
@@ -1749,10 +1749,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick start
+        How it works
       
     </span>
   </a>
@@ -1760,33 +1760,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#field-reference" class="md-nav__link">
+  <a href="#scenario-1-gmail" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Field reference
+        Scenario 1 — Gmail
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dicom-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DICOM validation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DICOM validation">
+    <nav class="md-nav" aria-label="Scenario 1 — Gmail">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#tuning-dicom_min_files" class="md-nav__link">
+  <a href="#step-1-enable-2-step-verification" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tuning dicom_min_files
+        Step 1 — Enable 2-Step Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-generate-an-app-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Generate an App Password
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-configure-the-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Configure the scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Test
       
     </span>
   </a>
@@ -1799,10 +1821,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#stale-job-detection" class="md-nav__link">
+  <a href="#scenario-2-outlook-microsoft-365" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stale job detection
+        Scenario 2 — Outlook / Microsoft 365
       
     </span>
   </a>
@@ -1810,33 +1832,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#report-persistence-and-history" class="md-nav__link">
+  <a href="#scenario-3-local-postfix-relay-hpc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Report persistence and history
+        Scenario 3 — Local Postfix relay (HPC)
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#email-delivery" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Email delivery
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Email delivery">
+    <nav class="md-nav" aria-label="Scenario 3 — Local Postfix relay (HPC)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
+  <a href="#step-1-verify-postfix-is-running" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Requirements
+        Step 1 — Verify Postfix is running
       
     </span>
   </a>
@@ -1844,10 +1855,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#step-2-configure-the-scheduler" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        Step 2 — Configure the scheduler
       
     </span>
   </a>
@@ -1855,21 +1866,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
+  <a href="#step-3-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
+        Step 3 — Test
       
     </span>
   </a>
@@ -1882,10 +1882,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#complete-example-config" class="md-nav__link">
+  <a href="#scenario-4-generic-authenticated-smtp-relay" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Complete example config
+        Scenario 4 — Generic authenticated SMTP relay
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keeping-credentials-out-of-the-config-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping credentials out of the config file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#smtp-field-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SMTP field reference
       
     </span>
   </a>
@@ -1923,218 +1945,206 @@
   
 
 
-<h1 id="audit-configuration">Audit Configuration<a class="headerlink" href="#audit-configuration" title="Permanent link">&para;</a></h1>
-<p>The <code>audit:</code> block in the config file controls the behaviour of the <code>snbb-scheduler audit</code> command: DICOM validation thresholds, stale-job detection, report storage, and email delivery.</p>
+<h1 id="email-setup">Email setup<a class="headerlink" href="#email-setup" title="Permanent link">&para;</a></h1>
+<p>This guide explains how to configure <code>snbb-scheduler audit --email</code> to deliver audit reports via email. Three scenarios are covered: Gmail (the most common external provider), a generic SMTP relay with authentication, and a local Postfix relay (typical on HPC clusters).</p>
 <hr />
-<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p>When you run <code>snbb-scheduler audit --email</code>, the scheduler:</p>
+<ol>
+<li>Runs the full audit</li>
+<li>Renders the report as both HTML and plain text</li>
+<li>Connects to the configured SMTP server</li>
+<li>Optionally negotiates TLS (<code>smtp_tls: true</code> → STARTTLS)</li>
+<li>Optionally authenticates (<code>smtp_username</code> + <code>smtp_password</code>)</li>
+<li>Sends the message to all addresses in <code>email_recipients</code></li>
+</ol>
+<p>All SMTP settings live in the <code>audit:</code> block of your config file.</p>
+<hr />
+<h2 id="scenario-1-gmail">Scenario 1 — Gmail<a class="headerlink" href="#scenario-1-gmail" title="Permanent link">&para;</a></h2>
+<p>Gmail requires an <strong>App Password</strong> (not your normal Google password). App Passwords are 16-character tokens you generate in your Google account for third-party apps.</p>
+<h3 id="step-1-enable-2-step-verification">Step 1 — Enable 2-Step Verification<a class="headerlink" href="#step-1-enable-2-step-verification" title="Permanent link">&para;</a></h3>
+<p>App Passwords are only available when 2-Step Verification is active.</p>
+<ol>
+<li>Go to your Google Account → <strong>Security</strong></li>
+<li>Under "How you sign in to Google", enable <strong>2-Step Verification</strong></li>
+</ol>
+<h3 id="step-2-generate-an-app-password">Step 2 — Generate an App Password<a class="headerlink" href="#step-2-generate-an-app-password" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Go to <strong>Security</strong> → <strong>2-Step Verification</strong> → scroll to the bottom → <strong>App passwords</strong></li>
+<li>Click <strong>Create app password</strong></li>
+<li>Give it a name (e.g. <code>snbb-scheduler</code>) and click <strong>Create</strong></li>
+<li>Copy the 16-character password (you will not see it again)</li>
+</ol>
+<h3 id="step-3-configure-the-scheduler">Step 3 — Configure the scheduler<a class="headerlink" href="#step-3-configure-the-scheduler" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">dicom_min_files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">stale_job_threshold_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">report_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/audit_reports</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-manager@example.com</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb-scheduler@localhost</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-app-password</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-manager@example.com</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abcd efgh ijkl mnop</span><span class="w">   </span><span class="c1"># 16-char App Password (spaces are ignored by Gmail)</span>
 </code></pre></div>
-<p>All fields are optional. Omitting the <code>audit:</code> block entirely uses the defaults shown above.</p>
+<h3 id="step-4-test">Step 4 — Test<a class="headerlink" href="#step-4-test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/path/to/config.yaml<span class="w"> </span>audit<span class="w"> </span>--email
+</code></pre></div>
+<p>Expected output:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Report emailed to pi@example.com, data-manager@example.com
+</code></pre></div></p>
 <hr />
-<h2 id="field-reference">Field reference<a class="headerlink" href="#field-reference" title="Permanent link">&para;</a></h2>
+<h2 id="scenario-2-outlook-microsoft-365">Scenario 2 — Outlook / Microsoft 365<a class="headerlink" href="#scenario-2-outlook-microsoft-365" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@organisation.onmicrosoft.com</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.office365.com</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@organisation.onmicrosoft.com</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-password</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Note</strong>: If your organisation enforces conditional access or MFA, you may need to create an app-specific password or ask your IT team to whitelist the scheduler's IP address.</p>
+</blockquote>
+<hr />
+<h2 id="scenario-3-local-postfix-relay-hpc">Scenario 3 — Local Postfix relay (HPC)<a class="headerlink" href="#scenario-3-local-postfix-relay-hpc" title="Permanent link">&para;</a></h2>
+<p>Many HPC clusters run a local Postfix instance that relays mail internally without authentication. This is the default behaviour.</p>
+<h3 id="step-1-verify-postfix-is-running">Step 1 — Verify Postfix is running<a class="headerlink" href="#step-1-verify-postfix-is-running" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>systemctl<span class="w"> </span>status<span class="w"> </span>postfix
+</code></pre></div>
+<p>If it is not installed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Debian/Ubuntu</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>postfix
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># RHEL/CentOS/Rocky</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>postfix
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--now<span class="w"> </span>postfix
+</code></pre></div>
+<p>During Postfix installation, select <strong>Internet Site</strong> (to relay outbound mail) or <strong>Satellite system</strong> (to relay through your institution's mail server).</p>
+<h3 id="step-2-configure-the-scheduler">Step 2 — Configure the scheduler<a class="headerlink" href="#step-2-configure-the-scheduler" title="Permanent link">&para;</a></h3>
+<p>No SMTP fields are needed — the defaults (<code>localhost:25</code>, no TLS, no auth) match a standard Postfix relay:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb-scheduler@hpc.example.com</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="c1"># smtp_host, smtp_port, smtp_tls, smtp_username, smtp_password all use defaults</span>
+</code></pre></div>
+<h3 id="step-3-test">Step 3 — Test<a class="headerlink" href="#step-3-test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/path/to/config.yaml<span class="w"> </span>audit<span class="w"> </span>--email
+</code></pre></div>
+<p>If mail is not delivered, check:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># View recent mail log</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>sudo<span class="w"> </span>tail<span class="w"> </span>-50<span class="w"> </span>/var/log/mail.log
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Check the mail queue</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>mailq
+</code></pre></div>
+<p>Common problems:</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Connection refused</code> on port 25</td>
+<td>Postfix is not running: <code>sudo systemctl start postfix</code></td>
+</tr>
+<tr>
+<td>Mail accepted but not delivered</td>
+<td>Check <code>/var/log/mail.log</code> for relay or DNS errors</td>
+</tr>
+<tr>
+<td><code>Relay access denied</code></td>
+<td>Postfix <code>mynetworks</code> does not include <code>127.0.0.1</code>; edit <code>/etc/postfix/main.cf</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="scenario-4-generic-authenticated-smtp-relay">Scenario 4 — Generic authenticated SMTP relay<a class="headerlink" href="#scenario-4-generic-authenticated-smtp-relay" title="Permanent link">&para;</a></h2>
+<p>Replace the values with those provided by your relay service:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb@yourdomain.com</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mail.yourdomain.com</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb@yourdomain.com</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relay-password</span>
+</code></pre></div>
+<hr />
+<h2 id="keeping-credentials-out-of-the-config-file">Keeping credentials out of the config file<a class="headerlink" href="#keeping-credentials-out-of-the-config-file" title="Permanent link">&para;</a></h2>
+<p>If you do not want to store the SMTP password in plain text, set <code>smtp_password</code> to a shell environment variable and expand it at config-load time using a wrapper script:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="ch">#!/bin/bash</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># /usr/local/bin/snbb-audit-wrapper</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PASSWORD</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span>/etc/snbb/smtp_password.txt<span class="k">)</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>envsubst<span class="w"> </span>&lt;<span class="w"> </span>/etc/snbb/config_template.yaml<span class="w"> </span>&gt;<span class="w"> </span>/tmp/snbb_config_expanded.yaml
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/tmp/snbb_config_expanded.yaml<span class="w"> </span>audit<span class="w"> </span>--email
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>rm<span class="w"> </span>-f<span class="w"> </span>/tmp/snbb_config_expanded.yaml
+</code></pre></div>
+<p>And in your template (<code>config_template.yaml</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">audit</span><span class="p">:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${SMTP_PASSWORD}</span>
+</code></pre></div>
+<hr />
+<h2 id="smtp-field-reference">SMTP field reference<a class="headerlink" href="#smtp-field-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Field</th>
-<th>Type</th>
 <th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>dicom_min_files</code></td>
-<td>int</td>
-<td><code>10</code></td>
-<td>Sessions with fewer total DICOM files than this threshold are flagged as suspicious in the report</td>
-</tr>
-<tr>
-<td><code>stale_job_threshold_hours</code></td>
-<td>int</td>
-<td><code>168</code></td>
-<td>Jobs in <code>pending</code> or <code>running</code> for longer than this many hours are listed in the Stale Jobs section (default: 7 days)</td>
-</tr>
-<tr>
-<td><code>report_dir</code></td>
-<td>path</td>
-<td><code>null</code></td>
-<td>Directory where JSON audit reports are saved after each run. Required for <code>--history</code>. When <code>null</code>, reports are not persisted.</td>
-</tr>
-<tr>
-<td><code>email_recipients</code></td>
-<td>list of str</td>
-<td><code>[]</code></td>
-<td>Email addresses to send the report to when <code>--email</code> is passed</td>
-</tr>
-<tr>
-<td><code>email_from</code></td>
-<td>str</td>
-<td><code>"snbb-scheduler@localhost"</code></td>
-<td>Sender address used in outgoing emails</td>
-</tr>
-<tr>
 <td><code>smtp_host</code></td>
-<td>str</td>
 <td><code>"localhost"</code></td>
 <td>SMTP server hostname</td>
 </tr>
 <tr>
 <td><code>smtp_port</code></td>
-<td>int</td>
 <td><code>25</code></td>
-<td>SMTP server port (use <code>587</code> for STARTTLS)</td>
+<td>SMTP server port</td>
 </tr>
 <tr>
 <td><code>smtp_tls</code></td>
-<td>bool</td>
 <td><code>false</code></td>
-<td>Issue STARTTLS after connecting</td>
+<td>Enable STARTTLS (required for port 587)</td>
 </tr>
 <tr>
 <td><code>smtp_username</code></td>
-<td>str</td>
 <td><code>null</code></td>
-<td>Username for SMTP authentication; omit for unauthenticated relays</td>
+<td>Username for authentication; omit for unauthenticated relays</td>
 </tr>
 <tr>
 <td><code>smtp_password</code></td>
-<td>str</td>
 <td><code>null</code></td>
-<td>Password for SMTP authentication; omit for unauthenticated relays</td>
+<td>Password for authentication; omit for unauthenticated relays</td>
+</tr>
+<tr>
+<td><code>email_from</code></td>
+<td><code>"snbb-scheduler@localhost"</code></td>
+<td>Sender address in the <code>From:</code> header</td>
+</tr>
+<tr>
+<td><code>email_recipients</code></td>
+<td><code>[]</code></td>
+<td>List of recipient addresses</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="dicom-validation">DICOM validation<a class="headerlink" href="#dicom-validation" title="Permanent link">&para;</a></h2>
-<p>When <code>snbb-scheduler audit</code> (or <code>--dicom-only</code>) runs, it checks each session's DICOM source directory for:</p>
-<ul>
-<li><strong>Existence</strong> — the path must exist on disk</li>
-<li><strong>File count</strong> — total files (recursive) must be ≥ <code>dicom_min_files</code></li>
-<li><strong>Subdirectory structure</strong> — DICOM series are normally stored in numbered subdirectories; a flat directory (no subdirs) is noted in the report</li>
-</ul>
-<p>Sessions that fail any of these checks appear in the <strong>DICOM Source Issues</strong> section of the report.</p>
-<h3 id="tuning-dicom_min_files">Tuning <code>dicom_min_files</code><a class="headerlink" href="#tuning-dicom_min_files" title="Permanent link">&para;</a></h3>
-<p>The right threshold depends on your acquisition protocol. A single structural session might have hundreds of DICOM files; a session with only a localiser might have fewer than 10. Start with the default and adjust based on your site's typical acquisitions.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">dicom_min_files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w">   </span><span class="c1"># flag sessions with fewer than 50 files</span>
-</code></pre></div>
-<hr />
-<h2 id="stale-job-detection">Stale job detection<a class="headerlink" href="#stale-job-detection" title="Permanent link">&para;</a></h2>
-<p>A job is flagged as <strong>stale</strong> when:</p>
-<ul>
-<li>Its state-file status is <code>pending</code> or <code>running</code></li>
-<li>The time since <code>submitted_at</code> exceeds <code>stale_job_threshold_hours</code></li>
-</ul>
-<p>Stale jobs appear in the <strong>Stale Jobs</strong> section and are also counted in per-procedure summaries. They often indicate a job that was silently cancelled by Slurm (e.g. cluster maintenance, node failure) and never updated via <code>sacct</code>. Use <code>snbb-scheduler retry</code> to clear them.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">stale_job_threshold_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">48</span><span class="w">   </span><span class="c1"># flag anything stuck for more than 2 days</span>
-</code></pre></div>
-<hr />
-<h2 id="report-persistence-and-history">Report persistence and history<a class="headerlink" href="#report-persistence-and-history" title="Permanent link">&para;</a></h2>
-<p>When <code>report_dir</code> is set, each audit run saves a timestamped JSON report:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/data/snbb/audit_reports/audit_20241115_060000.json
-</code></pre></div>
-<p>These files are used by <code>--history</code> to compute deltas between the current and previous run. The history comparison shows:</p>
-<ul>
-<li><strong>Health trend</strong> — average health score change across all sessions</li>
-<li><strong>New completions</strong> — procedures that moved to <code>complete</code> since the last run</li>
-<li><strong>New failures</strong> — procedures that moved to <code>failed</code> since the last run</li>
-<li><strong>Sessions added / removed</strong> — change in the total session count</li>
-</ul>
-<p>To enable history:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>audit<span class="w"> </span>--history
-</code></pre></div>
-<p>Reports accumulate over time. Set up periodic cleanup (e.g. keep last 30 days) via a cron job or shell script:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>find<span class="w"> </span>/data/snbb/audit_reports<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;audit_*.json&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+30<span class="w"> </span>-delete
-</code></pre></div>
-<hr />
-<h2 id="email-delivery">Email delivery<a class="headerlink" href="#email-delivery" title="Permanent link">&para;</a></h2>
-<p>The <code>--email</code> flag sends a multipart HTML + plain-text email. By default it connects to <code>localhost:25</code> (a local Postfix/sendmail relay), but you can point it at any SMTP server including Gmail, Outlook, or a hosted relay.</p>
-<p>See the full setup guide: <a href="../../guides/email-setup/">Email setup</a>.</p>
-<h3 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>email_recipients</code> must be set in the config</li>
-<li>The SMTP server must be reachable from the machine running the scheduler</li>
-</ul>
-<h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
-<p><strong>Local relay (HPC default)</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb-scheduler@hpc.example.com</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="c1"># smtp_host/port default to localhost:25 — no auth, no TLS</span>
-</code></pre></div></p>
-<p><strong>External SMTP (e.g. Gmail)</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-app-password</span><span class="w">   </span><span class="c1"># use a Gmail App Password, not your login password</span>
-</code></pre></div></p>
-<h3 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Run audit and email the report</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>audit<span class="w"> </span>--email
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># HTML file + email</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>audit<span class="w"> </span>--format<span class="w"> </span>html<span class="w"> </span>--output<span class="w"> </span>report.html<span class="w"> </span>--email
-</code></pre></div>
-<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
-<p>If email delivery fails:</p>
-<ol>
-<li>Check you are passing <code>--config</code> — the default config has no <code>email_recipients</code> and will print a warning instead of sending.</li>
-<li>For local relay: <code>systemctl status postfix</code> and <code>/var/log/mail.log</code></li>
-<li>For external SMTP: verify host/port/TLS/credentials and that the server is reachable (<code>telnet smtp.gmail.com 587</code>)</li>
-<li>For Gmail: ensure you are using an <a href="https://myaccount.google.com/apppasswords">App Password</a>, not your Google account password</li>
-</ol>
-<hr />
-<h2 id="complete-example-config">Complete example config<a class="headerlink" href="#complete-example-config" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">dicom_root</span><span class="p">:</span><span class="w">       </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/dicom</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nt">bids_root</span><span class="p">:</span><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/bids</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nt">derivatives_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/derivatives</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nt">state_file</span><span class="p">:</span><span class="w">       </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/.scheduler_state.parquet</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nt">slurm_log_dir</span><span class="p">:</span><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/logs/slurm</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="nt">audit</span><span class="p">:</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="nt">dicom_min_files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">  </span><span class="nt">stale_job_threshold_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">  </span><span class="nt">report_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/snbb/audit_reports</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">  </span><span class="nt">email_recipients</span><span class="p">:</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pi@example.com</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-manager@example.com</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">  </span><span class="nt">email_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snbb-scheduler@hpc.example.com</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">  </span><span class="nt">smtp_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">  </span><span class="nt">smtp_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">  </span><span class="nt">smtp_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">  </span><span class="nt">smtp_username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your@gmail.com</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">  </span><span class="nt">smtp_password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-app-password</span>
-</code></pre></div>
-<p>With <code>slurm_log_dir</code> set and <code>report_dir</code> configured, a full daily audit via cron looks like:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># /etc/cron.d/snbb-audit</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="m">0</span><span class="w"> </span><span class="m">8</span><span class="w"> </span>*<span class="w"> </span>*<span class="w"> </span>*<span class="w"> </span>snbb<span class="w"> </span>/path/to/venv/bin/snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>audit<span class="w"> </span>--history<span class="w"> </span>--email
-</code></pre></div>
-<hr />
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../cli/audit/"><code>audit</code> CLI command</a> — all command options and report sections</li>
-<li><a href="../../guides/email-setup/">Email setup guide</a> — step-by-step for Gmail, Outlook, and local relay</li>
-<li><a href="../slurm/">Slurm log configuration</a> — setting up <code>slurm_log_dir</code></li>
-<li><a href="../../guides/cron-setup/">Cron setup</a> — scheduling daily runs</li>
+<li><a href="../../configuration/audit/">Audit configuration</a> — all <code>audit:</code> fields</li>
+<li><a href="../../cli/audit/"><code>audit</code> CLI command</a> — command options</li>
+<li><a href="../cron-setup/">Cron setup</a> — scheduling daily audit + email via cron</li>
 </ul>
 
 
