@@ -27,6 +27,7 @@ These options apply to all commands and are specified **before** the command nam
 | [`session-status`](session-status.md) | Show per-session status with output paths or log locations |
 | [`monitor`](monitor.md) | Poll sacct and update job statuses in the state file |
 | [`retry`](retry.md) | Clear failed entries so they are re-submitted on the next run |
+| [`audit`](audit.md) | Validate outputs, analyse Slurm logs, and generate audit reports |
 
 ## Examples
 
@@ -51,4 +52,10 @@ snbb-scheduler --config /etc/snbb/config.yaml monitor
 
 # Retry all failed bids jobs for one subject
 snbb-scheduler --config /etc/snbb/config.yaml retry --procedure bids --subject sub-0002
+
+# Full audit with email report
+snbb-scheduler --config /etc/snbb/config.yaml audit --email
+
+# Audit a single session
+snbb-scheduler --config /etc/snbb/config.yaml audit --session sub-0001/ses-01
 ```

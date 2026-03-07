@@ -69,6 +69,17 @@ slurm_log_dir: /data/snbb/logs/slurm
 # When set, qsirecon completion requires one HTML per qsirecon_suffix in the spec.
 qsirecon_spec: /data/snbb/scripts/qsirecon_spec.yaml
 
+# ── Audit settings ────────────────────────────────────────────────────────
+# All fields optional; shown here with their defaults.
+audit:
+  dicom_min_files: 10             # sessions with fewer DICOM files are flagged
+  stale_job_threshold_hours: 168  # pending/running jobs older than this are stale (7 days)
+  report_dir: /data/snbb/audit_reports   # where JSON reports are saved (required for --history)
+  email_recipients:
+    - pi@example.com
+    - data-manager@example.com
+  email_from: snbb-scheduler@localhost
+
 # ── Procedures ────────────────────────────────────────────────────────────
 # Omit this section to use the built-in defaults.
 procedures:
@@ -147,6 +158,7 @@ procedures:
 | `slurm_log_dir` | path | `null` | Directory for `--output`/`--error` log files |
 | `qsirecon_spec` | path | `null` | QSIRecon workflow YAML; when set, completion check requires one HTML per listed `qsirecon_suffix` |
 | `procedures` | list | *(built-in defaults)* | List of procedure declarations |
+| `audit` | block | *(see below)* | Audit settings — thresholds, report storage, email. See [Audit Configuration](audit.md). |
 
 ---
 

@@ -3,7 +3,7 @@
 Procedure declarations and scheduler configuration.
 
 ```python
-from snbb_scheduler.config import Procedure, SchedulerConfig, DEFAULT_PROCEDURES
+from snbb_scheduler.config import Procedure, SchedulerConfig, AuditConfig, DEFAULT_PROCEDURES
 ```
 
 ---
@@ -46,6 +46,47 @@ my_proc = Procedure(
     scope="session",
     depends_on=["bids"],
     completion_marker="**/*.html",
+)
+```
+
+---
+
+## `AuditConfig`
+
+Settings for the audit engine.
+
+```python
+@dataclass
+class AuditConfig:
+    dicom_min_files: int = 10
+    stale_job_threshold_hours: int = 168
+    report_dir: Path | None = None
+    email_recipients: list[str] = field(default_factory=list)
+    email_from: str = "snbb-scheduler@localhost"
+```
+
+### Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `dicom_min_files` | `int` | `10` | Sessions with fewer total DICOM files are flagged as suspicious |
+| `stale_job_threshold_hours` | `int` | `168` | Jobs stuck in `pending`/`running` beyond this age (hours) are flagged as stale |
+| `report_dir` | `Path` or `None` | `None` | Directory for saved JSON audit reports; required for `--history` |
+| `email_recipients` | `list[str]` | `[]` | Addresses to send email reports to when `--email` is passed |
+| `email_from` | `str` | `"snbb-scheduler@localhost"` | Sender address for outgoing audit emails |
+
+### Example
+
+```python
+from snbb_scheduler.config import AuditConfig, SchedulerConfig
+
+cfg = SchedulerConfig(
+    audit=AuditConfig(
+        dicom_min_files=20,
+        stale_job_threshold_hours=48,
+        report_dir=Path("/data/snbb/audit_reports"),
+        email_recipients=["pi@example.com"],
+    )
 )
 ```
 
@@ -97,6 +138,7 @@ class SchedulerConfig:
     qsirecon_spec: Path | None = None
     sessions_file: Path | None = None
     procedures: list[Procedure] = field(default_factory=lambda: list(DEFAULT_PROCEDURES))
+    audit: AuditConfig = field(default_factory=AuditConfig)
 ```
 
 ### `SchedulerConfig.from_yaml(path)`
