@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from snbb_scheduler.config import DEFAULT_PROCEDURES, Procedure, SchedulerConfig
+from snbb_scheduler.config import DEFAULT_PROCEDURES, AuditConfig, Procedure, SchedulerConfig
 
 
 # ---------------------------------------------------------------------------
@@ -383,5 +383,74 @@ def test_qsirecon_depends_on_freesurfer():
     qsirecon = cfg.get_procedure("qsirecon")
     assert "freesurfer" in qsirecon.depends_on
     assert "fastsurfer" not in qsirecon.depends_on
+
+
+# ---------------------------------------------------------------------------
+# AuditConfig
+# ---------------------------------------------------------------------------
+
+
+def test_audit_config_defaults():
+    audit = AuditConfig()
+    assert audit.dicom_min_files == 10
+    assert audit.stale_job_threshold_hours == 168
+    assert audit.report_dir is None
+    assert audit.email_recipients == []
+    assert audit.email_from == "snbb-scheduler@localhost"
+
+
+def test_scheduler_config_has_audit():
+    cfg = SchedulerConfig()
+    assert isinstance(cfg.audit, AuditConfig)
+    assert cfg.audit.dicom_min_files == 10
+
+
+def test_audit_config_custom_values():
+    audit = AuditConfig(
+        dicom_min_files=5,
+        stale_job_threshold_hours=48,
+        email_recipients=["a@b.com"],
+        email_from="custom@host",
+    )
+    assert audit.dicom_min_files == 5
+    assert audit.stale_job_threshold_hours == 48
+    assert audit.email_recipients == ["a@b.com"]
+    assert audit.email_from == "custom@host"
+
+
+def test_from_yaml_audit_block(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path}/dicom\n"
+        f"bids_root: {tmp_path}/bids\n"
+        f"derivatives_root: {tmp_path}/derivatives\n"
+        f"state_file: {tmp_path}/state.parquet\n"
+        "audit:\n"
+        "  dicom_min_files: 5\n"
+        "  stale_job_threshold_hours: 48\n"
+        f"  report_dir: {tmp_path}/reports\n"
+        "  email_recipients:\n"
+        "    - admin@example.com\n"
+        "  email_from: scheduler@hpc\n"
+    )
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    assert cfg.audit.dicom_min_files == 5
+    assert cfg.audit.stale_job_threshold_hours == 48
+    assert cfg.audit.report_dir == tmp_path / "reports"
+    assert cfg.audit.email_recipients == ["admin@example.com"]
+    assert cfg.audit.email_from == "scheduler@hpc"
+
+
+def test_from_yaml_audit_block_missing_uses_defaults(tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path}/dicom\n"
+        f"bids_root: {tmp_path}/bids\n"
+        f"derivatives_root: {tmp_path}/derivatives\n"
+        f"state_file: {tmp_path}/state.parquet\n"
+    )
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    assert isinstance(cfg.audit, AuditConfig)
+    assert cfg.audit.dicom_min_files == 10
 
 

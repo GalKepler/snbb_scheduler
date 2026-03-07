@@ -2,7 +2,7 @@
 import csv
 import io
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -220,6 +220,67 @@ def test_retry_clears_failed_entries(runner, cfg_path, tmp_path):
     remaining = load_state(cfg)
     assert len(remaining) == 1
     assert remaining.iloc[0]["status"] == "complete"
+
+
+def test_retry_clears_pending_entries(runner, tmp_path):
+    """--status pending clears stuck pending jobs (e.g. silently cancelled by Slurm)."""
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([
+        {"subject": "sub-0001", "session": "ses-01", "procedure": "qsiprep",
+         "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "55"},
+        {"subject": "sub-0002", "session": "ses-01", "procedure": "qsiprep",
+         "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "56"},
+    ])
+    save_state(state, cfg)
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "retry", "--procedure", "qsiprep", "--status", "pending"]
+    )
+    assert result.exit_code == 0
+    assert "Cleared 1" in result.output
+
+    from snbb_scheduler.manifest import load_state as _load
+    remaining = _load(cfg)
+    assert len(remaining) == 1
+    assert remaining.iloc[0]["status"] == "complete"
+
+
+def test_retry_no_matching_for_status(runner, tmp_path):
+    """--status pending returns 'No matching' when no pending entries exist."""
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "qsiprep",
+        "status": "complete", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "1",
+    }])
+    save_state(state, cfg)
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "retry", "--status", "pending"]
+    )
+    assert result.exit_code == 0
+    assert "No matching pending" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -590,6 +651,46 @@ def test_status_log_path_unknown_procedure(runner, tmp_path):
     assert "log_path" in result.output
 
 
+def test_status_reconciles_with_filesystem(runner, tmp_path):
+    """status reconciles pending jobs when completion markers exist on disk."""
+    bids_root = tmp_path / "bids"
+    state_file = tmp_path / "state.parquet"
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {bids_root}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {state_file}\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=bids_root,
+        derivatives_root=tmp_path / "derivatives",
+        state_file=state_file,
+    )
+
+    # Create a "pending" state entry for bids_post
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids_post",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "42",
+    }])
+    save_state(state, cfg)
+
+    # Create the completion marker that bids_post checks for
+    fmap_dir = bids_root / "sub-0001" / "ses-01" / "fmap"
+    fmap_dir.mkdir(parents=True)
+    (fmap_dir / "sub-0001_ses-01_acq-dwi_dir-AP_epi.nii.gz").touch()
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "status"])
+    assert result.exit_code == 0
+    assert "complete" in result.output
+    assert "pending" not in result.output
+
+    # State file should be updated on disk
+    saved = pd.read_parquet(state_file)
+    assert saved.loc[saved["procedure"] == "bids_post", "status"].iloc[0] == "complete"
+
+
 def test_retry_filter_by_subject(runner, cfg_path, tmp_path):
     cfg = SchedulerConfig(
         dicom_root=tmp_path / "dicom",
@@ -919,3 +1020,149 @@ def test_session_status_csv_format(runner, tmp_path):
     rows = list(reader)
     assert rows[0] == ["subject", "session", "bids"]
     assert len(rows) >= 2  # header + at least one data row
+
+
+# ---------------------------------------------------------------------------
+# audit command
+# ---------------------------------------------------------------------------
+
+
+def test_audit_help(runner):
+    result = runner.invoke(main, ["audit", "--help"])
+    assert result.exit_code == 0
+    assert "--format" in result.output
+    assert "--output" in result.output
+    assert "--email" in result.output
+    assert "--dicom-only" in result.output
+    assert "--logs-only" in result.output
+    assert "--history" in result.output
+
+
+def test_audit_no_sessions(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "audit"])
+    assert result.exit_code == 0
+    assert "Executive Summary" in result.output
+
+
+def test_audit_with_sessions(runner, tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    dicom_dir = tmp_path / "dicom"
+    (dicom_dir / "sub-0001" / "ses-01").mkdir(parents=True)
+    yaml_file.write_text(
+        f"dicom_root: {dicom_dir}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    result = runner.invoke(main, ["--config", str(yaml_file), "audit"])
+    assert result.exit_code == 0
+    assert "sub-0001" in result.output
+
+
+def test_audit_json_format(runner, tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    result = runner.invoke(main, ["--config", str(yaml_file), "audit", "--format", "json"])
+    assert result.exit_code == 0
+    import json
+    # Output should contain JSON (may have extra text from save_report echo)
+    # Find the JSON portion
+    assert '"timestamp"' in result.output
+
+
+def test_audit_markdown_format(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "audit", "--format", "markdown"])
+    assert result.exit_code == 0
+    assert "# SNBB Scheduler Audit Report" in result.output
+
+
+def test_audit_output_to_file(runner, tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    out_file = tmp_path / "report.md"
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "audit", "--output", str(out_file)]
+    )
+    assert result.exit_code == 0
+    assert out_file.exists()
+    assert "Executive Summary" in out_file.read_text()
+
+
+def test_audit_dicom_only(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "audit", "--dicom-only"])
+    assert result.exit_code == 0
+    assert "Executive Summary" in result.output
+
+
+def test_audit_subject_filter(runner, tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    dicom_dir = tmp_path / "dicom"
+    (dicom_dir / "sub-0001" / "ses-01").mkdir(parents=True)
+    (dicom_dir / "sub-0002" / "ses-01").mkdir(parents=True)
+    yaml_file.write_text(
+        f"dicom_root: {dicom_dir}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+    )
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "audit", "--subject", "sub-0001"]
+    )
+    assert result.exit_code == 0
+    assert "sub-0001" in result.output
+
+
+def test_audit_email_no_recipients_warns(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "audit", "--email"])
+    assert result.exit_code == 0
+    assert "no email_recipients" in result.output
+
+
+def test_audit_email_sends(runner, tmp_path):
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        "audit:\n"
+        "  email_recipients:\n"
+        "    - test@example.com\n"
+    )
+    with patch("snbb_scheduler.report.smtplib.SMTP") as mock_smtp_cls:
+        mock_smtp = MagicMock()
+        mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = runner.invoke(
+            main, ["--config", str(yaml_file), "audit", "--email"]
+        )
+    assert result.exit_code == 0
+    assert "emailed" in result.output
+
+
+def test_audit_saves_json_when_report_dir_set(runner, tmp_path):
+    report_dir = tmp_path / "reports"
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        "audit:\n"
+        f"  report_dir: {report_dir}\n"
+    )
+    result = runner.invoke(main, ["--config", str(yaml_file), "audit"])
+    assert result.exit_code == 0
+    json_files = list(report_dir.glob("audit_*.json"))
+    assert len(json_files) == 1
