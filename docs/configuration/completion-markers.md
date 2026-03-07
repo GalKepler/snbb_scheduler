@@ -12,7 +12,7 @@ completion_marker: null
 
 The output directory must exist **and** contain at least one file or subdirectory.
 
-**Used by:** `qsirecon`
+**Used by:** `freesurfer` (the specialized check overrides this; `null` here signals "use the registered check")
 
 ---
 
@@ -50,7 +50,7 @@ completion_marker:
 
 Every pattern in the list must match at least one file. If any pattern has no match, the procedure is considered incomplete.
 
-**Used by:** `bids` (checks all expected modalities), `qsiprep` (checks all output DWI files)
+**Used by:** `bids` (checks all expected modalities), `qsiprep` (checks HTML report + all preproc DWI files)
 
 ---
 
@@ -71,13 +71,23 @@ Where `proc_root` is:
 
 ## Specialized checks
 
-For `freesurfer`, `qsiprep`, and `qsirecon` the completion marker is augmented by specialized logic that also checks **session count consistency**:
+Two procedures use registered specialized checks that replace marker evaluation entirely:
 
-- **freesurfer**: `scripts/recon-all.done` must exist, **and** the number of `-i` inputs in `recon-all.done`'s `CMDARGS` line must equal the number of T1w files currently available in the BIDS dataset for that subject
-- **qsiprep**: at least one `ses-*` subdirectory must exist in the output, **and** the count must equal the number of BIDS sessions with DWI data for that subject
-- **qsirecon**: similar to qsiprep but compares against the number of QSIPrep sessions
+### `freesurfer`
 
-These checks prevent a procedure from appearing "complete" when new sessions have been added after it was originally run.
+Checks the full longitudinal FreeSurfer pipeline. For single-session subjects, verifies `<subject>/scripts/recon-all.done`. For multi-session subjects, verifies all three pipeline steps (cross-sectional, template, longitudinal) across every session.
+
+Kwargs: `bids_root`, `subject` (both optional; falls back to checking `<path>/scripts/recon-all.done`).
+
+### `qsirecon`
+
+Session-scoped check. Verifies that an HTML report exists at `<qsirecon_root>/derivatives/qsirecon-<suffix>/<subject>_<session>.html`:
+
+- **With `recon_spec`**: reads unique `qsirecon_suffix` values from the QSIRecon workflow YAML and checks each one individually (all must exist)
+- **Without `recon_spec`**: wildcard — any `derivatives/*/<subject>_<session>.html` match suffices
+- **Without session context**: falls back to non-empty directory check
+
+Kwargs: `derivatives_root`, `subject`, `session` (required for session-level check); `recon_spec` (optional path to the QSIRecon workflow YAML).
 
 ---
 

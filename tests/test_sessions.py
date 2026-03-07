@@ -128,8 +128,8 @@ def test_session_scoped_procedure_path(fake_config, fake_data_dir):
     row = df[df["subject"] == "sub-0001"].iloc[0]
     # bids is session-scoped
     assert row["bids_path"] == fake_data_dir / "bids" / "sub-0001" / "ses-01"
-    # qsiprep is subject-scoped — path ends at subject, no session component
-    assert row["qsiprep_path"] == fake_data_dir / "derivatives" / "qsiprep" / "sub-0001"
+    # qsiprep is session-scoped — path includes session
+    assert row["qsiprep_path"] == fake_data_dir / "derivatives" / "qsiprep" / "sub-0001" / "ses-01"
 
 
 def test_subject_scoped_procedure_path(fake_config, fake_data_dir):
@@ -299,8 +299,8 @@ def test_file_discovery_session_scoped_procedure_path(fake_sessions_config, fake
     row = df[df["subject"] == "sub-0001"].iloc[0]
     # bids is session-scoped
     assert row["bids_path"] == fake_sessions_csv / "bids" / "sub-0001" / "ses-000000000001"
-    # qsiprep is subject-scoped — path ends at subject, no session component
-    assert row["qsiprep_path"] == fake_sessions_csv / "derivatives" / "qsiprep" / "sub-0001"
+    # qsiprep is session-scoped — path includes session
+    assert row["qsiprep_path"] == fake_sessions_csv / "derivatives" / "qsiprep" / "sub-0001" / "ses-000000000001"
 
 
 def test_file_discovery_subject_scoped_procedure_path(fake_sessions_config, fake_sessions_csv):

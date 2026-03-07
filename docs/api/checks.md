@@ -69,27 +69,50 @@ print(is_complete(
 
 ## Specialized checks
 
-Three procedures use custom completion logic that goes beyond the marker pattern:
+Two procedures use custom completion logic that goes beyond the marker pattern:
 
 ### `freesurfer`
 
-`is_complete(proc, path, bids_root=..., subject=...)` checks:
-1. `scripts/recon-all.done` must exist
-2. The number of `-i` inputs recorded in `recon-all.done`'s `#CMDARGS` line must equal the number of T1w NIfTI files currently available in the BIDS dataset for that subject
+`is_complete(proc, path, bids_root=..., subject=...)` checks the full longitudinal pipeline:
 
-Without `bids_root` and `subject`, falls back to checking only for the marker file.
+- **Single-session subjects**: `<subject>/scripts/recon-all.done` exists and is a success marker
+- **Multi-session subjects**: verifies all three pipeline steps:
+  1. Cross-sectional — `<subject>_<session>/scripts/recon-all.done` for every BIDS session
+  2. Template — `<subject>/scripts/recon-all.done`
+  3. Longitudinal — `<subject>_<session>.long.<subject>/scripts/recon-all.done` for every BIDS session
 
-### `qsiprep`
-
-`is_complete(proc, path, bids_root=..., subject=...)` checks:
-1. At least one `ses-*` subdirectory exists in the QSIPrep subject output
-2. The count of `ses-*` subdirectories equals the count of BIDS sessions with DWI data
+Without `bids_root` and `subject`, falls back to checking only `<path>/scripts/recon-all.done`.
 
 ### `qsirecon`
 
-`is_complete(proc, path, derivatives_root=..., subject=...)` checks:
-1. At least one `ses-*` subdirectory exists in the QSIRecon subject output
-2. The count matches the number of `ses-*` subdirectories in the corresponding QSIPrep output
+`is_complete(proc, path, derivatives_root=..., subject=..., session=..., recon_spec=None)` checks:
+
+- **With `recon_spec`** (path to a QSIRecon workflow YAML): reads the unique `qsirecon_suffix` values from the YAML's `nodes` list and requires that `<qsirecon_root>/derivatives/qsirecon-<suffix>/<subject>_<session>.html` exists for every suffix. If the spec is unreadable or has no suffixes, falls back to wildcard.
+- **Without `recon_spec`** (or empty spec): checks that any file matching `<qsirecon_root>/derivatives/*/<subject>_<session>.html` exists.
+- **Without `derivatives_root`, `subject`, or `session`**: falls back to `_dir_nonempty(output_path)`.
+
+```python
+from snbb_scheduler.checks import is_complete
+from pathlib import Path
+
+proc = cfg.get_procedure("qsirecon")
+path = cfg.get_procedure_root(proc) / "sub-0001" / "ses-01"
+
+# Basic wildcard check
+print(is_complete(proc, path,
+    derivatives_root=cfg.derivatives_root,
+    subject="sub-0001",
+    session="ses-01",
+))
+
+# Spec-driven check (verifies every suffix HTML)
+print(is_complete(proc, path,
+    derivatives_root=cfg.derivatives_root,
+    subject="sub-0001",
+    session="ses-01",
+    recon_spec=Path("/path/to/qsirecon_spec.yaml"),
+))
+```
 
 ---
 

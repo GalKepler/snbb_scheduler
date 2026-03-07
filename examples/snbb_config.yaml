@@ -26,6 +26,10 @@ slurm_account:       slurm
 # slurm_mem:          32G    # passed as --mem to sbatch; omit to let Slurm use the cluster default
 # slurm_cpus_per_task: 8     # passed as --cpus-per-task; omit for the cluster default
 
+# Path to the QSIRecon workflow YAML.  When set, the qsirecon completion check
+# requires one HTML report per workflow suffix listed in the spec.
+qsirecon_spec: /home/galkepler/Projects/snbb_scheduler/scripts/qsirecon_full_spec.yaml
+
 # ---------------------------------------------------------------------------
 # Processing procedures — in dependency order
 # ---------------------------------------------------------------------------
@@ -65,18 +69,19 @@ procedures:
       - "anat/*acq-defaced*T1w.nii.gz"
       - "anat/*acq-defaced*T2w.nii.gz"
 
-  # DWI preprocessing (subject-scoped: one run covers all sessions)
-  # Completion: ses-* output dirs match BIDS DWI session count
+  # DWI preprocessing (session-scoped)
+  # Completion: per-session HTML report + expected preproc outputs
   - name: qsiprep
     output_dir: qsiprep
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsiprep.sh
     scope: session
     depends_on: [post-bids]
-    completion_marker: 
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bvec"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bval"
-      - "ses-*/dwi/*dir-AP*desc-image_qc.tsv"
+    completion_marker:
+      - "*.html"
+      - "dwi/*_dwi_preproc.nii.gz"
+      - "dwi/*_dwi_preproc.bvec"
+      - "dwi/*_dwi_preproc.bval"
+      - "dwi/*desc-image_qc.tsv"
 
   # Cortical reconstruction — FreeSurfer longitudinal pipeline (subject-scoped).
   # Single-session subjects: plain cross-sectional recon-all.
@@ -89,8 +94,8 @@ procedures:
     depends_on: [post-bids]
     completion_marker: "scripts/recon-all.done"
 
-  # DWI tractography reconstruction (subject-scoped: requires qsiprep + freesurfer)
-  # Completion: ses-* output dirs match qsiprep session count
+  # DWI tractography reconstruction (session-scoped: requires qsiprep + freesurfer)
+  # Completion: per-suffix HTML reports verified against qsirecon_spec workflow YAML
   - name: qsirecon
     output_dir: qsirecon
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh

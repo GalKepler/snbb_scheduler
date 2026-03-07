@@ -78,6 +78,10 @@ state_file:        /data/snbb/.scheduler_state.parquet
 slurm_partition: debug
 slurm_account:   snbb
 
+# Optional: path to QSIRecon workflow YAML.
+# When set, qsirecon completion checks for one HTML report per qsirecon_suffix.
+qsirecon_spec: /data/snbb/scripts/qsirecon_spec.yaml
+
 procedures:
   - name: bids
     output_dir: ""          # special: lives in bids_root, not derivatives_root
@@ -105,7 +109,12 @@ procedures:
     script: snbb_run_qsiprep.sh
     scope: session
     depends_on: [bids_post]
-    completion_marker: null  # non-empty directory = complete
+    completion_marker:
+      - "*.html"
+      - "dwi/*_dwi_preproc.nii.gz"
+      - "dwi/*_dwi_preproc.bvec"
+      - "dwi/*_dwi_preproc.bval"
+      - "dwi/*desc-image_qc.tsv"
 
   - name: freesurfer
     output_dir: freesurfer
@@ -452,7 +461,16 @@ derivatives_root/
 ├── qsiprep/
 │   └── sub-0001/
 │       └── ses-01/
-│           └── *.nii.gz                     ← non-empty marks qsiprep complete
+│           ├── sub-0001_ses-01.html          ← HTML report (required)
+│           └── dwi/
+│               ├── *_dwi_preproc.nii.gz      ← preproc DWI (required)
+│               ├── *_dwi_preproc.bvec
+│               ├── *_dwi_preproc.bval
+│               └── *_desc-image_qc.tsv
+├── qsirecon/
+│   └── derivatives/
+│       └── qsirecon-<suffix>/
+│           └── sub-0001_ses-01.html          ← one HTML per workflow suffix
 └── freesurfer/
     └── sub-0001/
         └── scripts/

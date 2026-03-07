@@ -65,6 +65,10 @@ slurm_cpus_per_task: 8    # optional: adds --cpus-per-task=8 to sbatch
 # Subdirectories are created per procedure: <slurm_log_dir>/<procedure>/
 slurm_log_dir: /data/snbb/logs/slurm
 
+# QSIRecon workflow YAML (optional).
+# When set, qsirecon completion requires one HTML per qsirecon_suffix in the spec.
+qsirecon_spec: /data/snbb/scripts/qsirecon_spec.yaml
+
 # ── Procedures ────────────────────────────────────────────────────────────
 # Omit this section to use the built-in defaults.
 procedures:
@@ -103,10 +107,11 @@ procedures:
     scope: session
     depends_on: [bids_post]
     completion_marker:
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.nii.gz"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bvec"
-      - "ses-*/dwi/*dir-AP*_dwi_preproc.bval"
-      - "ses-*/dwi/*dir-AP*desc-image_qc.tsv"
+      - "*.html"
+      - "dwi/*_dwi_preproc.nii.gz"
+      - "dwi/*_dwi_preproc.bvec"
+      - "dwi/*_dwi_preproc.bval"
+      - "dwi/*desc-image_qc.tsv"
 
   - name: freesurfer
     output_dir: freesurfer
@@ -120,7 +125,7 @@ procedures:
     script: snbb_run_qsirecon.sh
     scope: session
     depends_on: [qsiprep, freesurfer]
-    completion_marker: null
+    completion_marker: null  # specialised check: see qsirecon_spec below
 ```
 
 ---
@@ -140,6 +145,7 @@ procedures:
 | `slurm_mem` | str | `null` | Memory per job, e.g. `"32G"` |
 | `slurm_cpus_per_task` | int | `null` | CPUs per task |
 | `slurm_log_dir` | path | `null` | Directory for `--output`/`--error` log files |
+| `qsirecon_spec` | path | `null` | QSIRecon workflow YAML; when set, completion check requires one HTML per listed `qsirecon_suffix` |
 | `procedures` | list | *(built-in defaults)* | List of procedure declarations |
 
 ---

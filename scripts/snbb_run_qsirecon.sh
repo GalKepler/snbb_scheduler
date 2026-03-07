@@ -38,6 +38,8 @@ set -euo pipefail
 
 SUBJECT="$1"          # e.g. sub-0001
 PARTICIPANT="${SUBJECT#sub-}"
+SESSION="$2"          # e.g. ses-01 (not used by QSIPrep, but passed by scheduler)
+SESSION_ID="${SESSION#ses-}"
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
@@ -131,6 +133,7 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         "${LOCAL_OUTPUT}" \
         participant \
         --participant-label "${PARTICIPANT}" \
+        --session-id "${SESSION_ID}" \
         --recon-spec "${SNBB_RECON_SPEC}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --fs-subjects-dir "${LOCAL_FS}" \
@@ -164,6 +167,7 @@ else
         "${SNBB_QSIRECON_OUTPUT_DIR}" \
         participant \
         --participant-label "${PARTICIPANT}" \
+        --session-id "${SESSION_ID}" \
         --recon-spec "${SNBB_RECON_SPEC}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
         --fs-subjects-dir "${SNBB_FS_SUBJECTS_DIR}" \
