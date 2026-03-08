@@ -785,6 +785,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit & Email
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1040,6 +1068,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1114,6 +1170,34 @@
     
   
     Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/apptainer-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apptainer Images
   
 
     
@@ -1254,6 +1338,34 @@
     
   
     Cron / Systemd Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/email-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Email Setup
   
 
     
@@ -1522,6 +1634,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="snbb_run_freesurfer.sh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-scratch-mode_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local-scratch mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1981,6 +2110,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="snbb_run_freesurfer.sh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-scratch-mode_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local-scratch mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2079,7 +2225,7 @@
 <tr>
 <td><code>SNBB_HEUDICONV_SIF</code></td>
 <td><em>(site-specific)</em></td>
-<td>Path to the heudiconv Apptainer image</td>
+<td>Path to the heudiconv Apptainer image (see <a href="../../guides/apptainer-images/">Apptainer Images</a>)</td>
 </tr>
 <tr>
 <td><code>SNBB_DEBUG_LOG</code></td>
@@ -2096,12 +2242,58 @@
 <hr />
 <h2 id="snbb_run_bids_postsh"><code>snbb_run_bids_post.sh</code><a class="headerlink" href="#snbb_run_bids_postsh" title="Permanent link">&para;</a></h2>
 <p>Post-processing step: derives DWI fieldmap EPI sidecars from BIDS data.</p>
-<p><strong>Called as:</strong> <code>sbatch ... snbb_run_bids_post.sh sub-XXXX ses-YY /path/to/dicom</code></p>
+<p><strong>Called as:</strong> <code>sbatch ... snbb_run_bids_post.sh sub-XXXX ses-YY</code></p>
 <p>Calls <code>scripts/snbb_bids_post.py</code> to generate the derived <code>fmap/*acq-dwi*_epi</code> files required by QSIPrep.</p>
+<p><strong>Environment variables:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SNBB_BIDS_ROOT</code></td>
+<td><em>(site-specific)</em></td>
+<td>BIDS dataset root</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Embedded Slurm resources:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>#SBATCH --time=0:30:00
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>#SBATCH --mem=2G
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>#SBATCH --cpus-per-task=1
+</code></pre></div></p>
+<p>No Apptainer container is used; this step runs the bundled Python script directly.</p>
 <hr />
 <h2 id="snbb_run_defacingsh"><code>snbb_run_defacing.sh</code><a class="headerlink" href="#snbb_run_defacingsh" title="Permanent link">&para;</a></h2>
-<p>Defaces T1w images in-place within the BIDS dataset, writing defaced images as <code>anat/*acq-defaced*_T1w.nii.gz</code>.</p>
-<p><strong>Called as:</strong> <code>sbatch ... snbb_run_defacing.sh sub-XXXX ses-YY /path/to/dicom</code></p>
+<p>Defaces T1w and T2w images within the BIDS dataset, writing defaced copies as <code>anat/*acq-defaced*_T1w.nii.gz</code> (or <code>_T2w.nii.gz</code>) with their JSON sidecars.</p>
+<p><strong>Called as:</strong> <code>sbatch ... snbb_run_defacing.sh sub-XXXX ses-YY</code></p>
+<p><strong>Environment variables:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SNBB_BIDS_ROOT</code></td>
+<td><em>(site-specific)</em></td>
+<td>BIDS dataset root</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Embedded Slurm resources:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>#SBATCH --time=1:00:00
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>#SBATCH --mem=8G
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>#SBATCH --cpus-per-task=4
+</code></pre></div></p>
+<p>No Apptainer container is used. <code>fsl_deface</code> must be available on <code>PATH</code> (install FSL or load the FSL module before submitting).</p>
 <hr />
 <h2 id="snbb_run_qsiprepsh"><code>snbb_run_qsiprep.sh</code><a class="headerlink" href="#snbb_run_qsiprepsh" title="Permanent link">&para;</a></h2>
 <p>DWI preprocessing via <a href="https://qsiprep.readthedocs.io">QSIPrep</a> using Apptainer.</p>
@@ -2125,7 +2317,7 @@
 <tr>
 <td><code>SNBB_DERIVATIVES</code></td>
 <td><em>(site-specific)</em></td>
-<td>Parent derivatives directory (qsiprep writes <code>qsiprep/</code> inside it)</td>
+<td>QSIPrep output directory root (QSIPrep writes a <code>qsiprep/</code> subdirectory inside)</td>
 </tr>
 <tr>
 <td><code>SNBB_FS_LICENSE</code></td>
@@ -2140,7 +2332,7 @@
 <tr>
 <td><code>SNBB_QSIPREP_SIF</code></td>
 <td><em>(site-specific)</em></td>
-<td>Path to the QSIPrep Apptainer image</td>
+<td>Path to the QSIPrep Apptainer image (see <a href="../../guides/apptainer-images/">Apptainer Images</a>)</td>
 </tr>
 <tr>
 <td><code>SNBB_ANATOMICAL_TEMPLATE</code></td>
@@ -2149,7 +2341,7 @@
 </tr>
 <tr>
 <td><code>SNBB_SUBJECT_ANAT_REF</code></td>
-<td><code>unbiased</code></td>
+<td><code>sessionwise</code></td>
 <td>Subject anatomical reference</td>
 </tr>
 <tr>
@@ -2170,9 +2362,9 @@
 </tbody>
 </table>
 <p><strong>Embedded Slurm resources:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>#SBATCH --time=12:00:00
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>#SBATCH --mem=20G
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>#SBATCH --cpus-per-task=8
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#SBATCH --time=12:00:00
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>#SBATCH --mem=20G
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>#SBATCH --cpus-per-task=8
 </code></pre></div></p>
 <h3 id="local-scratch-mode">Local-scratch mode<a class="headerlink" href="#local-scratch-mode" title="Permanent link">&para;</a></h3>
 <p>When <code>SNBB_LOCAL_TMP_ROOT</code> is set, the script stages BIDS input and QSIPrep output on the compute node's local disk (<code>/tmp</code> or similar), then rsyncs results back to <code>SNBB_DERIVATIVES</code> on success. This improves I/O performance on clusters with slow network filesystems. On failure, the local workdir is preserved for manual recovery.</p>
@@ -2200,12 +2392,7 @@
 <tr>
 <td><code>SNBB_FS_OUTPUT</code></td>
 <td><em>(site-specific)</em></td>
-<td>Final FreeSurfer output directory</td>
-</tr>
-<tr>
-<td><code>SNBB_TMP_FS_OUTPUT</code></td>
-<td><em>(site-specific)</em></td>
-<td>Intermediate writable FreeSurfer directory</td>
+<td>FreeSurfer output directory (<code>SUBJECTS_DIR</code>)</td>
 </tr>
 <tr>
 <td><code>SNBB_FS_LICENSE</code></td>
@@ -2215,21 +2402,23 @@
 <tr>
 <td><code>SNBB_FREESURFER_SIF</code></td>
 <td><em>(site-specific)</em></td>
-<td>FreeSurfer Apptainer image</td>
+<td>FreeSurfer Apptainer image (see <a href="../../guides/apptainer-images/">Apptainer Images</a>)</td>
 </tr>
 <tr>
 <td><code>SNBB_LOCAL_TMP_ROOT</code></td>
 <td><em>(empty)</em></td>
-<td>Enable local-scratch mode</td>
+<td>Enable local-scratch mode (see below)</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Embedded Slurm resources:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>#SBATCH --time=24:00:00
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>#SBATCH --mem=20G
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>#SBATCH --cpus-per-task=8
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>#SBATCH --time=72:00:00
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>#SBATCH --mem=32G
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>#SBATCH --cpus-per-task=8
 </code></pre></div></p>
-<p>After <code>recon-all</code> completes, the script rsyncs results from the temporary directory to <code>SNBB_FS_OUTPUT</code> and removes the temp copy (only if <code>scripts/recon-all.done</code> is present).</p>
+<p>The longitudinal pipeline (three sequential <code>recon-all</code> passes per session) can take up to 72 h for subjects with 2–4 sessions. Already-completed steps are skipped automatically, so failed jobs can be resumed.</p>
+<h3 id="local-scratch-mode_1">Local-scratch mode<a class="headerlink" href="#local-scratch-mode_1" title="Permanent link">&para;</a></h3>
+<p>When <code>SNBB_LOCAL_TMP_ROOT</code> is set, the script stages BIDS input and FreeSurfer output on the compute node's local disk, then rsyncs all subject-related output directories back to <code>SNBB_FS_OUTPUT</code> on success. On failure the local workdir is preserved for manual recovery.</p>
 <hr />
 <h2 id="snbb_run_qsireconsh"><code>snbb_run_qsirecon.sh</code><a class="headerlink" href="#snbb_run_qsireconsh" title="Permanent link">&para;</a></h2>
 <p>Tractography and connectivity via <a href="https://qsirecon.readthedocs.io">QSIRecon</a> using Apptainer.</p>
@@ -2278,7 +2467,7 @@
 <tr>
 <td><code>SNBB_QSIRECON_SIF</code></td>
 <td><em>(site-specific)</em></td>
-<td>QSIRecon Apptainer image</td>
+<td>QSIRecon Apptainer image (see <a href="../../guides/apptainer-images/">Apptainer Images</a>)</td>
 </tr>
 <tr>
 <td><code>SNBB_RESPONSES_DIR</code></td>
@@ -2308,20 +2497,20 @@
 </tbody>
 </table>
 <p><strong>Embedded Slurm resources:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>#SBATCH --time=12:00:00
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>#SBATCH --mem=32G
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>#SBATCH --cpus-per-task=8
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>#SBATCH --time=12:00:00
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>#SBATCH --mem=32G
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>#SBATCH --cpus-per-task=8
 </code></pre></div></p>
 <hr />
 <h2 id="snbb_recon_all_helperpy"><code>snbb_recon_all_helper.py</code><a class="headerlink" href="#snbb_recon_all_helperpy" title="Permanent link">&para;</a></h2>
 <p>Python helper called by <code>snbb_run_freesurfer.sh</code>. Collects T1w and T2w NIfTI files for a subject (excluding defaced images, preferring <code>rec-norm</code> when available) and calls <code>recon-all</code> via the FreeSurfer Apptainer container.</p>
 <p><strong>Arguments:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>--bids-dir    Path to BIDS root (or local copy)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>--output-dir  FreeSurfer SUBJECTS_DIR
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>--subject     BIDS subject label (e.g. sub-0001)
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>--threads     Number of parallel threads for recon-all
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>--sif         Path to FreeSurfer Apptainer image
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>--fs-license  Path to FreeSurfer license file
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--bids-dir    Path to BIDS root (or local copy)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>--output-dir  FreeSurfer SUBJECTS_DIR
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>--subject     BIDS subject label (e.g. sub-0001)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>--threads     Number of parallel threads for recon-all
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>--sif         Path to FreeSurfer Apptainer image
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>--fs-license  Path to FreeSurfer license file
 </code></pre></div></p>
 <hr />
 <h2 id="setting-environment-variables">Setting environment variables<a class="headerlink" href="#setting-environment-variables" title="Permanent link">&para;</a></h2>
@@ -2332,13 +2521,13 @@
 <li><strong>Via <code>sbatch --export</code></strong> (pass specific vars to the job)</li>
 </ol>
 <p>Example — set variables in your environment:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span>/data/site/bids
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_DERIVATIVES</span><span class="o">=</span>/data/site/derivatives
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_FS_LICENSE</span><span class="o">=</span>/opt/freesurfer/license.txt
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_QSIPREP_SIF</span><span class="o">=</span>/containers/qsiprep-1.1.1.sif
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_FREESURFER_SIF</span><span class="o">=</span>/containers/freesurfer-8.1.0.sif
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_QSIRECON_SIF</span><span class="o">=</span>/containers/qsirecon-1.2.0.sif
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_TEMPLATEFLOW_HOME</span><span class="o">=</span>/data/templateflow
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span>/data/site/bids
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_DERIVATIVES</span><span class="o">=</span>/data/site/derivatives
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_FS_LICENSE</span><span class="o">=</span>/opt/freesurfer/license.txt
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_QSIPREP_SIF</span><span class="o">=</span>/containers/qsiprep-1.1.1.sif
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_FREESURFER_SIF</span><span class="o">=</span>/containers/freesurfer-8.1.0.sif
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_QSIRECON_SIF</span><span class="o">=</span>/containers/qsirecon-1.2.0.sif
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">export</span><span class="w"> </span><span class="nv">SNBB_TEMPLATEFLOW_HOME</span><span class="o">=</span>/data/templateflow
 </code></pre></div>
 
 

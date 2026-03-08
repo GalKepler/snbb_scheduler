@@ -887,6 +887,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit & Email
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1142,6 +1170,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1216,6 +1272,34 @@
     
   
     Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/apptainer-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apptainer Images
   
 
     
@@ -1356,6 +1440,34 @@
     
   
     Cron / Systemd Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/email-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Email Setup
   
 
     
@@ -1936,7 +2048,9 @@
 <ul>
 <li>Python 3.10 or later</li>
 <li>Access to a Slurm cluster (for real job submission; <code>--dry-run</code> works without Slurm)</li>
-<li>The processing tools called by each script (Apptainer containers, FreeSurfer, etc.) must be available on the cluster</li>
+<li><a href="https://apptainer.org">Apptainer</a> installed on cluster nodes (for running container-based procedures)</li>
+<li>The processing container images pre-built and accessible from compute nodes — see <a href="../guides/apptainer-images/">Apptainer Images</a> for the exact versions and build instructions</li>
+<li>A valid <a href="https://surfer.nmr.mgh.harvard.edu/registration.html">FreeSurfer license</a> for the FreeSurfer and QSIPrep procedures</li>
 </ul>
 <h2 id="install-from-source">Install from source<a class="headerlink" href="#install-from-source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/GalKepler/snbb_scheduler.git

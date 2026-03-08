@@ -785,6 +785,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit & Email
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1083,6 +1111,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exporting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1145,6 +1184,34 @@
     
   
     retry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    audit
   
 
     
@@ -1232,6 +1299,34 @@
     
   
     Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/apptainer-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apptainer Images
   
 
     
@@ -1372,6 +1467,34 @@
     
   
     Cron / Systemd Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/email-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Email Setup
   
 
     
@@ -1928,6 +2051,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exporting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1982,6 +2116,14 @@
 <tr>
 <td><code>--procedure PROCEDURE</code></td>
 <td>Show only this procedure column</td>
+</tr>
+<tr>
+<td><code>--export FILE</code></td>
+<td>Save the table as a CSV to the given file path</td>
+</tr>
+<tr>
+<td><code>--export-to-report-dir</code></td>
+<td>Save a timestamped CSV to the configured <code>audit.report_dir</code></td>
 </tr>
 </tbody>
 </table>
@@ -2039,6 +2181,14 @@
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Combine filters</span>
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--subject<span class="w"> </span>sub-0001<span class="w"> </span>--procedure<span class="w"> </span>qsiprep
 </code></pre></div>
+<h2 id="exporting">Exporting<a class="headerlink" href="#exporting" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Save to a specific file</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--export<span class="w"> </span>/data/reports/status.csv
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Save a timestamped copy to audit.report_dir (configured in config.yaml)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>snbb-scheduler<span class="w"> </span>--config<span class="w"> </span>config.yaml<span class="w"> </span>session-status<span class="w"> </span>--export-to-report-dir
+</code></pre></div>
+<p>The <code>--export-to-report-dir</code> flag writes <code>session_status_YYYYMMDD_HHMMSS.csv</code> into the directory configured as <code>audit.report_dir</code>. The directory is created if it does not exist.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>This command discovers sessions from <code>dicom_root</code> (or <code>sessions_file</code>) and cross-references with the state file.</li>
