@@ -220,14 +220,33 @@ def status(ctx: click.Context) -> None:
 )
 @click.option("--subject", default=None, help="Filter to a single subject.")
 @click.option("--procedure", default=None, help="Show only this procedure column.")
+@click.option(
+    "--export",
+    "export_path",
+    type=click.Path(),
+    default=None,
+    metavar="FILE",
+    help="Export CSV to FILE.",
+)
+@click.option(
+    "--export-to-report-dir",
+    is_flag=True,
+    default=False,
+    help="Save CSV to the configured audit report_dir with a timestamped filename.",
+)
 @click.pass_context
 def session_status(
     ctx: click.Context,
     output_format: str,
     subject: str | None,
     procedure: str | None,
+    export_path: str | None,
+    export_to_report_dir: bool,
 ) -> None:
     """Show per-session status with output paths or log file locations."""
+    import datetime
+    from pathlib import Path
+
     config: SchedulerConfig = ctx.obj["config"]
     table = build_session_status_table(config)
 
@@ -251,6 +270,17 @@ def session_status(
         click.echo(table.to_csv(index=False))
     else:
         click.echo(table.to_string(index=False))
+
+    if export_path or export_to_report_dir:
+        if export_path:
+            dest = Path(export_path)
+        else:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"session_status_{timestamp}.csv"
+            dest = (config.audit.report_dir / filename) if config.audit.report_dir else Path(filename)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        table.to_csv(dest, index=False)
+        click.echo(f"Session status CSV exported to {dest}")
 
 
 @main.command()

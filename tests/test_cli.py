@@ -734,6 +734,8 @@ def test_session_status_help(runner):
     assert "--format" in result.output
     assert "--subject" in result.output
     assert "--procedure" in result.output
+    assert "--export" in result.output
+    assert "--export-to-report-dir" in result.output
 
 
 def test_session_status_no_sessions(runner, cfg_path):
@@ -1020,6 +1022,60 @@ def test_session_status_csv_format(runner, tmp_path):
     rows = list(reader)
     assert rows[0] == ["subject", "session", "bids"]
     assert len(rows) >= 2  # header + at least one data row
+
+
+def test_session_status_export_to_path(runner, tmp_path):
+    """--export FILE writes CSV to the given path."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: bids\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    dest = tmp_path / "out" / "status.csv"
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--export", str(dest)],
+    )
+    assert result.exit_code == 0
+    assert dest.exists()
+    assert "exported to" in result.output
+    reader = csv.reader(dest.read_text().splitlines())
+    rows = list(reader)
+    assert rows[0][0] == "subject"
+
+
+def test_session_status_export_to_report_dir(runner, tmp_path):
+    """--export-to-report-dir writes CSV to audit.report_dir."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    report_dir = tmp_path / "reports"
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"audit:\n"
+        f"  report_dir: {report_dir}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: bids\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--export-to-report-dir"],
+    )
+    assert result.exit_code == 0
+    assert "exported to" in result.output
+    csvs = list(report_dir.glob("session_status_*.csv"))
+    assert len(csvs) == 1
+    reader = csv.reader(csvs[0].read_text().splitlines())
+    assert list(reader)[0][0] == "subject"
 
 
 # ---------------------------------------------------------------------------
