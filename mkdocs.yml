@@ -65,6 +65,7 @@ nav:
       - Overview: configuration/index.md
       - Completion Markers: configuration/completion-markers.md
       - Slurm Settings: configuration/slurm.md
+      - Audit & Email: configuration/audit.md
   - CLI:
       - Overview: cli/index.md
       - run: cli/run.md
@@ -73,13 +74,16 @@ nav:
       - session-status: cli/session-status.md
       - monitor: cli/monitor.md
       - retry: cli/retry.md
+      - audit: cli/audit.md
   - Guides:
       - Getting Started: guides/getting-started.md
+      - Apptainer Images: guides/apptainer-images.md
       - Adding a Procedure: guides/adding-procedure.md
       - Forcing a Rerun: guides/forcing-rerun.md
       - Monitoring Jobs: guides/monitoring-jobs.md
       - Debugging: guides/debugging.md
       - Cron / Systemd Setup: guides/cron-setup.md
+      - Email Setup: guides/email-setup.md
   - Reference:
       - State File: reference/state-file.md
       - Audit Log: reference/audit-log.md

@@ -4,7 +4,9 @@
 
 - Python 3.10 or later
 - Access to a Slurm cluster (for real job submission; `--dry-run` works without Slurm)
-- The processing tools called by each script (Apptainer containers, FreeSurfer, etc.) must be available on the cluster
+- [Apptainer](https://apptainer.org) installed on cluster nodes (for running container-based procedures)
+- The processing container images pre-built and accessible from compute nodes — see [Apptainer Images](guides/apptainer-images.md) for the exact versions and build instructions
+- A valid [FreeSurfer license](https://surfer.nmr.mgh.harvard.edu/registration.html) for the FreeSurfer and QSIPrep procedures
 
 ## Install from source
 

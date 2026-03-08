@@ -24,7 +24,7 @@ Converts DICOMs to BIDS format using [heudiconv](https://heudiconv.readthedocs.i
 | `SNBB_DICOM_SESSION_DIR` | `<SNBB_DICOM_ROOT>/<SESSION_ID>` | Fallback per-session DICOM path |
 | `SNBB_BIDS_ROOT` | *(site-specific)* | Output BIDS dataset root |
 | `SNBB_HEURISTIC` | *(site-specific)* | Path to the heudiconv heuristic Python file |
-| `SNBB_HEUDICONV_SIF` | *(site-specific)* | Path to the heudiconv Apptainer image |
+| `SNBB_HEUDICONV_SIF` | *(site-specific)* | Path to the heudiconv Apptainer image (see [Apptainer Images](../guides/apptainer-images.md)) |
 | `SNBB_DEBUG_LOG` | *(site-specific)* | Path for the per-run debug log |
 
 **Embedded Slurm resources:**
@@ -40,17 +40,47 @@ Converts DICOMs to BIDS format using [heudiconv](https://heudiconv.readthedocs.i
 
 Post-processing step: derives DWI fieldmap EPI sidecars from BIDS data.
 
-**Called as:** `sbatch ... snbb_run_bids_post.sh sub-XXXX ses-YY /path/to/dicom`
+**Called as:** `sbatch ... snbb_run_bids_post.sh sub-XXXX ses-YY`
 
 Calls `scripts/snbb_bids_post.py` to generate the derived `fmap/*acq-dwi*_epi` files required by QSIPrep.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `SNBB_BIDS_ROOT` | *(site-specific)* | BIDS dataset root |
+
+**Embedded Slurm resources:**
+```
+#SBATCH --time=0:30:00
+#SBATCH --mem=2G
+#SBATCH --cpus-per-task=1
+```
+
+No Apptainer container is used; this step runs the bundled Python script directly.
 
 ---
 
 ## `snbb_run_defacing.sh`
 
-Defaces T1w images in-place within the BIDS dataset, writing defaced images as `anat/*acq-defaced*_T1w.nii.gz`.
+Defaces T1w and T2w images within the BIDS dataset, writing defaced copies as `anat/*acq-defaced*_T1w.nii.gz` (or `_T2w.nii.gz`) with their JSON sidecars.
 
-**Called as:** `sbatch ... snbb_run_defacing.sh sub-XXXX ses-YY /path/to/dicom`
+**Called as:** `sbatch ... snbb_run_defacing.sh sub-XXXX ses-YY`
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `SNBB_BIDS_ROOT` | *(site-specific)* | BIDS dataset root |
+
+**Embedded Slurm resources:**
+```
+#SBATCH --time=1:00:00
+#SBATCH --mem=8G
+#SBATCH --cpus-per-task=4
+```
+
+No Apptainer container is used. `fsl_deface` must be available on `PATH` (install FSL or load the FSL module before submitting).
 
 ---
 
@@ -66,12 +96,12 @@ DWI preprocessing via [QSIPrep](https://qsiprep.readthedocs.io) using Apptainer.
 | Variable | Default | Description |
 |---|---|---|
 | `SNBB_BIDS_ROOT` | *(site-specific)* | BIDS dataset root (read-only input) |
-| `SNBB_DERIVATIVES` | *(site-specific)* | Parent derivatives directory (qsiprep writes `qsiprep/` inside it) |
+| `SNBB_DERIVATIVES` | *(site-specific)* | QSIPrep output directory root (QSIPrep writes a `qsiprep/` subdirectory inside) |
 | `SNBB_FS_LICENSE` | *(site-specific)* | FreeSurfer license file path |
 | `SNBB_WORK_DIR` | *(site-specific)* | QSIPrep working directory |
-| `SNBB_QSIPREP_SIF` | *(site-specific)* | Path to the QSIPrep Apptainer image |
+| `SNBB_QSIPREP_SIF` | *(site-specific)* | Path to the QSIPrep Apptainer image (see [Apptainer Images](../guides/apptainer-images.md)) |
 | `SNBB_ANATOMICAL_TEMPLATE` | `MNI152NLin2009cAsym` | Anatomical template space |
-| `SNBB_SUBJECT_ANAT_REF` | `unbiased` | Subject anatomical reference |
+| `SNBB_SUBJECT_ANAT_REF` | `sessionwise` | Subject anatomical reference |
 | `SNBB_BIDS_FILTER_FILE` | *(optional)* | BIDS filter JSON file |
 | `SNBB_TEMPLATEFLOW_HOME` | *(site-specific)* | TemplateFlow cache directory |
 | `SNBB_LOCAL_TMP_ROOT` | *(empty)* | Enable local-scratch mode (see below) |
@@ -103,20 +133,23 @@ Uses `scripts/snbb_recon_all_helper.py` to collect all T1w (and T2w) NIfTI files
 | Variable | Default | Description |
 |---|---|---|
 | `SNBB_BIDS_ROOT` | *(site-specific)* | BIDS dataset root |
-| `SNBB_FS_OUTPUT` | *(site-specific)* | Final FreeSurfer output directory |
-| `SNBB_TMP_FS_OUTPUT` | *(site-specific)* | Intermediate writable FreeSurfer directory |
+| `SNBB_FS_OUTPUT` | *(site-specific)* | FreeSurfer output directory (`SUBJECTS_DIR`) |
 | `SNBB_FS_LICENSE` | *(site-specific)* | FreeSurfer license file |
-| `SNBB_FREESURFER_SIF` | *(site-specific)* | FreeSurfer Apptainer image |
-| `SNBB_LOCAL_TMP_ROOT` | *(empty)* | Enable local-scratch mode |
+| `SNBB_FREESURFER_SIF` | *(site-specific)* | FreeSurfer Apptainer image (see [Apptainer Images](../guides/apptainer-images.md)) |
+| `SNBB_LOCAL_TMP_ROOT` | *(empty)* | Enable local-scratch mode (see below) |
 
 **Embedded Slurm resources:**
 ```
-#SBATCH --time=24:00:00
-#SBATCH --mem=20G
+#SBATCH --time=72:00:00
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=8
 ```
 
-After `recon-all` completes, the script rsyncs results from the temporary directory to `SNBB_FS_OUTPUT` and removes the temp copy (only if `scripts/recon-all.done` is present).
+The longitudinal pipeline (three sequential `recon-all` passes per session) can take up to 72 h for subjects with 2–4 sessions. Already-completed steps are skipped automatically, so failed jobs can be resumed.
+
+### Local-scratch mode
+
+When `SNBB_LOCAL_TMP_ROOT` is set, the script stages BIDS input and FreeSurfer output on the compute node's local disk, then rsyncs all subject-related output directories back to `SNBB_FS_OUTPUT` on success. On failure the local workdir is preserved for manual recovery.
 
 ---
 
@@ -137,7 +170,7 @@ Tractography and connectivity via [QSIRecon](https://qsirecon.readthedocs.io) us
 | `SNBB_FS_SUBJECTS_DIR` | *(site-specific)* | FreeSurfer subjects directory |
 | `SNBB_RECON_SPEC` | *(site-specific)* | QSIRecon reconstruction spec YAML |
 | `SNBB_WORK_DIR` | *(site-specific)* | QSIRecon working directory |
-| `SNBB_QSIRECON_SIF` | *(site-specific)* | QSIRecon Apptainer image |
+| `SNBB_QSIRECON_SIF` | *(site-specific)* | QSIRecon Apptainer image (see [Apptainer Images](../guides/apptainer-images.md)) |
 | `SNBB_RESPONSES_DIR` | *(optional)* | Pre-computed MRtrix3 response functions |
 | `SNBB_ATLASES_DIR` | *(optional)* | Atlas dataset directory |
 | `SNBB_ATLASES` | *(optional)* | Space-separated atlas names |

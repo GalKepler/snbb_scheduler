@@ -13,6 +13,8 @@ snbb-scheduler --config CONFIG session-status [OPTIONS]
 | `--format {table,csv}` | Output format (default: `table`) |
 | `--subject SUBJECT` | Filter to a single subject (e.g. `sub-0001`) |
 | `--procedure PROCEDURE` | Show only this procedure column |
+| `--export FILE` | Save the table as a CSV to the given file path |
+| `--export-to-report-dir` | Save a timestamped CSV to the configured `audit.report_dir` |
 
 ## What it shows
 
@@ -56,6 +58,18 @@ snbb-scheduler --config config.yaml session-status --procedure qsiprep
 # Combine filters
 snbb-scheduler --config config.yaml session-status --subject sub-0001 --procedure qsiprep
 ```
+
+## Exporting
+
+```bash
+# Save to a specific file
+snbb-scheduler --config config.yaml session-status --export /data/reports/status.csv
+
+# Save a timestamped copy to audit.report_dir (configured in config.yaml)
+snbb-scheduler --config config.yaml session-status --export-to-report-dir
+```
+
+The `--export-to-report-dir` flag writes `session_status_YYYYMMDD_HHMMSS.csv` into the directory configured as `audit.report_dir`. The directory is created if it does not exist.
 
 ## Notes
 
