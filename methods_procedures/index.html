@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/guides/cron-setup/">
+        <link rel="canonical" href="https://galkepler.github.io/snbb_scheduler/methods_procedures/">
       
       
-        <link rel="prev" href="../debugging/">
+        <link rel="prev" href="../guides/email-setup/">
       
       
-        <link rel="next" href="../email-setup/">
+        <link rel="next" href="../reference/state-file/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/snbb_logo.png">
+      <link rel="icon" href="../assets/snbb_logo.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>Cron / Systemd Setup - snbb-scheduler</title>
+        <title>Processing Pipeline - snbb-scheduler</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cron-systemd-setup" class="md-skip">
+        <a href="#processing-pipeline" class="md-skip">
           Skip to content
         </a>
       
@@ -94,9 +94,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="snbb-scheduler" class="md-header__button md-logo" aria-label="snbb-scheduler" data-md-component="logo">
+    <a href=".." title="snbb-scheduler" class="md-header__button md-logo" aria-label="snbb-scheduler" data-md-component="logo">
       
-  <img src="../../assets/snbb_logo.png" alt="logo">
+  <img src="../assets/snbb_logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cron / Systemd Setup
+              Processing Pipeline
             
           </span>
         </div>
@@ -226,7 +226,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href=".." class="md-tabs__link">
         
   
   
@@ -245,7 +245,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../installation/" class="md-tabs__link">
+      <a href="../installation/" class="md-tabs__link">
         
   
   
@@ -266,7 +266,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../concepts/" class="md-tabs__link">
+        <a href="../concepts/" class="md-tabs__link">
           
   
   
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../configuration/" class="md-tabs__link">
+        <a href="../configuration/" class="md-tabs__link">
           
   
   
@@ -306,11 +306,31 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../cli/" class="md-tabs__link">
+        <a href="../cli/" class="md-tabs__link">
           
   
   
   CLI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/getting-started/" class="md-tabs__link">
+          
+  
+  
+  Guides
 
         </a>
       </li>
@@ -328,27 +348,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../getting-started/" class="md-tabs__link">
-          
-  
-  
-  Guides
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../methods_procedures/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -368,7 +368,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/state-file/" class="md-tabs__link">
+        <a href="../reference/state-file/" class="md-tabs__link">
           
   
   
@@ -388,7 +388,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+        <a href="../api/" class="md-tabs__link">
           
   
   
@@ -422,9 +422,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="snbb-scheduler" class="md-nav__button md-logo" aria-label="snbb-scheduler" data-md-component="logo">
+    <a href=".." title="snbb-scheduler" class="md-nav__button md-logo" aria-label="snbb-scheduler" data-md-component="logo">
       
-  <img src="../../assets/snbb_logo.png" alt="logo">
+  <img src="../assets/snbb_logo.png" alt="logo">
 
     </a>
     snbb-scheduler
@@ -451,7 +451,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -478,7 +478,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../installation/" class="md-nav__link">
+      <a href="../installation/" class="md-nav__link">
         
   
   
@@ -557,7 +557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/" class="md-nav__link">
+      <a href="../concepts/" class="md-nav__link">
         
   
   
@@ -585,7 +585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/pipeline/" class="md-nav__link">
+      <a href="../concepts/pipeline/" class="md-nav__link">
         
   
   
@@ -613,7 +613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/procedures/" class="md-nav__link">
+      <a href="../concepts/procedures/" class="md-nav__link">
         
   
   
@@ -641,7 +641,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/state-machine/" class="md-nav__link">
+      <a href="../concepts/state-machine/" class="md-nav__link">
         
   
   
@@ -728,7 +728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -756,7 +756,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/completion-markers/" class="md-nav__link">
+      <a href="../configuration/completion-markers/" class="md-nav__link">
         
   
   
@@ -784,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/slurm/" class="md-nav__link">
+      <a href="../configuration/slurm/" class="md-nav__link">
         
   
   
@@ -812,7 +812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/audit/" class="md-nav__link">
+      <a href="../configuration/audit/" class="md-nav__link">
         
   
   
@@ -899,7 +899,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/" class="md-nav__link">
+      <a href="../cli/" class="md-nav__link">
         
   
   
@@ -927,7 +927,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/run/" class="md-nav__link">
+      <a href="../cli/run/" class="md-nav__link">
         
   
   
@@ -955,7 +955,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/manifest/" class="md-nav__link">
+      <a href="../cli/manifest/" class="md-nav__link">
         
   
   
@@ -983,7 +983,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/status/" class="md-nav__link">
+      <a href="../cli/status/" class="md-nav__link">
         
   
   
@@ -1011,7 +1011,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/session-status/" class="md-nav__link">
+      <a href="../cli/session-status/" class="md-nav__link">
         
   
   
@@ -1039,7 +1039,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/monitor/" class="md-nav__link">
+      <a href="../cli/monitor/" class="md-nav__link">
         
   
   
@@ -1067,7 +1067,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/retry/" class="md-nav__link">
+      <a href="../cli/retry/" class="md-nav__link">
         
   
   
@@ -1095,7 +1095,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/audit/" class="md-nav__link">
+      <a href="../cli/audit/" class="md-nav__link">
         
   
   
@@ -1103,6 +1103,289 @@
     
   
     audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/apptainer-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apptainer Images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/adding-procedure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a Procedure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/forcing-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forcing a Rerun
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/monitoring-jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring Jobs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/cron-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cron / Systemd Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/email-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Email Setup
   
 
     
@@ -1148,17 +1431,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Guides
+    Methods
   
 
     
@@ -1169,184 +1452,16 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Guides
+    Methods
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../getting-started/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Getting Started
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../apptainer-images/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Apptainer Images
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adding-procedure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Adding a Procedure
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../forcing-rerun/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Forcing a Rerun
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../monitoring-jobs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Monitoring Jobs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../debugging/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Debugging
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1371,7 +1486,7 @@
   <span class="md-ellipsis">
     
   
-    Cron / Systemd Setup
+    Processing Pipeline
   
 
     
@@ -1389,7 +1504,7 @@
   <span class="md-ellipsis">
     
   
-    Cron / Systemd Setup
+    Processing Pipeline
   
 
     
@@ -1415,22 +1530,77 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cron" class="md-nav__link">
+  <a href="#dicom-to-bids-conversion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        cron
+        DICOM to BIDS Conversion
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="cron">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-bids-fieldmap-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-BIDS Fieldmap Processing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#anatomical-image-defacing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Anatomical Image Defacing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diffusion-mri-preprocessing-qsiprep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffusion MRI Preprocessing — QSIPrep
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cortical-surface-reconstruction-freesurfer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cortical Surface Reconstruction — FreeSurfer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diffusion-mri-reconstruction-and-tractography-qsirecon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffusion MRI Reconstruction and Tractography — QSIRecon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diffusion MRI Reconstruction and Tractography — QSIRecon">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#minimal-cron-entry" class="md-nav__link">
+  <a href="#microstructural-model-fitting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal cron entry
+        Microstructural Model Fitting
       
     </span>
   </a>
@@ -1438,10 +1608,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-explicit-monitor-pass" class="md-nav__link">
+  <a href="#template-registration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With explicit monitor pass
+        Template Registration
       
     </span>
   </a>
@@ -1449,10 +1619,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#log-rotation" class="md-nav__link">
+  <a href="#fiber-orientation-estimation-and-tractography" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Log rotation
+        Fiber Orientation Estimation and Tractography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-connectivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Connectivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#white-matter-bundle-tractometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        White Matter Bundle Tractometry
       
     </span>
   </a>
@@ -1465,71 +1657,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#systemd-timer" class="md-nav__link">
+  <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        systemd timer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="systemd timer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#service-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#timer-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Timer unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enable-and-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable and start
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#combined-run-monitor" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combined run + monitor
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommendations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommendations
+        References
       
     </span>
   </a>
@@ -1540,121 +1671,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../email-setup/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Email Setup
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Methods
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Methods
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../methods_procedures/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Processing Pipeline
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1726,7 +1742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/state-file/" class="md-nav__link">
+      <a href="../reference/state-file/" class="md-nav__link">
         
   
   
@@ -1754,7 +1770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/audit-log/" class="md-nav__link">
+      <a href="../reference/audit-log/" class="md-nav__link">
         
   
   
@@ -1782,7 +1798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/scripts/" class="md-nav__link">
+      <a href="../reference/scripts/" class="md-nav__link">
         
   
   
@@ -1869,7 +1885,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -1897,7 +1913,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../api/config/" class="md-nav__link">
         
   
   
@@ -1925,7 +1941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/sessions/" class="md-nav__link">
+      <a href="../api/sessions/" class="md-nav__link">
         
   
   
@@ -1953,7 +1969,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/checks/" class="md-nav__link">
+      <a href="../api/checks/" class="md-nav__link">
         
   
   
@@ -1981,7 +1997,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/rules/" class="md-nav__link">
+      <a href="../api/rules/" class="md-nav__link">
         
   
   
@@ -2009,7 +2025,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/manifest/" class="md-nav__link">
+      <a href="../api/manifest/" class="md-nav__link">
         
   
   
@@ -2037,7 +2053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/submit/" class="md-nav__link">
+      <a href="../api/submit/" class="md-nav__link">
         
   
   
@@ -2065,7 +2081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/monitor/" class="md-nav__link">
+      <a href="../api/monitor/" class="md-nav__link">
         
   
   
@@ -2093,7 +2109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/audit/" class="md-nav__link">
+      <a href="../api/audit/" class="md-nav__link">
         
   
   
@@ -2148,22 +2164,77 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cron" class="md-nav__link">
+  <a href="#dicom-to-bids-conversion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        cron
+        DICOM to BIDS Conversion
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="cron">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-bids-fieldmap-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-BIDS Fieldmap Processing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#anatomical-image-defacing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Anatomical Image Defacing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diffusion-mri-preprocessing-qsiprep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffusion MRI Preprocessing — QSIPrep
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cortical-surface-reconstruction-freesurfer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cortical Surface Reconstruction — FreeSurfer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diffusion-mri-reconstruction-and-tractography-qsirecon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diffusion MRI Reconstruction and Tractography — QSIRecon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diffusion MRI Reconstruction and Tractography — QSIRecon">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#minimal-cron-entry" class="md-nav__link">
+  <a href="#microstructural-model-fitting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal cron entry
+        Microstructural Model Fitting
       
     </span>
   </a>
@@ -2171,10 +2242,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#with-explicit-monitor-pass" class="md-nav__link">
+  <a href="#template-registration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        With explicit monitor pass
+        Template Registration
       
     </span>
   </a>
@@ -2182,10 +2253,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#log-rotation" class="md-nav__link">
+  <a href="#fiber-orientation-estimation-and-tractography" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Log rotation
+        Fiber Orientation Estimation and Tractography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-connectivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Connectivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#white-matter-bundle-tractometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        White Matter Bundle Tractometry
       
     </span>
   </a>
@@ -2198,71 +2291,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#systemd-timer" class="md-nav__link">
+  <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        systemd timer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="systemd timer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#service-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#timer-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Timer unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enable-and-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable and start
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#combined-run-monitor" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combined run + monitor
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommendations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommendations
+        References
       
     </span>
   </a>
@@ -2289,110 +2321,55 @@
   
 
 
-<h1 id="cron-systemd-setup">Cron / Systemd Setup<a class="headerlink" href="#cron-systemd-setup" title="Permanent link">&para;</a></h1>
-<p>Run the scheduler automatically every day so new sessions are processed without manual intervention.</p>
-<hr />
-<h2 id="cron">cron<a class="headerlink" href="#cron" title="Permanent link">&para;</a></h2>
-<h3 id="minimal-cron-entry">Minimal cron entry<a class="headerlink" href="#minimal-cron-entry" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># /etc/cron.d/snbb-scheduler
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a># Run every day at 6:00 AM as the snbb service user
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>0 6 * * * snbb-user snbb-scheduler --config /etc/snbb/config.yaml run &gt;&gt; /var/log/snbb_scheduler.log 2&gt;&amp;1
-</code></pre></div>
-<h3 id="with-explicit-monitor-pass">With explicit monitor pass<a class="headerlink" href="#with-explicit-monitor-pass" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># /etc/cron.d/snbb-scheduler
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a># 5:55 AM — update job statuses from sacct
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>55 5 * * * snbb-user snbb-scheduler --config /etc/snbb/config.yaml monitor &gt;&gt; /var/log/snbb_scheduler.log 2&gt;&amp;1
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a># 6:00 AM — submit new jobs
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>0 6 * * * snbb-user snbb-scheduler --config /etc/snbb/config.yaml run &gt;&gt; /var/log/snbb_scheduler.log 2&gt;&amp;1
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>snbb-scheduler run</code> already runs <code>monitor</code> internally before submission. The explicit pre-run monitor is only needed if you want to separate the sacct polling from the submission step, e.g. to log them separately.</p>
-</div>
-<h3 id="log-rotation">Log rotation<a class="headerlink" href="#log-rotation" title="Permanent link">&para;</a></h3>
-<p>Add a logrotate config to prevent the log file from growing unbounded:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># /etc/logrotate.d/snbb-scheduler
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>/var/log/snbb_scheduler.log {
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    daily
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    rotate 30
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    compress
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    missingok
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    notifempty
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    dateext
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>}
-</code></pre></div>
-<hr />
-<h2 id="systemd-timer">systemd timer<a class="headerlink" href="#systemd-timer" title="Permanent link">&para;</a></h2>
-<p>A systemd timer is more flexible than cron: it handles missed runs, logs to the journal, and supports dependencies.</p>
-<h3 id="service-unit">Service unit<a class="headerlink" href="#service-unit" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># /etc/systemd/system/snbb-scheduler.service</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">[Unit]</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="na">Description</span><span class="o">=</span><span class="s">SNBB Scheduler — daily neuroimaging pipeline submission</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="na">After</span><span class="o">=</span><span class="s">network.target</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">[Service]</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="na">Type</span><span class="o">=</span><span class="s">oneshot</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="na">User</span><span class="o">=</span><span class="s">snbb-user</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="na">ExecStart</span><span class="o">=</span><span class="s">/usr/local/bin/snbb-scheduler --config /etc/snbb/config.yaml run</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="na">StandardOutput</span><span class="o">=</span><span class="s">journal</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="na">StandardError</span><span class="o">=</span><span class="s">journal</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="na">SyslogIdentifier</span><span class="o">=</span><span class="s">snbb-scheduler</span>
-</code></pre></div>
-<h3 id="timer-unit">Timer unit<a class="headerlink" href="#timer-unit" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># /etc/systemd/system/snbb-scheduler.timer</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">[Unit]</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="na">Description</span><span class="o">=</span><span class="s">Run SNBB Scheduler daily at 06:00</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">[Timer]</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="na">OnCalendar</span><span class="o">=</span><span class="s">*-*-* 06:00:00</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="na">Persistent</span><span class="o">=</span><span class="s">true</span><span class="w">      </span><span class="c1"># run missed timer if system was down</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="k">[Install]</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="na">WantedBy</span><span class="o">=</span><span class="s">timers.target</span>
-</code></pre></div>
-<h3 id="enable-and-start">Enable and start<a class="headerlink" href="#enable-and-start" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>systemctl<span class="w"> </span>daemon-reload
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--now<span class="w"> </span>snbb-scheduler.timer
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Check status</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>systemctl<span class="w"> </span>status<span class="w"> </span>snbb-scheduler.timer
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>systemctl<span class="w"> </span>list-timers<span class="w"> </span>snbb-scheduler.timer
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># View logs</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>snbb-scheduler.service<span class="w"> </span>-f
-</code></pre></div>
-<hr />
-<h2 id="combined-run-monitor">Combined run + monitor<a class="headerlink" href="#combined-run-monitor" title="Permanent link">&para;</a></h2>
-<p>To run monitor at 5:55 and submit at 6:00 using systemd:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># /etc/systemd/system/snbb-monitor.service</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">[Unit]</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="na">Description</span><span class="o">=</span><span class="s">SNBB Scheduler — job status update</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">[Service]</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="na">Type</span><span class="o">=</span><span class="s">oneshot</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="na">User</span><span class="o">=</span><span class="s">snbb-user</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="na">ExecStart</span><span class="o">=</span><span class="s">/usr/local/bin/snbb-scheduler --config /etc/snbb/config.yaml monitor</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># /etc/systemd/system/snbb-monitor.timer</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">[Unit]</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="na">Description</span><span class="o">=</span><span class="s">Run SNBB monitor 5 minutes before submission</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">[Timer]</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="na">OnCalendar</span><span class="o">=</span><span class="s">*-*-* 05:55:00</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="na">Persistent</span><span class="o">=</span><span class="s">true</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="k">[Install]</span>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="na">WantedBy</span><span class="o">=</span><span class="s">timers.target</span>
-</code></pre></div>
-<hr />
-<h2 id="recommendations">Recommendations<a class="headerlink" href="#recommendations" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Set <code>slurm_log_dir</code> in config so each Slurm job writes its stdout/stderr to a file you can inspect later</li>
-<li>Set <code>log_file</code> in config to persist the audit log alongside the state file</li>
-<li>Set up log rotation for both the cron/systemd log and the audit log</li>
-<li>Check <code>snbb-scheduler status</code> regularly to catch failed jobs before they accumulate</li>
-</ul>
+<h1 id="processing-pipeline">Processing Pipeline<a class="headerlink" href="#processing-pipeline" title="Permanent link">&para;</a></h1>
+<p>This section describes the automated MRI processing pipeline implemented at the Stichting Netherlands Brain Bank (SNBB). All processing stages were orchestrated by a custom rule-based scheduler that submitted jobs to a Slurm high-performance computing cluster, ensuring reproducibility and minimal manual intervention. The pipeline comprised six sequential stages executed in dependency order: (1) DICOM to BIDS conversion, (2) post-conversion fieldmap processing, (3) anatomical image defacing, (4) diffusion MRI preprocessing, (5) cortical surface reconstruction, and (6) diffusion MRI reconstruction and tractography. All neuroimaging tools were executed within Apptainer containers to guarantee version-locked, reproducible environments across compute nodes. Data were organized according to the Brain Imaging Data Structure (BIDS) specification throughout all stages (Gorgolewski et al., 2016).</p>
+<h2 id="dicom-to-bids-conversion">DICOM to BIDS Conversion<a class="headerlink" href="#dicom-to-bids-conversion" title="Permanent link">&para;</a></h2>
+<p>Raw DICOM files were converted to NIfTI format and organized into a BIDS-compliant directory structure using HeuDiConv 1.3.4 (Halchenko et al., 2024) with dcm2niix as the conversion backend (Li et al., 2016). A custom Python heuristic file mapped Siemens scanner protocol names to BIDS-compliant filenames and directory structures. The heuristic supported both current (2024+) and legacy protocol naming conventions used at the scanning site. Converted modalities included T1-weighted MPRAGE, T2-weighted SPC, FLAIR, multi-shell diffusion MRI (anterior–posterior and posterior–anterior phase-encoding directions), spin-echo field maps for functional distortion correction, resting-state fMRI, and multiple task fMRI paradigms. Siemens bias-field-corrected reconstructions (NORM) were stored with the BIDS <code>rec-norm</code> entity. Scanner-derived diffusion maps (ADC, FA, ColFA), localizer sequences, and IR-EPI TI series were excluded from conversion. Key HeuDiConv flags included <code>--converter dcm2niix</code>, <code>--bids notop</code> (to suppress top-level BIDS metadata regeneration on re-runs), and <code>--grouping all</code>.</p>
+<h2 id="post-bids-fieldmap-processing">Post-BIDS Fieldmap Processing<a class="headerlink" href="#post-bids-fieldmap-processing" title="Permanent link">&para;</a></h2>
+<p>Following DICOM conversion, a custom Python post-processing script (using nibabel and NumPy) performed three operations on each session's BIDS output. First, b=0 volumes (b &lt; 100 s/mm²) were extracted from the posterior–anterior (PA) phase-encoded DWI acquisition, and their mean was computed to produce a three-dimensional b0 fieldmap EPI image, which was written to the <code>fmap/</code> directory with the BIDS <code>acq-dwi</code> entity alongside a copy of the original JSON sidecar. Second, <code>IntendedFor</code> fields were added to all fieldmap JSON sidecars to establish the BIDS-required linkage between field maps and their target acquisitions: DWI field maps (<code>acq-dwi</code>) were linked to anterior–posterior DWI files, and functional field maps (<code>acq-func</code>) were linked to BOLD runs. Third, spurious <code>.bvec</code> and <code>.bval</code> files in the <code>fmap/</code> directory — artifacts of the DWI-derived fieldmap creation — were hidden by prepending a dot to their filenames to prevent interference with downstream BIDS validators and processing tools.</p>
+<h2 id="anatomical-image-defacing">Anatomical Image Defacing<a class="headerlink" href="#anatomical-image-defacing" title="Permanent link">&para;</a></h2>
+<p>To protect participant privacy, all T1-weighted and T2-weighted anatomical images were defaced using <code>fsl_deface</code> from the FMRIB Software Library (FSL; Jenkinson et al., 2012). Defaced copies were written alongside the original images using the BIDS <code>acq-defaced</code> entity (e.g., <code>sub-XXXX_ses-YY_acq-defaced_T1w.nii.gz</code>), preserving the originals for processing steps that require intact facial geometry. JSON sidecars were copied alongside each defaced image.</p>
+<h2 id="diffusion-mri-preprocessing-qsiprep">Diffusion MRI Preprocessing — QSIPrep<a class="headerlink" href="#diffusion-mri-preprocessing-qsiprep" title="Permanent link">&para;</a></h2>
+<p>Diffusion MRI data were preprocessed using QSIPrep 1.1.1 (Cieslak et al., 2021), executed via Apptainer. Preprocessing was performed per session and included susceptibility distortion correction, eddy current correction, motion correction, and anatomical coregistration. Preprocessed diffusion data were resampled to an isotropic voxel size of 1.6 mm. The MNI152NLin2009cAsym template was used as the anatomical reference space, with a sessionwise anatomical reference strategy. A BIDS filter file restricted processing to anterior–posterior phase-encoded DWI acquisitions, with <code>rec-norm</code> T1-weighted images preferred as the anatomical input.</p>
+<h2 id="cortical-surface-reconstruction-freesurfer">Cortical Surface Reconstruction — FreeSurfer<a class="headerlink" href="#cortical-surface-reconstruction-freesurfer" title="Permanent link">&para;</a></h2>
+<p>Cortical surface reconstruction was performed using FreeSurfer 8.1.0 (Fischl, 2012), executed via Apptainer. Unlike all other pipeline stages, FreeSurfer processing was scoped at the subject level rather than the session level, with a single job processing all available sessions for a given subject.</p>
+<p>The pipeline automatically selected between two processing strategies based on the number of available sessions. For subjects with a single session, a standard cross-sectional reconstruction was performed using <code>recon-all -all</code>. For subjects with two or more sessions, the full three-step longitudinal pipeline was executed (Reuter et al., 2012): (1) an independent cross-sectional <code>recon-all</code> for each session, (2) construction of an unbiased within-subject template via <code>recon-all -base</code> using all cross-sectional outputs as timepoints, and (3) longitudinal refinement of each session's reconstruction initialized from the template via <code>recon-all -long</code>. Already-completed steps (identified by the presence of <code>scripts/recon-all.done</code>) were automatically skipped, allowing failed jobs to resume without reprocessing.</p>
+<p>Anatomical image selection followed a two-step filtering procedure applied per session: (1) images containing "defaced" in the filename were excluded, and (2) <code>rec-norm</code> (bias-field corrected) variants were preferred when available. When a T2-weighted image was available for a session, it was included via the <code>-T2</code> and <code>-T2pial</code> flags to improve pial surface placement.</p>
+<h2 id="diffusion-mri-reconstruction-and-tractography-qsirecon">Diffusion MRI Reconstruction and Tractography — QSIRecon<a class="headerlink" href="#diffusion-mri-reconstruction-and-tractography-qsirecon" title="Permanent link">&para;</a></h2>
+<p>Diffusion reconstruction and tractography were performed using QSIRecon 1.2.0 (Cieslak et al., 2021), executed via Apptainer. QSIRecon operated on the preprocessed QSIPrep outputs and required FreeSurfer cortical reconstructions for anatomically constrained tractography. Processing was governed by a custom workflow specification file that defined the full reconstruction pipeline.</p>
+<h3 id="microstructural-model-fitting">Microstructural Model Fitting<a class="headerlink" href="#microstructural-model-fitting" title="Permanent link">&para;</a></h3>
+<p>Four diffusion microstructure models were fitted in native diffusion space. Diffusion kurtosis imaging (DKI; Jensen et al., 2005) was computed using DIPY (Garyfallidis et al., 2014), including white matter tract integrity (WMTI) metrics. Neurite orientation dispersion and density imaging (NODDI; Zhang et al., 2012) was fitted using the AMICO framework (Daducci et al., 2015) with in vivo tissue parameters (d_Iso = 0.003 mm²/s, d_Par = 0.0017 mm²/s). Mean apparent propagator MRI (MAP-MRI; Ozarslan et al., 2013) was computed using DIPY with radial order 6, Laplacian regularization (weight 0.2), and a b-value threshold of 2000 s/mm². Generalized q-sampling imaging (GQI; Yeh et al., 2010) was fitted and scalar maps were exported using DSI Studio.</p>
+<h3 id="template-registration">Template Registration<a class="headerlink" href="#template-registration" title="Permanent link">&para;</a></h3>
+<p>All native-space scalar maps from the microstructural models were warped to the MNI152NLin2009cAsym template space using linear interpolation.</p>
+<h3 id="fiber-orientation-estimation-and-tractography">Fiber Orientation Estimation and Tractography<a class="headerlink" href="#fiber-orientation-estimation-and-tractography" title="Permanent link">&para;</a></h3>
+<p>Fiber orientation distributions were estimated using multi-shell multi-tissue constrained spherical deconvolution (MSMT-CSD; Jeurissen et al., 2014) as implemented in MRTrix3 (Tournier et al., 2019). Maximum spherical harmonic order was set to 8 for all three tissue compartments (white matter, grey matter, and cerebrospinal fluid), followed by multi-tissue intensity normalization. Tissue-specific response functions were precomputed as group-average medians from a balanced sample of 1,426 subjects.</p>
+<p>Five-tissue-type (5TT) segmentation images were generated from FreeSurfer outputs using the hybrid surface–volume segmentation (HSVS) algorithm. Two whole-brain tractography approaches were employed. Probabilistic tractography was performed using the iFOD2 algorithm (Tournier et al., 2010) with anatomical constraints (ACT; Smith et al., 2012), generating 1,000,000 streamlines with lengths between 30 and 250 mm, with backtracking enabled. Deterministic tractography was performed using the SD_Stream algorithm with the same streamline count and length constraints. Both tractograms were filtered using SIFT2 (Smith et al., 2015) to improve the biological plausibility of streamline weights.</p>
+<h3 id="structural-connectivity">Structural Connectivity<a class="headerlink" href="#structural-connectivity" title="Permanent link">&para;</a></h3>
+<p>Structural connectivity matrices were constructed from both probabilistic and deterministic tractograms using two brain parcellation atlases: the 4S156Parcels atlas and the Schaefer 100-parcel 7-network parcellation combined with the Tian subcortical atlas at scale S1 (Schaefer et al., 2018; Tian et al., 2020). For each atlas and tractography method, four connectivity measures were computed: (1) SIFT2-weighted streamline count with inverse-node-volume scaling, (2) mean streamline length, (3) raw streamline count, and (4) SIFT2-weighted streamline count. All matrices were symmetrized, used a search radius of 2 mm for streamline–parcel assignment, and retained self-connections (non-zero diagonal).</p>
+<h3 id="white-matter-bundle-tractometry">White Matter Bundle Tractometry<a class="headerlink" href="#white-matter-bundle-tractometry" title="Permanent link">&para;</a></h3>
+<p>Along-tract profiling was performed on the probabilistic (iFOD2) tractogram using pyAFQ (Kruper et al., 2021). The AFQ segmentation algorithm was applied to identify approximately 24 major white matter bundles. Tissue-property profiles were sampled at 100 equidistant nodes along each bundle using Gaussian weighting. Fractional anisotropy (FA) and mean diffusivity (MD) from diffusion tensor imaging were extracted as scalar measures. Key segmentation parameters included a distance threshold of 3 mm, distance-to-atlas threshold of 4 mm, minimum of 20 streamlines per bundle, and streamline length range of 50–250 mm.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<p>Cieslak, M., Cook, P. A., He, X., Yeh, F.-C., Dhollander, T., Adebimpe, A., ... &amp; Satterthwaite, T. D. (2021). QSIPrep: An integrative platform for preprocessing and reconstructing diffusion MRI data. <em>Nature Methods</em>, 18(7), 775–778.</p>
+<p>Daducci, A., Canales-Rodríguez, E. J., Zhang, H., Dyrby, T. B., Alexander, D. C., &amp; Thiran, J.-P. (2015). Accelerated Microstructure Imaging via Convex Optimization (AMICO) from diffusion MRI data. <em>NeuroImage</em>, 105, 32–44.</p>
+<p>Fischl, B. (2012). FreeSurfer. <em>NeuroImage</em>, 62(2), 774–781.</p>
+<p>Garyfallidis, E., Brett, M., Amirbekian, B., Rokem, A., van der Walt, S., Descoteaux, M., &amp; Nimmo-Smith, I. (2014). Dipy, a library for the analysis of diffusion MRI data. <em>Frontiers in Neuroinformatics</em>, 8, 8.</p>
+<p>Gorgolewski, K. J., Auer, T., Calhoun, V. D., Craddock, R. C., Das, S., Duff, E. P., ... &amp; Poldrack, R. A. (2016). The brain imaging data structure, a format for organizing and describing outputs of neuroimaging experiments. <em>Scientific Data</em>, 3, 160044.</p>
+<p>Halchenko, Y. O., Goncalves, M., Ghosh, S., Velasco, P., Visconti di Oleggio Castello, M., Salo, T., ... &amp; Hanke, M. (2024). HeuDiConv — flexible DICOM conversion into structured directory layouts. <em>Journal of Open Source Software</em>, 9(99), 5839.</p>
+<p>Jenkinson, M., Beckmann, C. F., Behrens, T. E. J., Woolrich, M. W., &amp; Smith, S. M. (2012). FSL. <em>NeuroImage</em>, 62(2), 782–790.</p>
+<p>Jensen, J. H., Helpern, J. A., Ramani, A., Lu, H., &amp; Kaczynski, K. (2005). Diffusional kurtosis imaging: The quantification of non-Gaussian water diffusion by means of magnetic resonance imaging. <em>Magnetic Resonance in Medicine</em>, 53(6), 1432–1440.</p>
+<p>Jeurissen, B., Tournier, J.-D., Dhollander, T., Connelly, A., &amp; Sijbers, J. (2014). Multi-tissue constrained spherical deconvolution for improved analysis of multi-shell diffusion MRI data. <em>NeuroImage</em>, 103, 411–426.</p>
+<p>Kruper, J., Yeatman, J. D., Richie-Halford, A., Bloom, D., Grotheer, M., Caffarra, S., ... &amp; Rokem, A. (2021). Evaluating the reliability of human brain white matter tractometry. <em>Aperture Neuro</em>, 1(1).</p>
+<p>Li, X., Morgan, P. S., Ashburner, J., Smith, J., &amp; Rorden, C. (2016). The first step for neuroimaging data analysis: DICOM to NIfTI conversion. <em>Journal of Neuroscience Methods</em>, 264, 47–56.</p>
+<p>Ozarslan, E., Koay, C. G., Shepherd, T. M., Komlosh, M. E., İrfanoğlu, M. O., Pierpaoli, C., &amp; Basser, P. J. (2013). Mean apparent propagator (MAP) MRI: A novel diffusion imaging method for mapping tissue microstructure. <em>NeuroImage</em>, 78, 16–32.</p>
+<p>Reuter, M., Schmansky, N. J., Rosas, H. D., &amp; Fischl, B. (2012). Within-subject template estimation for unbiased longitudinal image analysis. <em>NeuroImage</em>, 61(4), 1402–1418.</p>
+<p>Schaefer, A., Kong, R., Gordon, E. M., Laumann, T. O., Zuo, X.-N., Holmes, A. J., ... &amp; Yeo, B. T. T. (2018). Local-global parcellation of the human cerebral cortex from intrinsic functional connectivity MRI. <em>Cerebral Cortex</em>, 28(9), 3095–3114.</p>
+<p>Smith, R. E., Tournier, J.-D., Calamante, F., &amp; Connelly, A. (2012). Anatomically-constrained tractography: Improved diffusion MRI streamlines tractography through effective use of anatomical information. <em>NeuroImage</em>, 62(3), 1924–1938.</p>
+<p>Smith, R. E., Tournier, J.-D., Calamante, F., &amp; Connelly, A. (2015). SIFT2: Enabling dense quantitative assessment of brain white matter connectivity using streamlines tractography. <em>NeuroImage</em>, 119, 338–351.</p>
+<p>Tian, Y., Margulies, D. S., Breakspear, M., &amp; Zalesky, A. (2020). Topographic organization of the human subcortex unveiled with functional connectivity gradients. <em>Nature Neuroscience</em>, 23(11), 1421–1432.</p>
+<p>Tournier, J.-D., Calamante, F., &amp; Connelly, A. (2010). Improved probabilistic streamlines tractography by 2nd order integration over fibre orientation distributions. In <em>Proceedings of the International Society for Magnetic Resonance in Medicine</em> (Vol. 18, p. 1670).</p>
+<p>Tournier, J.-D., Smith, R., Raffelt, D., Tabbara, R., Dhollander, T., Pietsch, M., ... &amp; Connelly, A. (2019). MRtrix3: A fast, flexible and open software framework for medical image processing and visualisation. <em>NeuroImage</em>, 202, 116137.</p>
+<p>Yeh, F.-C., Wedeen, V. J., &amp; Tseng, W.-Y. I. (2010). Generalized q-sampling imaging. <em>IEEE Transactions on Medical Imaging</em>, 29(9), 1626–1635.</p>
+<p>Zhang, H., Schneider, T., Wheeler-Kingshott, C. A., &amp; Alexander, D. C. (2012). NODDI: Practical in vivo neurite orientation dispersion and density imaging of the human brain. <em>NeuroImage</em>, 61(4), 1000–1016.</p>
 
 
 
@@ -2448,10 +2425,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
