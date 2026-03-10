@@ -71,9 +71,9 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         depends_on=["bids_post"],
         completion_marker=[
             "*.html",
-            "dwi/*_dwi_preproc.nii.gz",
-            "dwi/*_dwi_preproc.bvec",
-            "dwi/*_dwi_preproc.bval",
+            "dwi/*desc-preproc_dwi.nii.gz",
+            "dwi/*desc-preproc_dwi.bvec",
+            "dwi/*desc-preproc_dwi.bval",
             "dwi/*desc-image_qc.tsv",
         ],
     ),

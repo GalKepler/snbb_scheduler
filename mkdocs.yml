@@ -84,6 +84,8 @@ nav:
       - Debugging: guides/debugging.md
       - Cron / Systemd Setup: guides/cron-setup.md
       - Email Setup: guides/email-setup.md
+  - Methods:
+      - Processing Pipeline: methods_procedures.md
   - Reference:
       - State File: reference/state-file.md
       - Audit Log: reference/audit-log.md
