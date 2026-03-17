@@ -20,8 +20,23 @@ SNBB_TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME:-/media/storage/yalab-dev/snbb_
 
 # Optional: atlas dataset directory and space-separated atlas names
 # Example: SNBB_ATLASES_DIR=/data/atlases  SNBB_ATLASES="4S156Parcels Schaefer2018N100n7Tian2020S1"
-SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/yalab-dev/voxelops/Schaefer2018Tian2020_atlases}"
-SNBB_ATLASES="${SNBB_ATLASES:-4S156Parcels Schaefer2018N100n7Tian2020S1}"
+SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/yalab-dev/voxelops/snbb-atlas-pack/atlases}"
+SNBB_ATLASES="${SNBB_ATLASES:-\
+  4S156Parcels 4S256Parcels 4S356Parcels 4S456Parcels 4S556Parcels \
+  4S656Parcels 4S756Parcels 4S856Parcels 4S956Parcels 4S1056Parcels \
+  Schaefer2018N100n7Tian2020S1 Schaefer2018N100n7Tian2020S2 Schaefer2018N100n7Tian2020S3 Schaefer2018N100n7Tian2020S4 \
+  Schaefer2018N200n7Tian2020S1 Schaefer2018N200n7Tian2020S2 Schaefer2018N200n7Tian2020S3 Schaefer2018N200n7Tian2020S4 \
+  Schaefer2018N300n7Tian2020S1 Schaefer2018N300n7Tian2020S2 Schaefer2018N300n7Tian2020S3 Schaefer2018N300n7Tian2020S4 \
+  Schaefer2018N400n7Tian2020S1 Schaefer2018N400n7Tian2020S2 Schaefer2018N400n7Tian2020S3 Schaefer2018N400n7Tian2020S4 \
+  Schaefer2018N500n7Tian2020S1 Schaefer2018N500n7Tian2020S2 Schaefer2018N500n7Tian2020S3 Schaefer2018N500n7Tian2020S4 \
+  Schaefer2018N600n7Tian2020S1 Schaefer2018N600n7Tian2020S2 Schaefer2018N600n7Tian2020S3 Schaefer2018N600n7Tian2020S4 \
+  Schaefer2018N700n7Tian2020S1 Schaefer2018N700n7Tian2020S2 Schaefer2018N700n7Tian2020S3 Schaefer2018N700n7Tian2020S4 \
+  Schaefer2018N800n7Tian2020S1 Schaefer2018N800n7Tian2020S2 Schaefer2018N800n7Tian2020S3 Schaefer2018N800n7Tian2020S4 \
+  Schaefer2018N900n7Tian2020S1 Schaefer2018N900n7Tian2020S2 Schaefer2018N900n7Tian2020S3 Schaefer2018N900n7Tian2020S4 \
+  Schaefer2018N1000n7Tian2020S1 Schaefer2018N1000n7Tian2020S2 Schaefer2018N1000n7Tian2020S3 Schaefer2018N1000n7Tian2020S4 \
+  AAL116 AICHA384Ext Brainnetome246Ext Gordon333Ext \
+  TianS1 TianS2 TianS3 TianS4 \
+  HCPex HCPMMP}"
 # Optional: root of local scratch on compute nodes.
 # When set, QSIPrep and FreeSurfer subject inputs are staged locally and
 # QSIRecon output is written locally, then rsynced to the remote destination.

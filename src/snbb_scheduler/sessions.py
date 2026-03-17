@@ -10,8 +10,8 @@ from snbb_scheduler.config import SchedulerConfig
 from snbb_scheduler.manifest import load_state
 from snbb_scheduler.submit import _build_job_name
 
-# Columns produced by load_sessions after sanitization (always fixed, regardless of input col names)
-_SESSION_FILE_COLUMNS = {"subject_code", "session_id", "dicom_path"}
+# Columns always present after load_sessions sanitization
+_SESSION_FILE_COLUMNS = {"subject_code", "session_id"}
 
 
 def sanitize_subject_code(subject_code: str | int | float) -> str:
@@ -39,40 +39,59 @@ def load_sessions(
     subject_col: str = "UID",
     session_col: str = "ScanID",
 ) -> pd.DataFrame:
-    """Load and sanitize a raw linked_sessions CSV file.
+    """Load and sanitize a sessions CSV file.
 
-    Expects columns *subject_col*, *session_col*, and ``dicom_path``.
-    Returns a deduplicated DataFrame with ``subject_code``, ``session_id``,
-    and ``dicom_path`` columns. Rows where ``dicom_path`` is NaN are retained
-    (the caller may use NaN to infer that the DICOM directory does not exist).
+    Supports two formats:
+
+    **With header** — expects at minimum *subject_col* and *session_col*
+    columns.  An optional ``dicom_path`` column may also be present.
+
+    **Headerless** — two columns in order ``(scan_id, subject_code)`` with no
+    header row.  Detected automatically when neither *subject_col* nor
+    *session_col* nor ``dicom_path`` appears as a column name after a normal
+    read.  Column positions: 0 → session identifier, 1 → subject identifier.
+
+    Returns a deduplicated DataFrame with ``subject_code`` and ``session_id``
+    columns.  When present, the ``dicom_path`` column is also retained; rows
+    where it is NaN are kept so callers can infer that the directory does not
+    exist.
 
     Parameters
     ----------
     csv_path:
-        Path to the linked_sessions.csv file.
+        Path to the sessions CSV file.
     subject_col:
-        Name of the CSV column to use as the subject identifier.
-        Defaults to ``"UID"``.
+        Name of the CSV column to use as the subject identifier (header
+        format only).  Defaults to ``"UID"``.
     session_col:
-        Name of the CSV column to use as the session identifier.
-        Defaults to ``"ScanID"``.
+        Name of the CSV column to use as the session identifier (header
+        format only).  Defaults to ``"ScanID"``.
 
     Raises
     ------
     ValueError
-        If the CSV is missing any of the required columns.
+        If the CSV is missing the required subject or session column.
     """
-    required = {subject_col, session_col, "dicom_path"}
     df = pd.read_csv(csv_path)
+
+    # Auto-detect headerless format: no recognisable column names present.
+    has_header = (
+        subject_col in df.columns
+        or session_col in df.columns
+        or "dicom_path" in df.columns
+    )
+    if not has_header:
+        df = pd.read_csv(csv_path, header=None)
+        df = df.rename(columns={0: session_col, 1: subject_col})
+
+    required = {subject_col, session_col}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(
             f"Sessions CSV {csv_path!r} is missing required column(s): "
             f"{sorted(missing)}. Found: {sorted(df.columns.tolist())}"
         )
-    df = df.dropna(
-        subset=[subject_col, session_col], how="any"
-    )  # drop rows missing subject/session
+    df = df.dropna(subset=[subject_col, session_col], how="any")
     df["subject_code"] = df[subject_col].apply(sanitize_subject_code)
     df["session_id"] = df[session_col].apply(sanitize_session_id)
     return df.drop_duplicates(subset=["subject_code", "session_id"]).reset_index(
@@ -149,23 +168,31 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
     missing = _SESSION_FILE_COLUMNS - set(df_csv.columns)
     if missing:
         raise ValueError(
-            f"Sessions file {config.sessions_file!r} is missing required column(s): "
-            f"{sorted(missing)}. Found: {sorted(df_csv.columns.tolist())}"
+            f"Sessions file {config.sessions_file!r} is missing required "
+            f"column(s): {sorted(missing)}. Found: {sorted(df_csv.columns.tolist())}"
         )
     if df_csv.empty:
         return _empty_dataframe(config)
+
+    has_dicom_col = "dicom_path" in df_csv.columns
 
     rows = []
     for _, row in df_csv.iterrows():
         subject = f"sub-{row['subject_code']}"
         session = f"ses-{row['session_id']}"
-        raw_dicom = row["dicom_path"]
-        if pd.isna(raw_dicom):
-            dicom_path = None
-            dicom_exists = False
+        if has_dicom_col:
+            raw_dicom = row["dicom_path"]
+            if pd.isna(raw_dicom):
+                dicom_path = None
+                dicom_exists = False
+            else:
+                dicom_path = Path(str(raw_dicom))
+                dicom_exists = True
         else:
-            dicom_path = Path(str(raw_dicom))
-            dicom_exists = True
+            # Derive DICOM path from dicom_root using the sanitized session_id
+            # (special characters already stripped by sanitize_session_id).
+            dicom_path = config.dicom_root / row["session_id"]
+            dicom_exists = None  # let _build_row check filesystem
         rows.append(
             _build_row(subject, session, dicom_path, config, dicom_exists=dicom_exists)
         )

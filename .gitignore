@@ -33,5 +33,9 @@ Thumbs.db
 *slurm-*.out
 plans/
 examples/linked_sessions.csv
+examples/test_uids.csv
 logs
 deface_wf
+
+# MKDocs
+site/

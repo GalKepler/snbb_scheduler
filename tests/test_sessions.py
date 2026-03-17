@@ -344,12 +344,31 @@ def test_file_discovery_empty_csv_returns_empty_dataframe(tmp_path):
 
 
 def test_load_sessions_missing_column_raises_value_error(tmp_path):
-    """load_sessions raises ValueError when a required column is missing."""
+    """load_sessions raises ValueError when a required subject/session column is missing."""
     csv = tmp_path / "bad.csv"
-    pd.DataFrame([{"UID": "sub0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
-    # 'dicom_path' column is missing
-    with pytest.raises(ValueError, match="dicom_path"):
+    # Only subject column present — session column missing
+    pd.DataFrame([{"UID": "sub0001"}]).to_csv(csv, index=False)
+    with pytest.raises(ValueError, match="ScanID"):
         load_sessions(csv)
+
+
+def test_load_sessions_without_dicom_path_succeeds(tmp_path):
+    """load_sessions succeeds when dicom_path column is absent."""
+    csv = tmp_path / "ok.csv"
+    pd.DataFrame([{"UID": "sub0001", "ScanID": "SCAN001"}]).to_csv(csv, index=False)
+    df = load_sessions(csv)
+    assert "subject_code" in df.columns
+    assert "session_id" in df.columns
+    assert "dicom_path" not in df.columns
+
+
+def test_load_sessions_headerless_two_columns(tmp_path):
+    """load_sessions auto-detects headerless CSVs (scan_id, subject_code)."""
+    csv = tmp_path / "headerless.csv"
+    csv.write_text("20220624_1117,S000091\n20240617_1852,S000676\n")
+    df = load_sessions(csv)
+    assert list(df["session_id"]) == ["202206241117", "202406171852"]
+    assert list(df["subject_code"]) == ["S000091", "S000676"]
 
 
 def test_load_sessions_error_lists_missing_columns(tmp_path):
