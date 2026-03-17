@@ -203,8 +203,8 @@ def _create_bids_session_files(bids_session_dir) -> None:
             "sub_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            "sub_acq-func_dir-AP_epi.nii.gz",
-            "sub_acq-func_dir-PA_epi.nii.gz",
+            "sub_acq-rest_dir-AP_epi.nii.gz",
+            "sub_acq-rest_dir-PA_epi.nii.gz",
         ],
         "func": ["sub_task-rest_bold.nii.gz"],
     }
@@ -592,7 +592,7 @@ def _create_qsiprep_session_files(session_dir, subject, session):
     (session_dir / f"{subject}_{session}.html").touch()
     dwi = session_dir / "dwi"
     dwi.mkdir(exist_ok=True)
-    stem = f"{subject}_{session}_dwi_preproc"
+    stem = f"{subject}_{session}_desc-preproc_dwi"
     (dwi / f"{stem}.nii.gz").touch()
     (dwi / f"{stem}.bvec").touch()
     (dwi / f"{stem}.bval").touch()
@@ -635,7 +635,7 @@ def test_qsiprep_incomplete_missing_dwi_file(tmp_path):
     subject, session = "sub-0001", "ses-01"
     session_dir = tmp_path / "derivatives" / "qsiprep" / subject / session
     _create_qsiprep_session_files(session_dir, subject, session)
-    (session_dir / "dwi" / f"{subject}_{session}_dwi_preproc.bval").unlink()
+    (session_dir / "dwi" / f"{subject}_{session}_desc-preproc_dwi.bval").unlink()
 
     assert is_complete(qsiprep, session_dir) is False
 

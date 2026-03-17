@@ -23,8 +23,8 @@ def _create_bids_session_files(bids_session_dir) -> None:
             "sub_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            "sub_acq-func_dir-AP_epi.nii.gz",
-            "sub_acq-func_dir-PA_epi.nii.gz",
+            "sub_acq-rest_dir-AP_epi.nii.gz",
+            "sub_acq-rest_dir-PA_epi.nii.gz",
         ],
         "func": ["sub_task-rest_bold.nii.gz"],
     }

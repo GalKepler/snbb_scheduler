@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import stat
 import sys
@@ -60,8 +61,12 @@ def _run_step(
 
 
 def _pa_dwi_to_fmap_stem(pa_stem: str) -> str:
-    """Transform ``*_dir-PA_dwi`` stem → ``*_acq-dwi_dir-PA_epi`` stem."""
-    return pa_stem.replace("_dir-PA_dwi", "_acq-dwi_dir-PA_epi")
+    """Transform ``*_dir-PA[_run-XX]_dwi`` stem → ``*_acq-dwi_dir-PA[_run-XX]_epi``."""
+    return re.sub(
+        r"_dir-PA(_run-\d+)?_dwi$",
+        r"_acq-dwi_dir-PA\1_epi",
+        pa_stem,
+    )
 
 
 def derive_fmap_from_dwi_pa(
@@ -90,7 +95,7 @@ def derive_fmap_from_dwi_pa(
         results["errors"].append(f"DWI directory not found: {dwi_dir}")
         return results
 
-    pa_niftis = list(dwi_dir.glob("*_dir-PA_dwi.nii.gz"))
+    pa_niftis = list(dwi_dir.glob("*_dir-PA*_dwi.nii.gz"))
     if not pa_niftis:
         results["success"] = False
         results["errors"].append("No *_dir-PA_dwi.nii.gz files found in dwi/")
@@ -188,9 +193,28 @@ def _find_dwi_targets(participant_dir: Path) -> list[Path]:
     return [f for f in dwi_dir.glob("*_dwi.nii.gz") if "dir-PA" not in f.name]
 
 
-def _find_func_targets(participant_dir: Path) -> list[Path]:
+def _find_func_targets(
+    participant_dir: Path,
+    task_filter: str | None = None,
+) -> list[Path]:
+    """Find BOLD NIfTIs in func/.
+
+    Parameters
+    ----------
+    task_filter
+        ``"rest"`` → only ``task-rest`` files.
+        ``"task"`` → everything *except* ``task-rest``.
+        ``None``   → all BOLD files (default).
+    """
     func_dir = participant_dir / "func"
-    return list(func_dir.glob("*_bold.nii.gz")) if func_dir.exists() else []
+    if not func_dir.exists():
+        return []
+    bolds = list(func_dir.glob("*_bold.nii.gz"))
+    if task_filter == "rest":
+        return [f for f in bolds if "task-rest" in f.name]
+    if task_filter == "task":
+        return [f for f in bolds if "task-rest" not in f.name]
+    return bolds
 
 
 def _build_intended_for_path(
@@ -245,12 +269,22 @@ def _process_single_fmap_json(
     results: dict[str, Any],
 ) -> None:
     filename = fmap_json.name
+    fmap_dir = fmap_json.parent
     if "acq-dwi" in filename:
         target_files = _find_dwi_targets(participant_dir)
         acq_type = "DWI"
-    elif "acq-func" in filename:
-        target_files = _find_func_targets(participant_dir)
-        acq_type = "functional"
+    elif "acq-rest" in filename:
+        # If acq-task fmaps exist, rest fmaps target only rest BOLD;
+        # otherwise they serve all BOLD files.
+        has_task_fmaps = any(fmap_dir.glob("*acq-task*_epi.*"))
+        if has_task_fmaps:
+            target_files = _find_func_targets(participant_dir, task_filter="rest")
+        else:
+            target_files = _find_func_targets(participant_dir)
+        acq_type = "rest" if has_task_fmaps else "functional"
+    elif "acq-task" in filename:
+        target_files = _find_func_targets(participant_dir, task_filter="task")
+        acq_type = "task"
     else:
         results["errors"].append(f"Unknown acquisition type in {filename}")
         return

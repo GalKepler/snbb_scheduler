@@ -55,6 +55,7 @@ apptainer run --cleanenv \
     --subjects "${PARTICIPANT}" \
     --ses "${SESSION_ID}" \
     --converter dcm2niix \
-    --bids notop \
     --grouping all \
-    --overwrite
+    --overwrite \
+    --minmeta \
+    --bids

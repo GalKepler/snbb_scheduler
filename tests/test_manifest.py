@@ -39,8 +39,8 @@ def mark_bids_complete(tmp_path: Path, subject: str, session: str) -> None:
             "sub_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            "sub_acq-func_dir-AP_epi.nii.gz",
-            "sub_acq-func_dir-PA_epi.nii.gz",
+            "sub_acq-rest_dir-AP_epi.nii.gz",
+            "sub_acq-rest_dir-PA_epi.nii.gz",
         ],
         "func": ["sub_task-rest_bold.nii.gz"],
     }
@@ -180,9 +180,9 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         (qp / f"{sub}_ses-01.html").touch()
         dwi = qp / "dwi"
         dwi.mkdir(exist_ok=True)
-        (dwi / f"{sub}_ses-01_dwi_preproc.nii.gz").touch()
-        (dwi / f"{sub}_ses-01_dwi_preproc.bvec").touch()
-        (dwi / f"{sub}_ses-01_dwi_preproc.bval").touch()
+        (dwi / f"{sub}_ses-01_desc-preproc_dwi.nii.gz").touch()
+        (dwi / f"{sub}_ses-01_desc-preproc_dwi.bvec").touch()
+        (dwi / f"{sub}_ses-01_desc-preproc_dwi.bval").touch()
         (dwi / f"{sub}_ses-01_desc-image_qc.tsv").touch()
         _make_bids_t1w(tmp_path, sub, "ses-01")
         mark_freesurfer_complete(tmp_path, sub, "ses-01")

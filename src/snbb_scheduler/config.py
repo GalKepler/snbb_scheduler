@@ -41,9 +41,9 @@ DEFAULT_PROCEDURES: list[Procedure] = [
             # Short reverse-PE DWI (6 dirs PA) lives in dwi/ per heuristic;
             # bids_post derives the fmap EPI from it.
             "dwi/*dir-PA*_dwi.nii.gz",
-            "fmap/*acq-func_dir-AP*epi.nii.gz",
-            "fmap/*acq-func_dir-PA*epi.nii.gz",
-            "func/*task-rest_bold.nii.gz",
+            "fmap/*acq-rest_dir-AP*epi.nii.gz",
+            "fmap/*acq-rest_dir-PA*epi.nii.gz",
+            "func/*task-rest*_bold.nii.gz",
         ],
     ),
     Procedure(

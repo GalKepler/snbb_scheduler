@@ -7,7 +7,7 @@
 # ---------------------------------------------------------------------------
 # Root directories
 # ---------------------------------------------------------------------------
-dicom_root:       /media/storage/yalab-dev/test_dicom
+dicom_root:       /mnt/62/Raw_Data
 bids_root:        /media/storage/yalab-dev/snbb_scheduler/bids
 derivatives_root: /media/storage/yalab-dev/snbb_scheduler/derivatives
 state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parquet
@@ -16,7 +16,7 @@ state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parqu
 # When set, the DICOM filesystem scan is skipped and ScanID is resolved as a
 # flat subdirectory under dicom_root.  Remove or set to null to use filesystem scanning.
 # sessions_file: /home/galkepler/Downloads/linked_sessions.csv
-sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/linked_sessions.csv
+sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/test_uids_short.csv
 
 audit:
   dicom_min_files: 10
@@ -60,10 +60,10 @@ procedures:
       - "dwi/*dir-AP*_dwi.nii.gz"
       - "dwi/*dir-AP*_dwi.bvec"
       - "dwi/*dir-AP*_dwi.bval"
-      - "dwi/*dir-PA*dwi.nii.gz"
-      - "fmap/*acq-func_dir-AP*epi.nii.gz"
-      - "fmap/*acq-func_dir-PA*epi.nii.gz"
-      - "func/*task-rest_bold.nii.gz"
+      - "dwi/*dir-PA*_dwi.nii.gz"
+      - "fmap/*acq-rest*_dir-AP*epi.nii.gz"
+      - "fmap/*acq-rest*_dir-PA*epi.nii.gz"
+      - "func/*task-rest*_bold.nii.gz"
 
   - name: post-bids
     output_dir: ""              # lives in bids_root, not derivatives_root

@@ -31,17 +31,26 @@ deface_one() {
 
     local basename
     basename=$(basename "${input}" .nii.gz)
-    # Insert desc-defaced before the modality suffix (BIDS convention)
-    local stem="${basename%_${modality}}"
-    local output="${ANAT_DIR}/${stem}_acq-defaced_${modality}.nii.gz"
+    # Insert acq-defaced before run- (BIDS entity order: acq before run).
+    # Handles both run-present and run-absent filenames.
+    local output
+    if [[ "${basename}" =~ _run-([0-9]+)_${modality}$ ]]; then
+        local pre_run="${basename%_run-*}"
+        local run_tag="run-${BASH_REMATCH[1]}"
+        output="${ANAT_DIR}/${pre_run}_acq-defaced_${run_tag}_${modality}.nii.gz"
+    else
+        local stem="${basename%_${modality}}"
+        output="${ANAT_DIR}/${stem}_acq-defaced_${modality}.nii.gz"
+    fi
 
     echo "fsl_deface: ${input} → ${output}"
     fsl_deface "${input}" "${output}"
 
     # Copy JSON sidecar if present
     local json="${ANAT_DIR}/${basename}.json"
+    local output_json="${output%.nii.gz}.json"
     if [[ -f "${json}" ]]; then
-        cp "${json}" "${ANAT_DIR}/${stem}_acq-defaced_${modality}.json"
+        cp "${json}" "${output_json}"
     fi
 }
 

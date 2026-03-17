@@ -55,8 +55,8 @@ def mark_bids_complete(row: dict) -> None:
             "sub_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            "sub_acq-func_dir-AP_epi.nii.gz",
-            "sub_acq-func_dir-PA_epi.nii.gz",
+            "sub_acq-rest_dir-AP_epi.nii.gz",
+            "sub_acq-rest_dir-PA_epi.nii.gz",
         ],
         "func": ["sub_task-rest_bold.nii.gz"],
     }
@@ -83,7 +83,7 @@ def mark_qsiprep_complete(row: dict) -> None:
     (session_dir / f"{subject}_{session}.html").touch()
     dwi = session_dir / "dwi"
     dwi.mkdir(exist_ok=True)
-    stem = f"{subject}_{session}_dwi_preproc"
+    stem = f"{subject}_{session}_desc-preproc_dwi"
     (dwi / f"{stem}.nii.gz").touch()
     (dwi / f"{stem}.bvec").touch()
     (dwi / f"{stem}.bval").touch()

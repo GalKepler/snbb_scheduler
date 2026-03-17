@@ -52,8 +52,8 @@ def add_bids(tmp_path, subject, session):
             f"{subject}_{session}_dir-PA_dwi.nii.gz",
         ],
         "fmap": [
-            f"{subject}_{session}_acq-func_dir-AP_epi.nii.gz",
-            f"{subject}_{session}_acq-func_dir-PA_epi.nii.gz",
+            f"{subject}_{session}_acq-rest_dir-AP_epi.nii.gz",
+            f"{subject}_{session}_acq-rest_dir-PA_epi.nii.gz",
         ],
         "func": [f"{subject}_{session}_task-rest_bold.nii.gz"],
     }
@@ -78,7 +78,7 @@ def add_qsiprep(tmp_path, subject, session):
     (out / f"{subject}_{session}.html").touch()
     dwi = out / "dwi"
     dwi.mkdir(exist_ok=True)
-    stem = f"{subject}_{session}_dwi_preproc"
+    stem = f"{subject}_{session}_desc-preproc_dwi"
     (dwi / f"{stem}.nii.gz").touch()
     (dwi / f"{stem}.bvec").touch()
     (dwi / f"{stem}.bval").touch()

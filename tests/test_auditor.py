@@ -160,8 +160,8 @@ def test_audit_session_health_score_with_complete_procedure(cfg, sessions_df, em
         ("dwi", "sub_dir-AP_dwi.bvec"),
         ("dwi", "sub_dir-AP_dwi.bval"),
         ("dwi", "sub_dir-PA_dwi.nii.gz"),
-        ("fmap", "sub_acq-func_dir-AP_epi.nii.gz"),
-        ("fmap", "sub_acq-func_dir-PA_epi.nii.gz"),
+        ("fmap", "sub_acq-rest_dir-AP_epi.nii.gz"),
+        ("fmap", "sub_acq-rest_dir-PA_epi.nii.gz"),
         ("func", "sub_task-rest_bold.nii.gz"),
     ]:
         d = bids_dir / subdir
@@ -269,8 +269,8 @@ def test_audit_procedure_counts_complete(cfg, sessions_df, empty_state):
         ("dwi", "sub_dir-AP_dwi.bvec"),
         ("dwi", "sub_dir-AP_dwi.bval"),
         ("dwi", "sub_dir-PA_dwi.nii.gz"),
-        ("fmap", "sub_acq-func_dir-AP_epi.nii.gz"),
-        ("fmap", "sub_acq-func_dir-PA_epi.nii.gz"),
+        ("fmap", "sub_acq-rest_dir-AP_epi.nii.gz"),
+        ("fmap", "sub_acq-rest_dir-PA_epi.nii.gz"),
         ("func", "sub_task-rest_bold.nii.gz"),
     ]:
         d = bids_dir / subdir
