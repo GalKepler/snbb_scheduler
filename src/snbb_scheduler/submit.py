@@ -78,6 +78,8 @@ def submit_task(
         log_subdir.mkdir(parents=True, exist_ok=True)
         cmd.append(f"--output={log_subdir}/{job_name}_%j.out")
         cmd.append(f"--error={log_subdir}/{job_name}_%j.err")
+    if config.local_tmp_root is not None:
+        cmd.append(f"--export=ALL,SNBB_LOCAL_TMP_ROOT={config.local_tmp_root}")
     cmd.append(proc.script)
     cmd.append(row["subject"])
     if proc.scope != "subject":

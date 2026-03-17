@@ -6,7 +6,7 @@
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_DICOM_ROOT="${SNBB_DICOM_ROOT:-/data/snbb/dicom}"
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
-SNBB_BIDS_TMP_ROOT="${SNBB_BIDS_TMP_ROOT:-${TMPDIR:-/tmp}/snbb_bids_${SLURM_JOB_ID:-$$}}"
+SNBB_BIDS_TMP_ROOT="${SNBB_BIDS_TMP_ROOT:-${SNBB_LOCAL_TMP_ROOT:-${TMPDIR:-/tmp}}/snbb_bids_${SLURM_JOB_ID:-$$}}"
 SNBB_HEURISTIC="${SNBB_HEURISTIC:-/home/galkepler/Projects/snbb_scheduler/scripts/heuristic.py}"
 SNBB_HEUDICONV_SIF="${SNBB_HEUDICONV_SIF:-/media/storage/apptainer/images/heudiconv-1.3.4.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/bids/debug_submit.log}"

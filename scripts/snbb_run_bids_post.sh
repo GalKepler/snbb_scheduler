@@ -5,7 +5,7 @@
 # ── Site configuration ────────────────────────────────────────────────────────
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
-SNBB_BIDS_POST_TMP="${SNBB_BIDS_POST_TMP:-${TMPDIR:-/tmp}/snbb_bids_post_${SLURM_JOB_ID:-$$}}"
+SNBB_BIDS_POST_TMP="${SNBB_BIDS_POST_TMP:-${SNBB_LOCAL_TMP_ROOT:-${TMPDIR:-/tmp}}/snbb_bids_post_${SLURM_JOB_ID:-$$}}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=0:30:00

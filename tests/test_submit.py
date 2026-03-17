@@ -582,3 +582,48 @@ def test_submit_freesurfer_longitudinal_no_dicom_path(cfg):
         submit_task(row, cfg)
     cmd = mock_run.call_args[0][0]
     assert str(dicom) not in cmd
+
+
+# ---------------------------------------------------------------------------
+# submit_task — local_tmp_root / SNBB_LOCAL_TMP_ROOT export
+# ---------------------------------------------------------------------------
+
+def test_submit_local_tmp_root_export_flag(tmp_path):
+    """--export=ALL,SNBB_LOCAL_TMP_ROOT=... added for any procedure when local_tmp_root is set."""
+    scratch = tmp_path / "scratch"
+    cfg_tmp = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        local_tmp_root=scratch,
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_tmp)
+    cmd = mock_run.call_args[0][0]
+    assert f"--export=ALL,SNBB_LOCAL_TMP_ROOT={scratch}" in cmd
+
+
+def test_submit_local_tmp_root_passed_to_all_procedures(tmp_path):
+    """SNBB_LOCAL_TMP_ROOT is exported for every procedure, not just bids."""
+    scratch = tmp_path / "scratch"
+    cfg_tmp = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        local_tmp_root=scratch,
+    )
+    for proc in ("bids", "bids_post", "qsiprep", "qsirecon"):
+        with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+            submit_task(make_row(procedure=proc), cfg_tmp)
+        cmd = mock_run.call_args[0][0]
+        assert f"--export=ALL,SNBB_LOCAL_TMP_ROOT={scratch}" in cmd, proc
+
+
+def test_submit_local_tmp_root_not_added_when_none(cfg):
+    """--export flag absent when local_tmp_root is None."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert not any("SNBB_LOCAL_TMP_ROOT" in arg for arg in cmd)

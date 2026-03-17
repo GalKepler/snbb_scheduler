@@ -150,6 +150,12 @@ class SchedulerConfig:
     # JSONL audit log path. Defaults to <state_file parent>/scheduler_audit.jsonl at runtime.
     log_file: Path | None = None
 
+    # Local scratch root passed to all scripts as SNBB_LOCAL_TMP_ROOT via sbatch --export.
+    # Each script creates a job-specific subdirectory inside this root, runs there,
+    # then rsyncs results to the final network-mounted output directory.
+    # Useful when compute nodes have a fast local disk (e.g. /scratch/$USER).
+    local_tmp_root: Path | None = None
+
     # Optional path to a QSIRecon workflow YAML (spec file).
     # When set, the qsirecon completion check verifies one HTML per listed suffix.
     qsirecon_spec: Path | None = None
@@ -230,6 +236,7 @@ class SchedulerConfig:
             "sessions_file",
             "slurm_log_dir",
             "log_file",
+            "local_tmp_root",
             "qsirecon_spec",
         }
         for key in path_fields:
