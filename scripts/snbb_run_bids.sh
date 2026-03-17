@@ -6,6 +6,7 @@
 # Edit the values below for your cluster, or set the env vars before submitting.
 SNBB_DICOM_ROOT="${SNBB_DICOM_ROOT:-/data/snbb/dicom}"
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
+SNBB_BIDS_TMP_ROOT="${SNBB_BIDS_TMP_ROOT:-${TMPDIR:-/tmp}/snbb_bids_${SLURM_JOB_ID:-$$}}"
 SNBB_HEURISTIC="${SNBB_HEURISTIC:-/home/galkepler/Projects/snbb_scheduler/scripts/heuristic.py}"
 SNBB_HEUDICONV_SIF="${SNBB_HEUDICONV_SIF:-/media/storage/apptainer/images/heudiconv-1.3.4.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/bids/debug_submit.log}"
@@ -37,6 +38,7 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 {
     echo "=== $(date -Iseconds) | Job ${SLURM_JOB_ID:-local} | ${SUBJECT} ${SESSION} ==="
     echo "SNBB_DICOM_SESSION_DIR: ${SNBB_DICOM_SESSION_DIR}"
+    echo "SNBB_BIDS_TMP_ROOT:     ${SNBB_BIDS_TMP_ROOT}"
     echo "SNBB_BIDS_ROOT:         ${SNBB_BIDS_ROOT}"
     echo "SNBB_HEURISTIC:         ${SNBB_HEURISTIC}"
     echo "SNBB_HEUDICONV_SIF:     ${SNBB_HEUDICONV_SIF}"
@@ -44,13 +46,16 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 } >> "${SNBB_DEBUG_LOG}" 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 
+mkdir -p "${SNBB_BIDS_TMP_ROOT}"
+trap 'rm -rf "${SNBB_BIDS_TMP_ROOT}"' EXIT
+
 apptainer run --cleanenv \
     --bind "${SNBB_DICOM_SESSION_DIR}":"${SNBB_DICOM_SESSION_DIR}":ro \
-    --bind "${SNBB_BIDS_ROOT}":"${SNBB_BIDS_ROOT}" \
+    --bind "${SNBB_BIDS_TMP_ROOT}":"${SNBB_BIDS_TMP_ROOT}" \
     --bind "${SNBB_HEURISTIC}":"${SNBB_HEURISTIC}":ro \
     "${SNBB_HEUDICONV_SIF}" \
     --files "${SNBB_DICOM_SESSION_DIR}" \
-    --outdir "${SNBB_BIDS_ROOT}" \
+    --outdir "${SNBB_BIDS_TMP_ROOT}" \
     --heuristic "${SNBB_HEURISTIC}" \
     --subjects "${PARTICIPANT}" \
     --ses "${SESSION_ID}" \
@@ -59,3 +64,6 @@ apptainer run --cleanenv \
     --overwrite \
     --minmeta \
     --bids
+
+mkdir -p "${SNBB_BIDS_ROOT}"
+rsync -a "${SNBB_BIDS_TMP_ROOT}/" "${SNBB_BIDS_ROOT}/"
