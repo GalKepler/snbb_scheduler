@@ -49,7 +49,8 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
 mkdir -p "${SNBB_BIDS_TMP_ROOT}"
 trap 'rm -rf "${SNBB_BIDS_TMP_ROOT}"' EXIT
 
-apptainer run --cleanenv \
+apptainer run --cleanenv --contain \
+    --bind /tmp:/tmp \
     --bind "${SNBB_DICOM_SESSION_DIR}":"${SNBB_DICOM_SESSION_DIR}":ro \
     --bind "${SNBB_BIDS_TMP_ROOT}":"${SNBB_BIDS_TMP_ROOT}" \
     --bind "${SNBB_HEURISTIC}":"${SNBB_HEURISTIC}":ro \
@@ -65,5 +66,8 @@ apptainer run --cleanenv \
     --minmeta \
     --bids
 
+echo "Heudiconv finished. Syncing from temporary to final BIDS directory..." >> "${SNBB_DEBUG_LOG}" 2>&1
+
+chmod -R u+rw "${SNBB_BIDS_TMP_ROOT}"
 mkdir -p "${SNBB_BIDS_ROOT}"
-rsync -a "${SNBB_BIDS_TMP_ROOT}/" "${SNBB_BIDS_ROOT}/"
+rsync -a --no-perms --no-owner --no-group "${SNBB_BIDS_TMP_ROOT}/" "${SNBB_BIDS_ROOT}/"

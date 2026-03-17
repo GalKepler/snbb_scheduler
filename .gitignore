@@ -34,6 +34,7 @@ Thumbs.db
 plans/
 examples/linked_sessions.csv
 examples/test_uids.csv
+examples/test_uids_short.csv
 logs
 deface_wf
 
