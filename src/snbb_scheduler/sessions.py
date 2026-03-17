@@ -191,7 +191,7 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
         else:
             # Derive DICOM path from dicom_root using the sanitized session_id
             # (special characters already stripped by sanitize_session_id).
-            dicom_path = config.dicom_root / row["session_id"]
+            dicom_path = config.dicom_root / row["ScanID"]
             dicom_exists = None  # let _build_row check filesystem
         rows.append(
             _build_row(subject, session, dicom_path, config, dicom_exists=dicom_exists)
@@ -293,9 +293,8 @@ def build_session_status_table(config: SchedulerConfig) -> pd.DataFrame:
     # Pre-process state: for each (subject, session/blank, procedure), keep
     # the most recent entry by submitted_at.
     if not state.empty:
-        state = (
-            state.sort_values("submitted_at", ascending=False)
-            .drop_duplicates(subset=["subject", "session", "procedure"], keep="first")
+        state = state.sort_values("submitted_at", ascending=False).drop_duplicates(
+            subset=["subject", "session", "procedure"], keep="first"
         )
 
     rows = []
