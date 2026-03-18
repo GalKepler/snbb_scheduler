@@ -1090,3 +1090,54 @@ def test_check_detailed_specialized_qsirecon_returns_single_entry(tmp_path):
     results = check_detailed(proc, tmp_path / "qsirecon" / "sub-0001" / "ses-01")
     assert len(results) == 1
     assert results[0].pattern == "qsirecon"
+
+
+# ---------------------------------------------------------------------------
+# Completion cache behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_is_complete_populates_cache(tmp_path):
+    """A fresh cache is populated after the first call."""
+    proc = proc_nonempty()
+    d = tmp_path / "out"
+    d.mkdir()
+    (d / "file.txt").touch()
+    cache: dict = {}
+    result = is_complete(proc, d, cache=cache)
+    assert result is True
+    assert len(cache) == 1
+
+
+def test_is_complete_cache_hit_bypasses_filesystem(tmp_path):
+    """Subsequent calls return the cached value without hitting the filesystem."""
+    proc = proc_nonempty()
+    d = tmp_path / "out"
+    d.mkdir()
+    (d / "file.txt").touch()
+    cache: dict = {}
+    # Populate the cache with True
+    assert is_complete(proc, d, cache=cache) is True
+    # Remove the file — without cache this would now return False
+    (d / "file.txt").unlink()
+    # Should still return True from cache
+    assert is_complete(proc, d, cache=cache) is True
+
+
+def test_is_complete_without_cache_unchanged(tmp_path):
+    """No cache → original behaviour: empty dir returns False."""
+    proc = proc_nonempty()
+    d = tmp_path / "out"
+    d.mkdir()
+    assert is_complete(proc, d) is False
+
+
+def test_is_complete_cache_key_includes_kwargs(tmp_path):
+    """Different kwargs produce different cache entries for the same path."""
+    proc = proc_marker(name="freesurfer")
+    d = tmp_path / "out"
+    d.mkdir()
+    cache: dict = {}
+    is_complete(proc, d, cache=cache, subject="sub-0001")
+    is_complete(proc, d, cache=cache, subject="sub-0002")
+    assert len(cache) == 2

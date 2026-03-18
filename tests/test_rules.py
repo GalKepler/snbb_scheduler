@@ -32,7 +32,6 @@ def make_row(cfg: SchedulerConfig, subject: str = "sub-0001", session: str = "se
         else:
             path = root / subject / session
         row[f"{proc.name}_path"] = path
-        row[f"{proc.name}_exists"] = path.exists()
     return row
 
 

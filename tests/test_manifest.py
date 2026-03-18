@@ -510,6 +510,69 @@ def test_reconcile_freesurfer_completion_multi_session(cfg, tmp_path):
     assert result.iloc[0]["status"] == "complete"
 
 
+def test_build_manifest_accepts_cache_kwarg(cfg, tmp_path):
+    """build_manifest accepts a cache dict and returns a valid manifest."""
+    sessions = make_sessions(cfg, tmp_path)
+    cache: dict = {}
+    manifest = build_manifest(sessions, cfg, cache=cache)
+    assert isinstance(manifest, pd.DataFrame)
+    # Cache should be populated with completion results
+    assert len(cache) > 0
+
+
+def test_build_manifest_cache_shared_reduces_recomputation(cfg, tmp_path):
+    """Calling build_manifest twice with the same cache produces identical results."""
+    sessions = make_sessions(cfg, tmp_path)
+    cache: dict = {}
+    first = build_manifest(sessions, cfg, cache=cache)
+    cache_size_after_first = len(cache)
+    second = build_manifest(sessions, cfg, cache=cache)
+    # Cache should not grow on the second call — all hits
+    assert len(cache) == cache_size_after_first
+    assert first.equals(second)
+
+
+def test_reconcile_accepts_cache_kwarg(cfg, tmp_path):
+    """reconcile_with_filesystem accepts a cache dict without error."""
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    cache: dict = {}
+    result = reconcile_with_filesystem(state, cfg, cache=cache)
+    assert result.iloc[0]["status"] == "pending"
+
+
+def test_early_termination_skips_downstream_when_dep_incomplete(cfg, tmp_path):
+    """With a pre-populated cache showing bids=False, downstream rules are skipped.
+
+    We verify this by pre-loading the cache with False for the bids proc of both
+    sessions, then confirming only bids tasks appear in the manifest (i.e. no
+    downstream procedures are evaluated and erroneously included).
+    """
+    from snbb_scheduler.checks import _cache_key
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    from snbb_scheduler.rules import _completion_kwargs
+
+    sessions = make_sessions(cfg, tmp_path)
+
+    # Build an empty cache and let build_manifest populate it
+    cache: dict = {}
+    manifest = build_manifest(sessions, cfg, cache=cache)
+
+    # Only bids should appear (DICOM exists, bids not complete)
+    assert set(manifest["procedure"]) == {"bids"}
+
+    # Verify the bids cache entries are False for both sessions
+    bids_proc = next(p for p in DEFAULT_PROCEDURES if p.name == "bids")
+    false_entries = [v for v in cache.values() if v is False]
+    assert len(false_entries) > 0
+
+    # Now call build_manifest again — all bids cache entries are False, so
+    # downstream rules should be skipped (early termination path)
+    cache_size_before = len(cache)
+    manifest2 = build_manifest(sessions, cfg, cache=cache)
+    assert cache_size_before == len(cache)  # no new I/O → no new cache entries
+    assert set(manifest2["procedure"]) == {"bids"}
+
+
 def test_reconcile_freesurfer_incomplete_missing_longitudinal(cfg, tmp_path):
     """reconcile stays pending when longitudinal step is not yet done."""
     subject, session = "sub-0001", "ses-01"

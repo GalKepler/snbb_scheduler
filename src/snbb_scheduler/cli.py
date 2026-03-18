@@ -108,8 +108,9 @@ def run(
     sessions = discover_sessions(config)
     click.echo(f"  Found {len(sessions)} session(s).")
 
+    cache: dict = {}
     force_procedures = [procedure] if (force and procedure) else None
-    manifest = build_manifest(sessions, config, force=force, force_procedures=force_procedures)
+    manifest = build_manifest(sessions, config, force=force, force_procedures=force_procedures, cache=cache)
     click.echo(f"  {len(manifest)} task(s) need processing.")
 
     state = load_state(config)
@@ -117,7 +118,7 @@ def run(
     if not skip_monitor and not state.empty:
         try:
             updated = update_state_from_sacct(state, audit)
-            updated = reconcile_with_filesystem(updated, config, audit)
+            updated = reconcile_with_filesystem(updated, config, audit, cache=cache)
             if not updated.equals(state):
                 save_state(updated, config)
                 state = updated
@@ -152,7 +153,8 @@ def show_manifest(ctx: click.Context) -> None:
     config: SchedulerConfig = ctx.obj["config"]
 
     sessions = discover_sessions(config)
-    manifest = build_manifest(sessions, config)
+    cache: dict = {}
+    manifest = build_manifest(sessions, config, cache=cache)
 
     if manifest.empty:
         click.echo("No tasks pending.")
@@ -296,7 +298,7 @@ def monitor(ctx: click.Context) -> None:
         return
 
     updated = update_state_from_sacct(state, audit)
-    updated = reconcile_with_filesystem(updated, config, audit)
+    updated = reconcile_with_filesystem(updated, config, audit, cache={})
 
     # Count transitions
     transitions = 0
