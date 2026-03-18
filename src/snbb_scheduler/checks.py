@@ -3,6 +3,7 @@ from __future__ import annotations
 __all__ = ["is_complete", "check_detailed", "FileCheckResult", "CompletionCache"]
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable
 
@@ -285,7 +286,7 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     recon_spec = kwargs.get("recon_spec")
 
     if recon_spec is not None:
-        suffixes = _parse_qsirecon_suffixes(Path(recon_spec))
+        suffixes = _parse_qsirecon_suffixes(str(recon_spec))
         if suffixes:
             for suffix in suffixes:
                 html = (
@@ -308,15 +309,20 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _parse_qsirecon_suffixes(recon_spec: Path) -> list[str]:
+@lru_cache(maxsize=4)
+def _parse_qsirecon_suffixes(recon_spec: str) -> list[str]:
     """Return unique ``qsirecon_suffix`` values from a QSIRecon workflow YAML.
 
-    Reads *recon_spec*, iterates ``nodes``, and collects the ``qsirecon_suffix``
-    field where present (order-preserving, duplicates removed).  Returns an
-    empty list if the file is missing, unreadable, or contains no suffixes.
+    Accepts a string path so the result can be cached with ``lru_cache``
+    (reducing repeated YAML reads across 6 000+ sessions to a single read
+    per spec file per run).
+
+    Iterates ``nodes`` and collects the ``qsirecon_suffix`` field where present
+    (order-preserving, duplicates removed).  Returns an empty list if the file
+    is missing, unreadable, or contains no suffixes.
     """
     try:
-        data = yaml.safe_load(recon_spec.read_text()) or {}
+        data = yaml.safe_load(Path(recon_spec).read_text()) or {}
     except (OSError, yaml.YAMLError):
         return []
 
