@@ -80,7 +80,6 @@ def test_empty_dicom_root_has_procedure_columns(tmp_path):
     df = discover_sessions(cfg)
     for proc in cfg.procedures:
         assert f"{proc.name}_path" in df.columns
-        assert f"{proc.name}_exists" in df.columns
 
 
 def test_non_subject_dirs_are_ignored(tmp_path):
@@ -165,33 +164,13 @@ def test_dicom_exists_true_when_dir_present(fake_config):
     assert df["dicom_exists"].all()
 
 
-def test_bids_exists_true_only_for_sub0001(fake_config):
+def test_no_proc_exists_columns_in_dataframe(fake_config):
+    """Procedure output directories are not stat-checked at discovery time."""
     df = discover_sessions(fake_config)
-    sub01 = df[df["subject"] == "sub-0001"].iloc[0]
-    sub02 = df[df["subject"] == "sub-0002"].iloc[0]
-    assert sub01["bids_exists"] is True or sub01["bids_exists"] == True
-    assert sub02["bids_exists"] is False or sub02["bids_exists"] == False
-
-
-def test_derivative_exists_false_when_not_created(fake_config):
-    df = discover_sessions(fake_config)
-    assert not df["qsiprep_exists"].any()
-    assert not df["freesurfer_exists"].any()
-
-
-def test_existence_reflects_filesystem(tmp_path):
-    dicom = tmp_path / "dicom"
-    (dicom / "sub-0001" / "ses-01").mkdir(parents=True)
-    qsiprep_out = tmp_path / "derivatives" / "qsiprep" / "sub-0001" / "ses-01"
-    qsiprep_out.mkdir(parents=True)
-    cfg = SchedulerConfig(
-        dicom_root=dicom,
-        bids_root=tmp_path / "bids",
-        derivatives_root=tmp_path / "derivatives",
-        state_file=tmp_path / "state.parquet",
-    )
-    df = discover_sessions(cfg)
-    assert df.iloc[0]["qsiprep_exists"] == True
+    for col in df.columns:
+        assert not col.endswith("_exists") or col == "dicom_exists", (
+            f"Unexpected _exists column: {col!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +179,7 @@ def test_existence_reflects_filesystem(tmp_path):
 
 
 def test_custom_procedure_columns_present(tmp_path):
-    """Extra procedures registered in config appear as columns."""
+    """Extra procedures registered in config appear as path columns."""
     dicom = tmp_path / "dicom"
     (dicom / "sub-0001" / "ses-01").mkdir(parents=True)
     fmriprep = Procedure(
@@ -218,7 +197,7 @@ def test_custom_procedure_columns_present(tmp_path):
     )
     df = discover_sessions(cfg)
     assert "fmriprep_path" in df.columns
-    assert "fmriprep_exists" in df.columns
+    assert "fmriprep_exists" not in df.columns
 
 
 def test_custom_procedure_path_value(tmp_path):
@@ -291,7 +270,7 @@ def test_file_discovery_procedure_columns_present(fake_sessions_config):
     df = discover_sessions(fake_sessions_config)
     for proc in fake_sessions_config.procedures:
         assert f"{proc.name}_path" in df.columns
-        assert f"{proc.name}_exists" in df.columns
+        assert f"{proc.name}_exists" not in df.columns
 
 
 def test_file_discovery_session_scoped_procedure_path(fake_sessions_config, fake_sessions_csv):

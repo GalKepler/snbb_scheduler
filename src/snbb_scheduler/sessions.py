@@ -111,7 +111,7 @@ def discover_sessions(config: SchedulerConfig) -> pd.DataFrame:
 
     Columns in both cases:
         subject, session, dicom_path, dicom_exists,
-        <proc>_path, <proc>_exists  (one pair per procedure in config.procedures)
+        <proc>_path  (one per procedure in config.procedures)
     """
     if config.sessions_file is not None:
         return _discover_from_file(config)
@@ -231,8 +231,7 @@ def _build_row(
     -------
     dict
         Keys: ``subject``, ``session``, ``dicom_path``, ``dicom_exists``,
-        plus ``<proc>_path`` and ``<proc>_exists`` for every procedure in
-        *config.procedures*.
+        plus ``<proc>_path`` for every procedure in *config.procedures*.
     """
     if dicom_exists is None:
         actual_exists = dicom_path is not None and dicom_path.exists()
@@ -252,7 +251,6 @@ def _build_row(
         else:
             path = root / subject / session
         row[f"{proc.name}_path"] = path
-        row[f"{proc.name}_exists"] = path.exists()
     return row
 
 
@@ -265,7 +263,7 @@ def _empty_dataframe(config: SchedulerConfig) -> pd.DataFrame:
     """
     columns = ["subject", "session", "dicom_path", "dicom_exists"]
     for proc in config.procedures:
-        columns += [f"{proc.name}_path", f"{proc.name}_exists"]
+        columns += [f"{proc.name}_path"]
     return pd.DataFrame(columns=columns)
 
 
@@ -304,10 +302,8 @@ def build_session_status_table(config: SchedulerConfig) -> pd.DataFrame:
         out: dict = {"subject": subject, "session": session}
 
         for proc in config.procedures:
-            exists = sess_row.get(f"{proc.name}_exists", False)
             proc_path = sess_row.get(f"{proc.name}_path")
-
-            if exists:
+            if proc_path is not None and Path(str(proc_path)).exists():
                 out[proc.name] = str(proc_path)
                 continue
 
