@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from snbb_scheduler.checks import is_complete
+from snbb_scheduler.checks import _cache_key, is_complete
 from snbb_scheduler.config import SchedulerConfig
 from snbb_scheduler.rules import _completion_kwargs, build_rules
 
@@ -61,6 +61,22 @@ def build_manifest(
     seen_subject_procs: set[tuple[str, str]] = set()
     for _, session_row in sessions.iterrows():
         for proc_name, rule in rules.items():
+            # Fast path: skip rule evaluation entirely when any dependency is
+            # already known-incomplete from the cache (zero new I/O).
+            if cache:
+                proc = config.get_procedure(proc_name)
+                skip = False
+                for dep_name in proc.depends_on:
+                    dep_proc = config.get_procedure(dep_name)
+                    dep_path = session_row[f"{dep_name}_path"]
+                    dep_kw = _completion_kwargs(dep_proc, session_row, config)
+                    key = _cache_key(dep_proc.name, dep_path, dep_kw)
+                    if key in cache and not cache[key]:
+                        skip = True
+                        break
+                if skip:
+                    continue
+
             if not rule(session_row):
                 continue
             subject = session_row["subject"]
