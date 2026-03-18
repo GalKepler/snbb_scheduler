@@ -510,6 +510,36 @@ def test_reconcile_freesurfer_completion_multi_session(cfg, tmp_path):
     assert result.iloc[0]["status"] == "complete"
 
 
+def test_build_manifest_accepts_cache_kwarg(cfg, tmp_path):
+    """build_manifest accepts a cache dict and returns a valid manifest."""
+    sessions = make_sessions(cfg, tmp_path)
+    cache: dict = {}
+    manifest = build_manifest(sessions, cfg, cache=cache)
+    assert isinstance(manifest, pd.DataFrame)
+    # Cache should be populated with completion results
+    assert len(cache) > 0
+
+
+def test_build_manifest_cache_shared_reduces_recomputation(cfg, tmp_path):
+    """Calling build_manifest twice with the same cache produces identical results."""
+    sessions = make_sessions(cfg, tmp_path)
+    cache: dict = {}
+    first = build_manifest(sessions, cfg, cache=cache)
+    cache_size_after_first = len(cache)
+    second = build_manifest(sessions, cfg, cache=cache)
+    # Cache should not grow on the second call — all hits
+    assert len(cache) == cache_size_after_first
+    assert first.equals(second)
+
+
+def test_reconcile_accepts_cache_kwarg(cfg, tmp_path):
+    """reconcile_with_filesystem accepts a cache dict without error."""
+    state = pd.DataFrame([make_state_row("sub-0001", "ses-01", "bids", "pending")])
+    cache: dict = {}
+    result = reconcile_with_filesystem(state, cfg, cache=cache)
+    assert result.iloc[0]["status"] == "pending"
+
+
 def test_reconcile_freesurfer_incomplete_missing_longitudinal(cfg, tmp_path):
     """reconcile stays pending when longitudinal step is not yet done."""
     subject, session = "sub-0001", "ses-01"

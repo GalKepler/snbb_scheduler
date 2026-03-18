@@ -18,6 +18,7 @@ def build_rules(
     sessions_df: pd.DataFrame | None = None,
     force: bool = False,
     force_procedures: list[str] | None = None,
+    cache: dict | None = None,
 ) -> dict[str, Rule]:
     """Generate a rule function for every procedure in config.
 
@@ -53,6 +54,7 @@ def build_rules(
             sessions_df=sessions_df,
             force=force,
             force_procedures=force_procedures,
+            cache=cache,
         )
         for proc in config.procedures
     }
@@ -91,6 +93,7 @@ def _make_rule(
     sessions_df: pd.DataFrame | None = None,
     force: bool = False,
     force_procedures: list[str] | None = None,
+    cache: dict | None = None,
 ) -> Rule:
     """Create a rule closure that decides whether *proc* needs to run for a session.
 
@@ -144,7 +147,7 @@ def _make_rule(
         for dep_name in same_scope_deps:
             dep_proc = config.get_procedure(dep_name)
             dep_kwargs = _completion_kwargs(dep_proc, row, config)
-            if not is_complete(dep_proc, row[f"{dep_name}_path"], **dep_kwargs):
+            if not is_complete(dep_proc, row[f"{dep_name}_path"], cache=cache, **dep_kwargs):
                 return False
 
         # ── Cross-scope dependencies ──────────────────────────────────────
@@ -159,7 +162,7 @@ def _make_rule(
                     if not srow.get("dicom_exists", False):
                         continue
                     dep_kw = _completion_kwargs(dep_proc, srow, config)
-                    if not is_complete(dep_proc, srow[f"{dep_name}_path"], **dep_kw):
+                    if not is_complete(dep_proc, srow[f"{dep_name}_path"], cache=cache, **dep_kw):
                         return False  # any incomplete session → not ready
 
         # ── Self-completion check ─────────────────────────────────────────
@@ -169,7 +172,7 @@ def _make_rule(
         if should_force:
             return True
         self_kwargs = _completion_kwargs(proc, row, config)
-        return not is_complete(proc, row[f"{proc.name}_path"], **self_kwargs)
+        return not is_complete(proc, row[f"{proc.name}_path"], cache=cache, **self_kwargs)
 
     rule.__name__ = f"needs_{proc.name}"
     return rule

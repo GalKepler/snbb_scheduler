@@ -30,6 +30,7 @@ def build_manifest(
     config: SchedulerConfig,
     force: bool = False,
     force_procedures: list[str] | None = None,
+    cache: dict | None = None,
 ) -> pd.DataFrame:
     """Evaluate rules against all sessions and return a task manifest.
 
@@ -51,6 +52,7 @@ def build_manifest(
         sessions_df=sessions,
         force=force,
         force_procedures=force_procedures,
+        cache=cache,
     )
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
     subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
@@ -125,6 +127,7 @@ def reconcile_with_filesystem(
     state: pd.DataFrame,
     config: SchedulerConfig,
     audit: AuditLogger | None = None,
+    cache: dict | None = None,
 ) -> pd.DataFrame:
     """Mark pending/running tasks as complete when their output exists on disk.
 
@@ -158,7 +161,7 @@ def reconcile_with_filesystem(
         _row = pd.Series({"subject": subject, "session": session or ""})
         kwargs = _completion_kwargs(proc, _row, config)
 
-        if is_complete(proc, output_path, **kwargs):
+        if is_complete(proc, output_path, cache=cache, **kwargs):
             old_status = str(updated.at[idx, "status"])
             updated.at[idx, "status"] = "complete"
             if audit is not None:

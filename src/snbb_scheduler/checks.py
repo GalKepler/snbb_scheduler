@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["is_complete", "check_detailed", "FileCheckResult"]
+__all__ = ["is_complete", "check_detailed", "FileCheckResult", "CompletionCache"]
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +9,20 @@ from typing import Callable
 import yaml
 
 from snbb_scheduler.config import Procedure
+
+# Type alias for the completion result cache shared across a single scheduler run.
+# Key: (proc_name, str(output_path), frozenset of stringified kwargs items)
+# Value: bool result of is_complete()
+CompletionCache = dict[tuple, bool]
+
+
+def _cache_key(proc_name: str, output_path: Path, kwargs: dict) -> tuple:
+    """Build a hashable cache key for an is_complete() call."""
+    return (
+        proc_name,
+        str(output_path),
+        frozenset((k, str(v)) for k, v in sorted(kwargs.items())),
+    )
 
 
 @dataclass
@@ -44,7 +58,12 @@ def _register_check(name: str):
 # ---------------------------------------------------------------------------
 
 
-def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
+def is_complete(
+    proc: Procedure,
+    output_path: Path,
+    cache: CompletionCache | None = None,
+    **kwargs,
+) -> bool:
     """Return True if a procedure's output is considered complete.
 
     Completion is determined by proc.completion_marker:
@@ -58,26 +77,41 @@ def is_complete(proc: Procedure, output_path: Path, **kwargs) -> bool:
     guard, allowing them to remap paths (e.g. FreeSurfer's longitudinal
     SUBJECTS_DIR naming differs from the scheduler's path convention).
 
+    Parameters
+    ----------
+    cache:
+        Optional mutable dict shared across a scheduler run.  When provided,
+        results are looked up in the cache before hitting the filesystem and
+        stored after computation.  This eliminates redundant I/O when the
+        same procedure/path pair is evaluated multiple times (e.g. dependency
+        checks + self-completion checks across 6000+ sessions).
+
     Unknown keyword arguments are silently ignored.
     """
+    key = None
+    if cache is not None:
+        key = _cache_key(proc.name, output_path, kwargs)
+        if key in cache:
+            return cache[key]
+
     if proc.name in _SPECIALIZED_CHECKS:
-        return _SPECIALIZED_CHECKS[proc.name](proc, output_path, **kwargs)
+        result = _SPECIALIZED_CHECKS[proc.name](proc, output_path, **kwargs)
+    elif not output_path.exists():
+        result = False
+    else:
+        marker = proc.completion_marker
+        if marker is None:
+            result = _dir_nonempty(output_path)
+        elif isinstance(marker, list):
+            result = all(any(output_path.glob(pat)) for pat in marker)
+        elif _is_glob(marker):
+            result = any(output_path.glob(marker))
+        else:
+            result = (output_path / marker).exists()
 
-    if not output_path.exists():
-        return False
-
-    marker = proc.completion_marker
-
-    if marker is None:
-        return _dir_nonempty(output_path)
-
-    if isinstance(marker, list):
-        return all(any(output_path.glob(pat)) for pat in marker)
-
-    if _is_glob(marker):
-        return any(output_path.glob(marker))
-
-    return (output_path / marker).exists()
+    if key is not None:
+        cache[key] = result  # type: ignore[index]
+    return result
 
 
 def check_detailed(
