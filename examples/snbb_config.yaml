@@ -16,7 +16,7 @@ state_file:       /media/storage/yalab-dev/snbb_scheduler/.scheduler_state.parqu
 # When set, the DICOM filesystem scan is skipped and ScanID is resolved as a
 # flat subdirectory under dicom_root.  Remove or set to null to use filesystem scanning.
 # sessions_file: /home/galkepler/Downloads/linked_sessions.csv
-sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/test_uids_short.csv
+sessions_file: /home/galkepler/Projects/snbb_scheduler/examples/linked_sessions.csv
 
 audit:
   dicom_min_files: 10
@@ -104,7 +104,7 @@ procedures:
     output_dir: freesurfer
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_freesurfer.sh
     scope: subject
-    depends_on: [post-bids]
+    depends_on: [bids]
     completion_marker: "scripts/recon-all.done"
 
   # DWI tractography reconstruction (session-scoped: requires qsiprep + freesurfer)
@@ -114,6 +114,20 @@ procedures:
     script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsirecon.sh
     scope: session
     depends_on: [qsiprep, freesurfer]
+    completion_marker: null
+
+  - name: qsiparc
+    output_dir: qsiparc
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_qsiparc.sh
+    scope: session
+    depends_on: [qsirecon]
+    completion_marker: null
+
+  - name: fsatlas
+    output_dir: fsatlas
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_fsatlas.sh
+    scope: subject
+    depends_on: [freesurfer]
     completion_marker: null
 
   # fMRI preprocessing

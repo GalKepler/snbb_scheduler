@@ -127,7 +127,7 @@ nodes:
         min_length: 30
         power: 0.33
         quiet: true
-        select: 1000000
+        select: 10000000
 
   # --- Deterministic (SD_Stream) ---
   - action: tractography
@@ -153,81 +153,81 @@ nodes:
   # CONNECTIVITY MATRICES
   # ═══════════════════════════════════════════════════════════════════════════
 
-  # --- Probabilistic connectivity (from iFOD2) ---
-  - action: connectivity
-    name: mrtrix_prob_conn
-    software: MRTrix3
-    qsirecon_suffix: MRtrix3_act-HSVS
-    input: track_ifod2
-    parameters:
-      tck2connectome:
-        - measure: sift_invnodevol_radius2_count
-          scale_invnodevol: true
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: true
-          zero_diagonal: false
-        - measure: radius2_meanlength
-          length_scale: length
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: mean
-          symmetric: true
-          use_sift_weights: false
-          zero_diagonal: false
-        - measure: radius2_count
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: false
-          zero_diagonal: false
-        - measure: sift_radius2_count
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: true
-          zero_diagonal: false
+  # # --- Probabilistic connectivity (from iFOD2) ---
+  # - action: connectivity
+  #   name: mrtrix_prob_conn
+  #   software: MRTrix3
+  #   qsirecon_suffix: MRtrix3_act-HSVS
+  #   input: track_ifod2
+  #   parameters:
+  #     tck2connectome:
+  #       - measure: sift_invnodevol_radius2_count
+  #         scale_invnodevol: true
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: true
+  #         zero_diagonal: false
+  #       - measure: radius2_meanlength
+  #         length_scale: length
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: mean
+  #         symmetric: true
+  #         use_sift_weights: false
+  #         zero_diagonal: false
+  #       - measure: radius2_count
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: false
+  #         zero_diagonal: false
+  #       - measure: sift_radius2_count
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: true
+  #         zero_diagonal: false
 
-  # --- Deterministic connectivity (from SD_Stream) ---
-  - action: connectivity
-    name: mrtrix_det_conn
-    software: MRTrix3
-    qsirecon_suffix: MRtrix3_act-HSVS
-    input: track_sdstream
-    parameters:
-      tck2connectome:
-        - measure: sift_invnodevol_radius2_count
-          scale_invnodevol: true
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: true
-          zero_diagonal: false
-        - measure: radius2_meanlength
-          length_scale: length
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: mean
-          symmetric: true
-          use_sift_weights: false
-          zero_diagonal: false
-        - measure: radius2_count
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: false
-          zero_diagonal: false
-        - measure: sift_radius2_count
-          scale_invnodevol: false
-          search_radius: 2
-          stat_edge: sum
-          symmetric: true
-          use_sift_weights: true
-          zero_diagonal: false
+  # # --- Deterministic connectivity (from SD_Stream) ---
+  # - action: connectivity
+  #   name: mrtrix_det_conn
+  #   software: MRTrix3
+  #   qsirecon_suffix: MRtrix3_act-HSVS
+  #   input: track_sdstream
+  #   parameters:
+  #     tck2connectome:
+  #       - measure: sift_invnodevol_radius2_count
+  #         scale_invnodevol: true
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: true
+  #         zero_diagonal: false
+  #       - measure: radius2_meanlength
+  #         length_scale: length
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: mean
+  #         symmetric: true
+  #         use_sift_weights: false
+  #         zero_diagonal: false
+  #       - measure: radius2_count
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: false
+  #         zero_diagonal: false
+  #       - measure: sift_radius2_count
+  #         scale_invnodevol: false
+  #         search_radius: 2
+  #         stat_edge: sum
+  #         symmetric: true
+  #         use_sift_weights: true
+  #         zero_diagonal: false
 
   # ═══════════════════════════════════════════════════════════════════════════
   # pyAFQ TRACTOMETRY — along-tract profiling using iFOD2 streamlines

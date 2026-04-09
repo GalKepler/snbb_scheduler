@@ -20,7 +20,7 @@ SNBB_TEMPLATEFLOW_HOME="${SNBB_TEMPLATEFLOW_HOME:-/media/storage/yalab-dev/snbb_
 
 # Optional: atlas dataset directory and space-separated atlas names
 # Example: SNBB_ATLASES_DIR=/data/atlases  SNBB_ATLASES="4S156Parcels Schaefer2018N100n7Tian2020S1"
-SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/yalab-dev/voxelops/snbb-atlas-pack/atlases}"
+SNBB_ATLASES_DIR="${SNBB_ATLASES_DIR:-/media/storage/Projects/snbb-atlas-pack/qsirecon_ext}"
 SNBB_ATLASES="${SNBB_ATLASES:-\
   4S156Parcels 4S256Parcels 4S356Parcels 4S456Parcels 4S556Parcels \
   4S656Parcels 4S756Parcels 4S856Parcels 4S956Parcels 4S1056Parcels \
@@ -35,8 +35,7 @@ SNBB_ATLASES="${SNBB_ATLASES:-\
   Schaefer2018N900n7Tian2020S1 Schaefer2018N900n7Tian2020S2 Schaefer2018N900n7Tian2020S3 Schaefer2018N900n7Tian2020S4 \
   Schaefer2018N1000n7Tian2020S1 Schaefer2018N1000n7Tian2020S2 Schaefer2018N1000n7Tian2020S3 Schaefer2018N1000n7Tian2020S4 \
   AAL116 AICHA384Ext Brainnetome246Ext Gordon333Ext \
-  TianS1 TianS2 TianS3 TianS4 \
-  HCPex HCPMMP}"
+  HCPex TianS1 TianS2 TianS3 TianS4}"
 # Optional: root of local scratch on compute nodes.
 # When set, QSIPrep and FreeSurfer subject inputs are staged locally and
 # QSIRecon output is written locally, then rsynced to the remote destination.
@@ -103,9 +102,8 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
     # EXIT trap cleans up the local workdir on any exit (success/error/SIGTERM),
     # except when rsync-out fails — in that case local output is preserved.
 
-    LOCAL_WORKDIR="${SNBB_LOCAL_TMP_ROOT}/snbb_${SLURM_JOB_ID:-$$}_${SUBJECT}"
+    LOCAL_WORKDIR="${SNBB_LOCAL_TMP_ROOT}/snbb_${SLURM_JOB_ID:-$$}_${SUBJECT}_${SESSION}"
     LOCAL_QSIPREP="${LOCAL_WORKDIR}/qsiprep"
-    LOCAL_FS="${LOCAL_WORKDIR}/freesurfer"
     LOCAL_OUTPUT="${LOCAL_WORKDIR}/output"
     LOCAL_WORK="${LOCAL_WORKDIR}/work"
     CLEANUP_ON_EXIT=true
@@ -121,22 +119,19 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
     trap _cleanup EXIT
 
     # Create local directory structure
-    mkdir -p "${LOCAL_QSIPREP}" "${LOCAL_FS}" "${LOCAL_OUTPUT}" "${LOCAL_WORK}"
+    mkdir -p "${LOCAL_QSIPREP}" "${LOCAL_OUTPUT}" "${LOCAL_WORK}"
 
     # Copy QSIPrep subject output + dataset_description.json (required by QSIRecon)
     rsync -a "${SNBB_QSIPREP_DIR}/${SUBJECT}/" "${LOCAL_QSIPREP}/${SUBJECT}/"
     [[ -e "${SNBB_QSIPREP_DIR}/dataset_description.json" ]] && \
         rsync -a "${SNBB_QSIPREP_DIR}/dataset_description.json" "${LOCAL_QSIPREP}/dataset_description.json"
 
-    # Copy FreeSurfer subject output
-    rsync -a "${SNBB_FS_SUBJECTS_DIR}/${SUBJECT}/" "${LOCAL_FS}/${SUBJECT}/"
-
     mkdir -p "${SNBB_QSIRECON_OUTPUT_DIR}"
 
     apptainer run --cleanenv \
         --bind "${LOCAL_QSIPREP}":"${LOCAL_QSIPREP}":ro \
         --bind "${LOCAL_OUTPUT}":"${LOCAL_OUTPUT}" \
-        --bind "${LOCAL_FS}":"${LOCAL_FS}":ro \
+        --bind "${SNBB_FS_SUBJECTS_DIR}":"${SNBB_FS_SUBJECTS_DIR}":ro \
         --bind "${SNBB_FS_LICENSE}":"${SNBB_FS_LICENSE}":ro \
         --bind "${SNBB_RECON_SPEC}":"${SNBB_RECON_SPEC}":ro \
         --bind "${LOCAL_WORK}":"${LOCAL_WORK}" \
@@ -151,7 +146,7 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
         --session-id "${SESSION_ID}" \
         --recon-spec "${SNBB_RECON_SPEC}" \
         --fs-license-file "${SNBB_FS_LICENSE}" \
-        --fs-subjects-dir "${LOCAL_FS}" \
+        --fs-subjects-dir "${SNBB_FS_SUBJECTS_DIR}" \
         --nprocs "${SLURM_CPUS_PER_TASK:-8}" \
         --mem-mb "${SLURM_MEM_PER_NODE:-32000}" \
         --work-dir "${LOCAL_WORK}" \
@@ -169,13 +164,17 @@ else
     # ── Original behaviour (remote filesystem) ────────────────────────────────
     mkdir -p "${SNBB_WORK_DIR}" "${SNBB_QSIRECON_OUTPUT_DIR}"
 
+    # Make a session-wise workdir for QSIRecon, since it writes intermediate files during reconstruction.
+    SESSION_WORK_DIR="${SNBB_WORK_DIR}/${SUBJECT}_${SESSION}"
+    mkdir -p "${SESSION_WORK_DIR}"
+
     apptainer run --cleanenv \
         --bind "${SNBB_QSIPREP_DIR}":"${SNBB_QSIPREP_DIR}":ro \
         --bind "${SNBB_QSIRECON_OUTPUT_DIR}":"${SNBB_QSIRECON_OUTPUT_DIR}" \
         --bind "${SNBB_FS_LICENSE}":"${SNBB_FS_LICENSE}":ro \
         --bind "${SNBB_FS_SUBJECTS_DIR}":"${SNBB_FS_SUBJECTS_DIR}":ro \
         --bind "${SNBB_RECON_SPEC}":"${SNBB_RECON_SPEC}":ro \
-        --bind "${SNBB_WORK_DIR}":"${SNBB_WORK_DIR}" \
+        --bind "${SESSION_WORK_DIR}":"${SESSION_WORK_DIR}" \
         "${EXTRA_BINDS[@]}" \
         "${SNBB_QSIRECON_SIF}" \
         "${SNBB_QSIPREP_DIR}" \
@@ -188,7 +187,7 @@ else
         --fs-subjects-dir "${SNBB_FS_SUBJECTS_DIR}" \
         --nprocs "${SLURM_CPUS_PER_TASK:-8}" \
         --mem-mb "${SLURM_MEM_PER_NODE:-32000}" \
-        --work-dir "${SNBB_WORK_DIR}" \
+        --work-dir "${SESSION_WORK_DIR}" \
         "${EXTRA_ARGS[@]}"
     # ─────────────────────────────────────────────────────────────────────────
 fi
