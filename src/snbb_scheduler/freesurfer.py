@@ -527,6 +527,28 @@ def _done(subjects_dir: Path, subject_id: str) -> bool:
     return (subjects_dir / subject_id / "scripts" / "recon-all.done").exists()
 
 
+def _template_timepoints(subjects_dir: Path, subject: str) -> set[str]:
+    """Return the set of -tp subject IDs recorded in the template's recon-all.done.
+
+    FreeSurfer writes a ``#CMDARGS`` line inside ``scripts/recon-all.done``
+    containing all arguments passed to ``recon-all -base``, including one
+    ``-tp <id>`` pair per timepoint.  Returns an empty set when the file is
+    missing or contains no CMDARGS line.
+    """
+    done_file = subjects_dir / subject / "scripts" / "recon-all.done"
+    if not done_file.exists():
+        return set()
+    for line in done_file.read_text().splitlines():
+        if "CMDARGS" in line:
+            tokens = line.split()
+            result: set[str] = set()
+            for i, tok in enumerate(tokens):
+                if tok == "-tp" and i + 1 < len(tokens):
+                    result.add(tokens[i + 1])
+            return result
+    return set()
+
+
 def _run(cmd: list[str], label: str) -> int:
     """Run *cmd* and return its exit code, printing *label* before executing."""
     print(f"[freesurfer] {label}")
@@ -685,11 +707,23 @@ def main(argv: list[str] | None = None) -> int:
             return rc
 
     # Step 2 — Template
-    if _done(subjects_dir, args.subject):
+    # Verify that the existing template (if any) was built with the current set
+    # of sessions.  When a new session is added the template is stale and must
+    # be rebuilt; all longitudinal runs that depended on it must also be re-run.
+    template_was_rebuilt = False
+    expected_tps = {f"{args.subject}_{ses}" for ses in sessions}
+    existing_tps = _template_timepoints(subjects_dir, args.subject)
+    if _done(subjects_dir, args.subject) and existing_tps == expected_tps:
         print(
             f"[freesurfer] Step 2 (template {args.subject}): already complete — skipping."
         )
     else:
+        if existing_tps and existing_tps != expected_tps:
+            print(
+                f"[freesurfer] Step 2 (template {args.subject}): stale "
+                f"(was built with {sorted(existing_tps)}, "
+                f"need {sorted(expected_tps)}) — rebuilding."
+            )
         if use_apptainer:
             cmd = build_template_apptainer_command(
                 sif=args.sif,
@@ -711,11 +745,15 @@ def main(argv: list[str] | None = None) -> int:
         rc = _run(cmd, f"step 2 template {args.subject}")
         if rc != 0:
             return rc
+        template_was_rebuilt = True
 
     # Step 3 — Longitudinal for each session
+    # When the template was rebuilt (due to a new session), all longitudinal
+    # runs are stale regardless of their individual done files — they must
+    # re-run against the updated template.
     for ses in sessions:
         long_id = f"{args.subject}_{ses}.long.{args.subject}"
-        if _done(subjects_dir, long_id):
+        if not template_was_rebuilt and _done(subjects_dir, long_id):
             print(f"[freesurfer] Step 3 ({long_id}): already complete — skipping.")
             continue
 

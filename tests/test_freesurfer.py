@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from snbb_scheduler.freesurfer import (
+    _template_timepoints,
     build_apptainer_command,
     build_cross_sectional_apptainer_command,
     build_cross_sectional_command,
@@ -48,6 +49,19 @@ def _touch_done(subjects_dir: Path, subject_id: str) -> None:
     s = subjects_dir / subject_id / "scripts"
     s.mkdir(parents=True, exist_ok=True)
     (s / "recon-all.done").write_text("-----\nSUBJECT done\n")
+
+
+def _touch_template_done(
+    subjects_dir: Path, subject: str, sessions: list[str]
+) -> None:
+    """Write a realistic template recon-all.done with -tp CMDARGS so staleness
+    detection treats the template as up-to-date for the given sessions."""
+    s = subjects_dir / subject / "scripts"
+    s.mkdir(parents=True, exist_ok=True)
+    tp_flags = " ".join(f"-tp {subject}_{ses}" for ses in sessions)
+    (s / "recon-all.done").write_text(
+        f"-----\nSUBJECT done\n#CMDARGS -base {subject} {tp_flags} -sd /output -all\n"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -622,10 +636,10 @@ def test_main_multi_session_skips_completed_template(tmp_path):
     output = tmp_path / "freesurfer"
     _make_t1w(bids, "sub-0001", "ses-01")
     _make_t1w(bids, "sub-0001", "ses-02")
-    # Cross-sectionals done, template done
+    # Cross-sectionals done, template done (with correct -tp flags)
     _touch_done(output, "sub-0001_ses-01")
     _touch_done(output, "sub-0001_ses-02")
-    _touch_done(output, "sub-0001")
+    _touch_template_done(output, "sub-0001", ["ses-01", "ses-02"])
 
     calls = []
 
@@ -653,7 +667,7 @@ def test_main_multi_session_all_steps_done_no_runs(tmp_path):
     _make_t1w(bids, "sub-0001", "ses-02")
     _touch_done(output, "sub-0001_ses-01")
     _touch_done(output, "sub-0001_ses-02")
-    _touch_done(output, "sub-0001")
+    _touch_template_done(output, "sub-0001", ["ses-01", "ses-02"])
     _touch_done(output, "sub-0001_ses-01.long.sub-0001")
     _touch_done(output, "sub-0001_ses-02.long.sub-0001")
 
@@ -788,3 +802,107 @@ def test_main_multi_session_apptainer_uses_container_commands(tmp_path):
     for cmd in captured:
         cmd_str = " ".join(str(c) for c in cmd)
         assert "apptainer" in cmd_str
+
+
+# ---------------------------------------------------------------------------
+# _template_timepoints
+# ---------------------------------------------------------------------------
+
+
+def test_template_timepoints_parses_tp_flags(tmp_path):
+    subjects_dir = tmp_path / "freesurfer"
+    _touch_template_done(subjects_dir, "sub-0001", ["ses-01", "ses-02"])
+    result = _template_timepoints(subjects_dir, "sub-0001")
+    assert result == {"sub-0001_ses-01", "sub-0001_ses-02"}
+
+
+def test_template_timepoints_missing_file(tmp_path):
+    subjects_dir = tmp_path / "freesurfer"
+    result = _template_timepoints(subjects_dir, "sub-0001")
+    assert result == set()
+
+
+def test_template_timepoints_no_cmdargs_line(tmp_path):
+    subjects_dir = tmp_path / "freesurfer"
+    _touch_done(subjects_dir, "sub-0001")  # no CMDARGS line
+    result = _template_timepoints(subjects_dir, "sub-0001")
+    assert result == set()
+
+
+def test_template_timepoints_three_sessions(tmp_path):
+    subjects_dir = tmp_path / "freesurfer"
+    _touch_template_done(subjects_dir, "sub-0002", ["ses-01", "ses-02", "ses-03"])
+    result = _template_timepoints(subjects_dir, "sub-0002")
+    assert result == {"sub-0002_ses-01", "sub-0002_ses-02", "sub-0002_ses-03"}
+
+
+# ---------------------------------------------------------------------------
+# main() — new session added (template staleness)
+# ---------------------------------------------------------------------------
+
+
+def test_main_new_session_added_rebuilds_template_and_longitudinals(tmp_path):
+    """When a new session is added, template must rebuild and all longitudinals re-run."""
+    bids = tmp_path / "bids"
+    output = tmp_path / "freesurfer"
+    _make_t1w(bids, "sub-0001", "ses-01")
+    _make_t1w(bids, "sub-0001", "ses-02")  # new session
+    # ses-01 cross-sectional already done
+    _touch_done(output, "sub-0001_ses-01")
+    # Template built with ses-01 only (stale)
+    _touch_template_done(output, "sub-0001", ["ses-01"])
+    # ses-01 longitudinal done (but against stale template — must re-run)
+    _touch_done(output, "sub-0001_ses-01.long.sub-0001")
+
+    calls = []
+
+    def fake_run(cmd, label):
+        calls.append(label)
+        return 0
+
+    with patch("snbb_scheduler.freesurfer._run", side_effect=fake_run):
+        rc = main([
+            "--bids-dir", str(bids),
+            "--output-dir", str(output),
+            "--subject", "sub-0001",
+        ])
+
+    assert rc == 0
+    # Expected: ses-02 cross-sec + template (rebuild) + ses-01 long (re-run) + ses-02 long
+    assert len(calls) == 4
+    assert any("cross-sectional" in c and "ses-02" in c for c in calls)
+    assert any("template" in c for c in calls)
+    assert any("longitudinal" in c and "ses-01" in c for c in calls)
+    assert any("longitudinal" in c and "ses-02" in c for c in calls)
+    # ses-01 cross-sectional must NOT re-run
+    assert not any("cross-sectional" in c and "ses-01" in c for c in calls)
+
+
+def test_main_stale_template_no_new_sessions_but_missing_cmdargs_rebuilds(tmp_path):
+    """Template done-file without CMDARGS is treated as stale → rebuild."""
+    bids = tmp_path / "bids"
+    output = tmp_path / "freesurfer"
+    _make_t1w(bids, "sub-0001", "ses-01")
+    _make_t1w(bids, "sub-0001", "ses-02")
+    _touch_done(output, "sub-0001_ses-01")
+    _touch_done(output, "sub-0001_ses-02")
+    _touch_done(output, "sub-0001")  # no CMDARGS → treated as stale
+
+    calls = []
+
+    def fake_run(cmd, label):
+        calls.append(label)
+        return 0
+
+    with patch("snbb_scheduler.freesurfer._run", side_effect=fake_run):
+        rc = main([
+            "--bids-dir", str(bids),
+            "--output-dir", str(output),
+            "--subject", "sub-0001",
+        ])
+
+    assert rc == 0
+    # Template rebuilds + both longitudinals
+    assert any("template" in c for c in calls)
+    assert any("longitudinal" in c and "ses-01" in c for c in calls)
+    assert any("longitudinal" in c and "ses-02" in c for c in calls)

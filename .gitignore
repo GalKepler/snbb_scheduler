@@ -40,3 +40,6 @@ deface_wf
 
 # MKDocs
 site/
+
+# Scripts
+scripts/snbb_run_cat12.py
