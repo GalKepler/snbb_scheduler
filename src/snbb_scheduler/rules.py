@@ -81,6 +81,9 @@ def _completion_kwargs(
             "subject": subject,
             "session": row["session"],
         }
+        fs_path = row.get("freesurfer_path")
+        if fs_path is not None:
+            kwargs["freesurfer_path"] = fs_path
         if config.qsirecon_spec is not None:
             kwargs["recon_spec"] = config.qsirecon_spec
         return kwargs

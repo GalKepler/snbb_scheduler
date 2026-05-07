@@ -275,6 +275,12 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
     Falls back to a wildcard HTML glob when no ``recon_spec`` is given, and to
     ``_dir_nonempty`` when ``derivatives_root``, ``subject``, or ``session``
     are absent.
+
+    When ``freesurfer_path`` is provided, also checks staleness: if the
+    FreeSurfer template (``scripts/recon-all.done``) is newer than any
+    QSIRecon HTML output, QSIRecon is considered stale and must re-run.
+    This handles the case where FreeSurfer re-ran due to new sessions being
+    added (longitudinal template rebuilt), invalidating the QSIRecon outputs.
     """
     derivatives_root = kwargs.get("derivatives_root")
     subject = kwargs.get("subject")
@@ -284,10 +290,12 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
 
     qsirecon_root = Path(derivatives_root) / "qsirecon"
     recon_spec = kwargs.get("recon_spec")
+    freesurfer_path = kwargs.get("freesurfer_path")
 
     if recon_spec is not None:
         suffixes = _parse_qsirecon_suffixes(str(recon_spec))
         if suffixes:
+            html_files: list[Path] = []
             for suffix in suffixes:
                 html = (
                     qsirecon_root
@@ -297,16 +305,44 @@ def _qsirecon_check(proc: Procedure, output_path: Path, **kwargs) -> bool:
                 )
                 if not html.exists():
                     return False
+                html_files.append(html)
+            if freesurfer_path is not None and _qsirecon_stale(
+                Path(freesurfer_path), html_files
+            ):
+                return False
             return True
         # spec missing/empty → fall through to wildcard
 
     # Fallback: any matching HTML under derivatives/
-    return any(qsirecon_root.glob(f"derivatives/*/{subject}_{session}.html"))
+    html_files = list(qsirecon_root.glob(f"derivatives/*/{subject}_{session}.html"))
+    if not html_files:
+        return False
+    if freesurfer_path is not None and _qsirecon_stale(Path(freesurfer_path), html_files):
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _qsirecon_stale(freesurfer_path: Path, qsirecon_outputs: list[Path]) -> bool:
+    """Return True if any QSIRecon output predates the FreeSurfer template.
+
+    When FreeSurfer re-runs for a new session the longitudinal template is
+    rebuilt, invalidating prior QSIRecon outputs.  Comparing mtimes of the
+    FreeSurfer ``scripts/recon-all.done`` marker against each HTML report
+    detects this without any additional bookkeeping.
+    """
+    fs_done = freesurfer_path / "scripts" / "recon-all.done"
+    if not fs_done.exists():
+        return False
+    try:
+        fs_mtime = fs_done.stat().st_mtime
+        return any(f.stat().st_mtime < fs_mtime for f in qsirecon_outputs)
+    except OSError:
+        return False
 
 
 @lru_cache(maxsize=4)

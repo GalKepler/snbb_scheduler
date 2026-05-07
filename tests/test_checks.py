@@ -873,6 +873,185 @@ def test_qsirecon_recon_spec_empty_falls_back_to_wildcard(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# QSIRecon staleness check (FreeSurfer re-ran after QSIRecon)
+# ---------------------------------------------------------------------------
+
+
+def test_qsirecon_stale_when_freesurfer_newer_wildcard(tmp_path):
+    """QSIRecon incomplete when FreeSurfer template is newer than existing HTML (wildcard path)."""
+    import os
+    import time
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3"
+    pipeline_dir.mkdir(parents=True)
+    html = pipeline_dir / f"{subject}_{session}.html"
+    html.touch()
+
+    # FreeSurfer done file written after the HTML (newer)
+    fs_subject_dir = derivatives_root / "freesurfer" / subject
+    fs_scripts = fs_subject_dir / "scripts"
+    fs_scripts.mkdir(parents=True)
+    fs_done = fs_scripts / "recon-all.done"
+    fs_done.write_text("-----\nrecon-all done\n")
+
+    old_time = time.time() - 100
+    os.utime(html, (old_time, old_time))
+
+    assert (
+        is_complete(
+            qsirecon,
+            derivatives_root / "qsirecon" / subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            freesurfer_path=fs_subject_dir,
+        )
+        is False
+    )
+
+
+def test_qsirecon_not_stale_when_html_newer_than_freesurfer(tmp_path):
+    """QSIRecon complete when HTML is newer than FreeSurfer template."""
+    import os
+    import time
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3"
+    pipeline_dir.mkdir(parents=True)
+    html = pipeline_dir / f"{subject}_{session}.html"
+    html.touch()
+
+    fs_subject_dir = derivatives_root / "freesurfer" / subject
+    fs_scripts = fs_subject_dir / "scripts"
+    fs_scripts.mkdir(parents=True)
+    fs_done = fs_scripts / "recon-all.done"
+    fs_done.write_text("-----\nrecon-all done\n")
+
+    # FreeSurfer done is older than HTML
+    old_time = time.time() - 100
+    os.utime(fs_done, (old_time, old_time))
+
+    assert (
+        is_complete(
+            qsirecon,
+            derivatives_root / "qsirecon" / subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            freesurfer_path=fs_subject_dir,
+        )
+        is True
+    )
+
+
+def test_qsirecon_no_staleness_when_freesurfer_path_absent(tmp_path):
+    """Without freesurfer_path kwarg, staleness check is skipped."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3"
+    pipeline_dir.mkdir(parents=True)
+    (pipeline_dir / f"{subject}_{session}.html").touch()
+
+    assert (
+        is_complete(
+            qsirecon,
+            derivatives_root / "qsirecon" / subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+        )
+        is True
+    )
+
+
+def test_qsirecon_no_staleness_when_fs_done_missing(tmp_path):
+    """Staleness check skipped when FreeSurfer recon-all.done does not exist."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+
+    pipeline_dir = derivatives_root / "qsirecon" / "derivatives" / "qsirecon-MRtrix3"
+    pipeline_dir.mkdir(parents=True)
+    (pipeline_dir / f"{subject}_{session}.html").touch()
+
+    fs_subject_dir = derivatives_root / "freesurfer" / subject  # no recon-all.done
+
+    assert (
+        is_complete(
+            qsirecon,
+            derivatives_root / "qsirecon" / subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            freesurfer_path=fs_subject_dir,
+        )
+        is True
+    )
+
+
+def test_qsirecon_stale_with_recon_spec(tmp_path):
+    """QSIRecon incomplete when FreeSurfer template newer than HTML (recon_spec path)."""
+    import os
+    import time
+    import yaml as _yaml
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    qsirecon = next(p for p in DEFAULT_PROCEDURES if p.name == "qsirecon")
+
+    subject, session = "sub-0001", "ses-01"
+    derivatives_root = tmp_path / "derivatives"
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(_yaml.dump({"nodes": [{"qsirecon_suffix": "MRtrix3"}]}))
+
+    qsirecon_root = derivatives_root / "qsirecon"
+    d = qsirecon_root / "derivatives" / "qsirecon-MRtrix3"
+    d.mkdir(parents=True)
+    html = d / f"{subject}_{session}.html"
+    html.touch()
+
+    fs_subject_dir = derivatives_root / "freesurfer" / subject
+    fs_scripts = fs_subject_dir / "scripts"
+    fs_scripts.mkdir(parents=True)
+    fs_done = fs_scripts / "recon-all.done"
+    fs_done.write_text("-----\nrecon-all done\n")
+
+    old_time = time.time() - 100
+    os.utime(html, (old_time, old_time))
+
+    assert (
+        is_complete(
+            qsirecon,
+            qsirecon_root / subject,
+            derivatives_root=derivatives_root,
+            subject=subject,
+            session=session,
+            recon_spec=spec,
+            freesurfer_path=fs_subject_dir,
+        )
+        is False
+    )
+
+
+# ---------------------------------------------------------------------------
 # Legacy qsiprep session-level marker tests
 # ---------------------------------------------------------------------------
 
