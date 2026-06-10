@@ -19,6 +19,8 @@ class Procedure:
     scope: Literal["session", "subject"] = "session"
     depends_on: list[str] = field(default_factory=list)
     completion_marker: str | list[str] | None = None
+    # Slurm nice value (higher = lower priority). None = omit --nice from sbatch.
+    slurm_nice: int | None = None
     # completion_marker semantics:
     #   None          → output directory must exist (non-empty)
     #   "path/file"   → that specific file must exist inside the output dir
@@ -33,6 +35,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_bids.sh",
         scope="session",
         depends_on=[],
+        slurm_nice=0,
         completion_marker=[
             "anat/*_T1w.nii.gz",
             "dwi/*dir-AP*_dwi.nii.gz",
@@ -52,6 +55,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_bids_post.sh",
         scope="session",
         depends_on=["bids"],
+        slurm_nice=10,
         # Completion marker: the derived DWI fmap NIfTI written by bids_post.
         completion_marker="fmap/*acq-dwi*_epi.nii.gz",
     ),
@@ -61,6 +65,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_defacing.sh",
         scope="session",
         depends_on=["bids_post"],
+        slurm_nice=10,
         completion_marker="anat/*acq-defaced*_T1w.nii.gz",
     ),
     Procedure(
@@ -69,6 +74,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_qsiprep.sh",
         scope="session",
         depends_on=["bids_post"],
+        slurm_nice=20,
         completion_marker=[
             "*.html",
             "dwi/*desc-preproc_dwi.nii.gz",
@@ -91,6 +97,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_freesurfer.sh",
         scope="subject",
         depends_on=["bids_post"],
+        slurm_nice=20,
         completion_marker=None,  # specialised check: freesurfer
     ),
     # ─────────────────────────────────────────────────────────────────────────
@@ -100,6 +107,7 @@ DEFAULT_PROCEDURES: list[Procedure] = [
         script="snbb_run_qsirecon.sh",
         scope="session",
         depends_on=["qsiprep", "freesurfer"],
+        slurm_nice=30,
         completion_marker=None,
     ),
 ]
@@ -168,6 +176,13 @@ class SchedulerConfig:
     subject_col: str = "UID"
     session_col: str = "ScanID"
 
+    # SQLite completion cache. Defaults to <state_file parent>/.completion_cache.db
+    completion_cache_file: Path | None = None
+
+    # Entries in the completion cache older than this are re-verified on next scan/run.
+    # Set to 0 to disable expiry (entries are permanent until explicitly cleared).
+    completion_cache_ttl_hours: int = 24
+
     # Procedure registry — add new procedures here or via YAML
     procedures: list[Procedure] = field(
         default_factory=lambda: list(DEFAULT_PROCEDURES)
@@ -193,6 +208,16 @@ class SchedulerConfig:
                         f"Procedure {proc.name!r} depends on {dep!r}, which is not "
                         f"in the procedures list. Known procedures: {sorted(known)}"
                     )
+
+    def resolved_cache_path(self) -> Path:
+        """Return the effective completion cache file path.
+
+        Uses ``completion_cache_file`` when explicitly set, otherwise derives
+        the path from the state file's parent directory.
+        """
+        if self.completion_cache_file is not None:
+            return self.completion_cache_file
+        return Path(self.state_file).parent / ".completion_cache.db"
 
     def get_procedure_root(self, proc: Procedure) -> Path:
         """Return the base output root for a procedure.
@@ -238,6 +263,7 @@ class SchedulerConfig:
             "log_file",
             "local_tmp_root",
             "qsirecon_spec",
+            "completion_cache_file",
         }
         for key in path_fields:
             if data.get(key) is not None:

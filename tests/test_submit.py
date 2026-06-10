@@ -627,3 +627,79 @@ def test_submit_local_tmp_root_not_added_when_none(cfg):
         submit_task(make_row(procedure="bids"), cfg)
     cmd = mock_run.call_args[0][0]
     assert not any("SNBB_LOCAL_TMP_ROOT" in arg for arg in cmd)
+
+
+# ---------------------------------------------------------------------------
+# slurm_nice
+# ---------------------------------------------------------------------------
+
+
+def test_submit_nice_flag_when_set(tmp_path):
+    """--nice is passed when Procedure.slurm_nice is not None."""
+    from snbb_scheduler.config import Procedure
+    cfg_nice = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        procedures=[
+            Procedure(name="bids", output_dir="", script="run_bids.sh",
+                      scope="session", slurm_nice=10),
+        ],
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_nice)
+    cmd = mock_run.call_args[0][0]
+    assert "--nice=10" in cmd
+
+
+def test_submit_nice_flag_absent_when_none(tmp_path):
+    """--nice is omitted when Procedure.slurm_nice is None."""
+    from snbb_scheduler.config import Procedure
+    cfg_no_nice = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        procedures=[
+            Procedure(name="bids", output_dir="", script="run_bids.sh",
+                      scope="session", slurm_nice=None),
+        ],
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_no_nice)
+    cmd = mock_run.call_args[0][0]
+    assert not any(arg.startswith("--nice") for arg in cmd)
+
+
+def test_submit_nice_zero_is_passed(tmp_path):
+    """--nice=0 is passed explicitly when slurm_nice=0."""
+    from snbb_scheduler.config import Procedure
+    cfg_zero = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        procedures=[
+            Procedure(name="bids", output_dir="", script="run_bids.sh",
+                      scope="session", slurm_nice=0),
+        ],
+    )
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(procedure="bids"), cfg_zero)
+    cmd = mock_run.call_args[0][0]
+    assert "--nice=0" in cmd
+
+
+def test_default_procedures_have_nice_values():
+    """All DEFAULT_PROCEDURES have slurm_nice set (no None)."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    for proc in DEFAULT_PROCEDURES:
+        assert proc.slurm_nice is not None, f"{proc.name} missing slurm_nice"
+
+
+def test_default_procedures_nice_ordering():
+    """Earlier procedures have lower (or equal) nice values than later ones."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+    nices = [p.slurm_nice for p in DEFAULT_PROCEDURES if p.slurm_nice is not None]
+    assert nices == sorted(nices), "slurm_nice should be non-decreasing by procedure order"

@@ -73,6 +73,8 @@ def submit_task(
         cmd.append(f"--mem={config.slurm_mem}")
     if config.slurm_cpus_per_task:
         cmd.append(f"--cpus-per-task={config.slurm_cpus_per_task}")
+    if proc.slurm_nice is not None:
+        cmd.append(f"--nice={proc.slurm_nice}")
     if config.slurm_log_dir is not None:
         log_subdir = config.slurm_log_dir / row["procedure"]
         log_subdir.mkdir(parents=True, exist_ok=True)

@@ -593,3 +593,69 @@ def test_reconcile_freesurfer_incomplete_missing_longitudinal(cfg, tmp_path):
     state = pd.DataFrame([make_state_row(subject, "", "freesurfer", "pending")])
     result = reconcile_with_filesystem(state, cfg)
     assert result.iloc[0]["status"] == "pending"
+
+
+# ---------------------------------------------------------------------------
+# completion_cache integration
+# ---------------------------------------------------------------------------
+
+
+def test_build_manifest_skips_completion_cache_hits(cfg, tmp_path):
+    """build_manifest skips is_complete() for entries cached as complete."""
+    from snbb_scheduler.cache import CompletionCache
+    from snbb_scheduler.sessions import discover_sessions
+
+    # Provide DICOM but no BIDS output
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    sessions = discover_sessions(cfg)
+
+    # Without cache: bids should appear in manifest (incomplete)
+    manifest_no_cache = build_manifest(sessions, cfg)
+    assert "bids" in manifest_no_cache["procedure"].values
+
+    # Pre-populate SQLite cache saying bids is complete
+    with CompletionCache(cfg.resolved_cache_path(), ttl_hours=24) as cc:
+        cc.set("sub-0001", "ses-01", "bids", True)
+
+    # With cache: bids should be skipped
+    with CompletionCache(cfg.resolved_cache_path(), ttl_hours=24) as cc:
+        manifest_cached = build_manifest(sessions, cfg, completion_cache=cc)
+    assert "bids" not in manifest_cached["procedure"].values
+
+
+def test_build_manifest_force_bypasses_completion_cache(cfg, tmp_path):
+    """--force ignores the completion cache."""
+    from snbb_scheduler.cache import CompletionCache
+    from snbb_scheduler.sessions import discover_sessions
+
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    sessions = discover_sessions(cfg)
+
+    # Cache says bids is complete
+    with CompletionCache(cfg.resolved_cache_path(), ttl_hours=24) as cc:
+        cc.set("sub-0001", "ses-01", "bids", True)
+
+    # Force should still include bids
+    with CompletionCache(cfg.resolved_cache_path(), ttl_hours=24) as cc:
+        manifest_forced = build_manifest(sessions, cfg, force=True, completion_cache=cc)
+    assert "bids" in manifest_forced["procedure"].values
+
+
+def test_reconcile_writes_to_completion_cache(cfg, tmp_path):
+    """reconcile_with_filesystem writes complete entries to SQLite cache."""
+    from snbb_scheduler.cache import CompletionCache
+
+    subject, session = "sub-0001", "ses-01"
+    # Create a valid bids_post output to make it "complete"
+    bids_fmap = tmp_path / "bids" / subject / session / "fmap"
+    bids_fmap.mkdir(parents=True)
+    (bids_fmap / "sub-0001_ses-01_acq-dwi_dir-PA_epi.nii.gz").touch()
+
+    state = pd.DataFrame([make_state_row(subject, session, "bids_post", "pending")])
+
+    with CompletionCache(cfg.resolved_cache_path(), ttl_hours=24) as cc:
+        from snbb_scheduler.manifest import reconcile_with_filesystem
+        reconcile_with_filesystem(state, cfg, completion_cache=cc)
+        cached = cc.get(subject, session, "bids_post")
+
+    assert cached is True

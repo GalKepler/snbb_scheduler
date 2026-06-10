@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["is_complete", "check_detailed", "FileCheckResult", "CompletionCache"]
+__all__ = ["is_complete", "check_detailed", "FileCheckResult", "RunCache"]
 
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -11,10 +11,10 @@ import yaml
 
 from snbb_scheduler.config import Procedure
 
-# Type alias for the completion result cache shared across a single scheduler run.
+# Type alias for the in-memory run cache shared across a single scheduler run.
 # Key: (proc_name, str(output_path), frozenset of stringified kwargs items)
 # Value: bool result of is_complete()
-CompletionCache = dict[tuple, bool]
+RunCache = dict[tuple, bool]
 
 
 def _cache_key(proc_name: str, output_path: Path, kwargs: dict) -> tuple:
@@ -62,7 +62,7 @@ def _register_check(name: str):
 def is_complete(
     proc: Procedure,
     output_path: Path,
-    cache: CompletionCache | None = None,
+    cache: RunCache | None = None,
     **kwargs,
 ) -> bool:
     """Return True if a procedure's output is considered complete.

@@ -13,6 +13,7 @@ from snbb_scheduler.rules import _completion_kwargs, build_rules
 
 if TYPE_CHECKING:
     from snbb_scheduler.audit import AuditLogger
+    from snbb_scheduler.cache import CompletionCache
 
 # Columns and dtypes for the state parquet file
 _STATE_COLUMNS = {
@@ -31,6 +32,7 @@ def build_manifest(
     force: bool = False,
     force_procedures: list[str] | None = None,
     cache: dict | None = None,
+    completion_cache: CompletionCache | None = None,
 ) -> pd.DataFrame:
     """Evaluate rules against all sessions and return a task manifest.
 
@@ -43,6 +45,9 @@ def build_manifest(
     When *force* is True, the self-completion check is skipped for all
     procedures (or only those in *force_procedures* when provided), so
     already-complete procedures are resubmitted.
+
+    When *completion_cache* is provided, entries marked complete in the
+    SQLite cache are skipped without any filesystem I/O (unless *force*).
     """
     if sessions.empty:
         return pd.DataFrame(columns=["subject", "session", "procedure", "dicom_path", "priority"])
@@ -57,10 +62,25 @@ def build_manifest(
     priority = {proc.name: i for i, proc in enumerate(config.procedures)}
     subject_scoped = {proc.name for proc in config.procedures if proc.scope == "subject"}
 
+    # Build forced-procedure set once
+    _force_set: set[str] | None = set(force_procedures) if force_procedures else None
+
     rows = []
     seen_subject_procs: set[tuple[str, str]] = set()
     for _, session_row in sessions.iterrows():
         for proc_name, rule in rules.items():
+            # Fast path: SQLite completion cache — skip if already complete
+            # (bypass filesystem I/O entirely unless force applies).
+            if completion_cache is not None:
+                _is_forced = force and (_force_set is None or proc_name in _force_set)
+                if not _is_forced:
+                    subject = session_row["subject"]
+                    proc = config.get_procedure(proc_name)
+                    cc_session = "" if proc.scope == "subject" else session_row["session"]
+                    cached = completion_cache.get(subject, cc_session, proc_name)
+                    if cached is True:
+                        continue
+
             # Fast path: skip rule evaluation entirely when any dependency is
             # already known-incomplete from the cache (zero new I/O).
             if cache:
@@ -144,6 +164,7 @@ def reconcile_with_filesystem(
     config: SchedulerConfig,
     audit: AuditLogger | None = None,
     cache: dict | None = None,
+    completion_cache: CompletionCache | None = None,
 ) -> pd.DataFrame:
     """Mark pending/running tasks as complete when their output exists on disk.
 
@@ -180,6 +201,8 @@ def reconcile_with_filesystem(
         if is_complete(proc, output_path, cache=cache, **kwargs):
             old_status = str(updated.at[idx, "status"])
             updated.at[idx, "status"] = "complete"
+            if completion_cache is not None:
+                completion_cache.set(subject, session or "", proc_name, True)
             if audit is not None:
                 audit.log(
                     "status_change",

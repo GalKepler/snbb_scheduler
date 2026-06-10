@@ -745,11 +745,10 @@ def test_session_status_no_sessions(runner, cfg_path):
 
 
 def test_session_status_output_exists(runner, tmp_path):
-    """When output exists on disk, the cell shows the output path."""
+    """Status mode: output exists → shows 'complete'. Paths mode: shows output path."""
     (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
     bids_dir = tmp_path / "bids" / "sub-0001" / "ses-01"
     bids_dir.mkdir(parents=True)
-    # Touch a file so the dir is non-empty (exists check)
     (bids_dir / "anat").mkdir()
     (bids_dir / "anat" / "T1w.nii.gz").touch()
 
@@ -766,7 +765,13 @@ def test_session_status_output_exists(runner, tmp_path):
         f"    scope: session\n"
     )
 
+    # Default mode (status) shows clean status string
     result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    assert result.exit_code == 0
+    assert "complete" in result.output
+
+    # --mode paths preserves legacy output-path display
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status", "--mode", "paths"])
     assert result.exit_code == 0
     assert str(bids_dir) in result.output
 
@@ -803,7 +808,7 @@ def test_session_status_log_path_when_state_with_job_id(runner, tmp_path):
     }])
     save_state(state, cfg)
 
-    result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status", "--mode", "paths"])
     assert result.exit_code == 0
     assert "bids_sub-0001_ses-01_12345.out" in result.output
 
@@ -843,7 +848,7 @@ def test_session_status_shows_status_string_without_log_dir(runner, tmp_path):
 
 
 def test_session_status_dash_when_no_state(runner, tmp_path):
-    """No state entry at all → shows '-'."""
+    """No state entry, no output → status mode shows 'incomplete'; paths mode shows '-'."""
     (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
 
     yaml_file = tmp_path / "config.yaml"
@@ -861,7 +866,10 @@ def test_session_status_dash_when_no_state(runner, tmp_path):
 
     result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
     assert result.exit_code == 0
-    # The cell for bids should be "-"
+    assert "incomplete" in result.output
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status", "--mode", "paths"])
+    assert result.exit_code == 0
     assert "-" in result.output
 
 
@@ -901,17 +909,21 @@ def test_session_status_subject_scoped_same_for_all_sessions(runner, tmp_path):
     }])
     save_state(state, cfg)
 
+    # Status mode: both sessions show same status string (running)
     result = runner.invoke(main, ["--config", str(yaml_file), "session-status"])
     assert result.exit_code == 0
-    # Both sessions should show the same log path
     lines = [l for l in result.output.strip().split("\n") if "sub-0001" in l]
     assert len(lines) == 2
-    # Extract the freesurfer column value — should be identical
-    fs_values = set()
-    for line in lines:
-        parts = line.split()
-        # Last part is the freesurfer column
-        fs_values.add(parts[-1])
+    fs_values = set(line.split()[-1] for line in lines)
+    assert len(fs_values) == 1
+    assert "running" in fs_values.pop()
+
+    # Paths mode: both sessions show the same log path (includes job_id)
+    result = runner.invoke(main, ["--config", str(yaml_file), "session-status", "--mode", "paths"])
+    assert result.exit_code == 0
+    lines = [l for l in result.output.strip().split("\n") if "sub-0001" in l]
+    assert len(lines) == 2
+    fs_values = set(line.split()[-1] for line in lines)
     assert len(fs_values) == 1
     assert "555" in fs_values.pop()
 
@@ -1032,6 +1044,7 @@ def test_session_status_export_to_path(runner, tmp_path):
         f"dicom_root: {tmp_path / 'dicom'}\n"
         f"bids_root: {tmp_path / 'bids'}\n"
         f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
         f"procedures:\n"
         f"  - name: bids\n"
         f"    output_dir: bids\n"
@@ -1059,6 +1072,7 @@ def test_session_status_export_to_report_dir(runner, tmp_path):
         f"dicom_root: {tmp_path / 'dicom'}\n"
         f"bids_root: {tmp_path / 'bids'}\n"
         f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
         f"audit:\n"
         f"  report_dir: {report_dir}\n"
         f"procedures:\n"
@@ -1076,6 +1090,213 @@ def test_session_status_export_to_report_dir(runner, tmp_path):
     assert len(csvs) == 1
     reader = csv.reader(csvs[0].read_text().splitlines())
     assert list(reader)[0][0] == "subject"
+
+
+# ---------------------------------------------------------------------------
+# scan command
+# ---------------------------------------------------------------------------
+
+
+def test_scan_help(runner):
+    result = runner.invoke(main, ["scan", "--help"])
+    assert result.exit_code == 0
+    assert "--force" in result.output
+    assert "--subject" in result.output
+    assert "--procedure" in result.output
+
+
+def test_scan_no_sessions(runner, cfg_path):
+    result = runner.invoke(main, ["--config", str(cfg_path), "scan"])
+    assert result.exit_code == 0
+    assert "No sessions found" in result.output
+
+
+def test_scan_populates_cache(runner, tmp_path):
+    """scan writes is_complete results to SQLite cache."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    bids_dir = tmp_path / "bids" / "sub-0001" / "ses-01"
+    bids_dir.mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    result = runner.invoke(main, ["--config", str(yaml_file), "scan"])
+    assert result.exit_code == 0
+    assert "incomplete" in result.output or "complete" in result.output
+
+    from snbb_scheduler.cache import CompletionCache
+    from snbb_scheduler.config import SchedulerConfig
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+    with CompletionCache(cfg.resolved_cache_path()) as cc:
+        val = cc.get("sub-0001", "ses-01", "bids")
+    assert val is not None  # entry was written
+
+
+def test_scan_skips_fresh_entries(runner, tmp_path):
+    """scan --force re-checks all; without --force, skips fresh entries."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    # First scan: no entries → all checked
+    result1 = runner.invoke(main, ["--config", str(yaml_file), "scan"])
+    assert result1.exit_code == 0
+    assert "skipped" not in result1.output
+
+    # Second scan without --force: entry is fresh → skipped
+    result2 = runner.invoke(main, ["--config", str(yaml_file), "scan"])
+    assert result2.exit_code == 0
+    assert "skipped (fresh)" in result2.output
+
+    # Third scan with --force: re-checks everything
+    result3 = runner.invoke(main, ["--config", str(yaml_file), "scan", "--force"])
+    assert result3.exit_code == 0
+    assert "skipped" not in result3.output
+
+
+def test_scan_unknown_procedure(runner, tmp_path):
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    result = runner.invoke(main, ["--config", str(yaml_file), "scan", "--procedure", "nope"])
+    assert result.exit_code == 0
+    assert "Unknown procedure" in result.output
+
+
+# ---------------------------------------------------------------------------
+# session-status --mode status
+# ---------------------------------------------------------------------------
+
+
+def test_session_status_mode_status_complete(runner, tmp_path):
+    """--mode status shows 'complete' when output exists."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+    bids_dir = tmp_path / "bids" / "sub-0001" / "ses-01"
+    bids_dir.mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--mode", "status"]
+    )
+    assert result.exit_code == 0
+    assert "complete" in result.output
+    assert str(bids_dir) not in result.output
+
+
+def test_session_status_mode_status_reads_from_cache(runner, tmp_path):
+    """status mode reads from SQLite cache without extra filesystem I/O."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+
+    from snbb_scheduler.cache import CompletionCache
+    from snbb_scheduler.config import SchedulerConfig
+    cfg = SchedulerConfig.from_yaml(yaml_file)
+
+    # Pre-populate cache with "complete"
+    with CompletionCache(cfg.resolved_cache_path()) as cc:
+        cc.set("sub-0001", "ses-01", "bids", True)
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--mode", "status"]
+    )
+    assert result.exit_code == 0
+    assert "complete" in result.output
+
+
+def test_session_status_mode_status_pending_from_state(runner, tmp_path):
+    """status mode surfaces pending/running/failed from state when incomplete."""
+    (tmp_path / "dicom" / "sub-0001" / "ses-01").mkdir(parents=True)
+
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(
+        f"dicom_root: {tmp_path / 'dicom'}\n"
+        f"bids_root: {tmp_path / 'bids'}\n"
+        f"derivatives_root: {tmp_path / 'derivatives'}\n"
+        f"state_file: {tmp_path / 'state.parquet'}\n"
+        f"procedures:\n"
+        f"  - name: bids\n"
+        f"    output_dir: ''\n"
+        f"    script: run_bids.sh\n"
+        f"    scope: session\n"
+    )
+    cfg = SchedulerConfig(
+        dicom_root=tmp_path / "dicom",
+        bids_root=tmp_path / "bids",
+        derivatives_root=tmp_path / "derivatives",
+        state_file=tmp_path / "state.parquet",
+        procedures=_simple_procedures()[:1],
+    )
+    state = pd.DataFrame([{
+        "subject": "sub-0001", "session": "ses-01", "procedure": "bids",
+        "status": "pending", "submitted_at": pd.Timestamp("2024-01-01"), "job_id": "42",
+    }])
+    save_state(state, cfg)
+
+    result = runner.invoke(
+        main, ["--config", str(yaml_file), "session-status", "--mode", "status"]
+    )
+    assert result.exit_code == 0
+    assert "pending" in result.output
+
+
+def test_session_status_help_shows_mode(runner):
+    result = runner.invoke(main, ["session-status", "--help"])
+    assert result.exit_code == 0
+    assert "--mode" in result.output
 
 
 # ---------------------------------------------------------------------------

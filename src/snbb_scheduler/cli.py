@@ -6,6 +6,7 @@ import click
 import pandas as pd
 
 from snbb_scheduler.audit import get_logger
+from snbb_scheduler.cache import CompletionCache
 from snbb_scheduler.config import SchedulerConfig
 from snbb_scheduler.manifest import (
     build_manifest,
@@ -110,32 +111,42 @@ def run(
 
     cache: dict = {}
     force_procedures = [procedure] if (force and procedure) else None
-    manifest = build_manifest(sessions, config, force=force, force_procedures=force_procedures, cache=cache)
-    click.echo(f"  {len(manifest)} task(s) need processing.")
 
-    state = load_state(config)
+    with CompletionCache(
+        config.resolved_cache_path(), ttl_hours=config.completion_cache_ttl_hours
+    ) as cc:
+        manifest = build_manifest(
+            sessions, config,
+            force=force, force_procedures=force_procedures,
+            cache=cache, completion_cache=cc,
+        )
+        click.echo(f"  {len(manifest)} task(s) need processing.")
 
-    if not skip_monitor and not state.empty:
-        try:
-            updated = update_state_from_sacct(state, audit)
-            updated = reconcile_with_filesystem(updated, config, audit, cache=cache)
-            if not updated.equals(state):
-                save_state(updated, config)
-                state = updated
-        except Exception as exc:  # noqa: BLE001
-            logging.getLogger(__name__).warning("Monitor update failed: %s", exc)
+        state = load_state(config)
 
-    if force:
-        click.echo("  --force: skipping in-flight filter.")
-    else:
-        manifest = filter_in_flight(manifest, state)
-        click.echo(f"  {len(manifest)} task(s) after filtering in-flight jobs.")
+        if not skip_monitor and not state.empty:
+            try:
+                updated = update_state_from_sacct(state, audit)
+                updated = reconcile_with_filesystem(
+                    updated, config, audit, cache=cache, completion_cache=cc
+                )
+                if not updated.equals(state):
+                    save_state(updated, config)
+                    state = updated
+            except Exception as exc:  # noqa: BLE001
+                logging.getLogger(__name__).warning("Monitor update failed: %s", exc)
 
-    if manifest.empty:
-        click.echo("Nothing to submit.")
-        return
+        if force:
+            click.echo("  --force: skipping in-flight filter.")
+        else:
+            manifest = filter_in_flight(manifest, state)
+            click.echo(f"  {len(manifest)} task(s) after filtering in-flight jobs.")
 
-    new_state = submit_manifest(manifest, config, dry_run=dry_run, audit=audit)
+        if manifest.empty:
+            click.echo("Nothing to submit.")
+            return
+
+        new_state = submit_manifest(manifest, config, dry_run=dry_run, audit=audit)
 
     if not dry_run:
         parts = [df for df in (state, new_state) if not df.empty]
@@ -161,6 +172,103 @@ def show_manifest(ctx: click.Context) -> None:
         return
 
     click.echo(manifest[["subject", "session", "procedure", "priority"]].to_string(index=False))
+
+
+@main.command()
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Re-check all sessions even if cache entries are fresh.",
+)
+@click.option("--subject", default=None, help="Limit scan to a single subject.")
+@click.option("--procedure", default=None, help="Limit scan to a single procedure.")
+@click.pass_context
+def scan(
+    ctx: click.Context,
+    force: bool,
+    subject: str | None,
+    procedure: str | None,
+) -> None:
+    """Scan filesystem and populate the completion cache.
+
+    Runs is_complete() for every (session, procedure) pair and writes results
+    to the SQLite completion cache. Subsequent calls to session-status and run
+    read from this cache instead of hitting the filesystem.
+
+    Run once after bulk external processing, or schedule alongside the daily
+    snbb-scheduler run.
+    """
+    from snbb_scheduler.checks import is_complete
+    from snbb_scheduler.rules import _completion_kwargs
+
+    config: SchedulerConfig = ctx.obj["config"]
+    sessions = discover_sessions(config)
+
+    if sessions.empty:
+        click.echo("No sessions found.")
+        return
+
+    if subject is not None:
+        sessions = sessions[sessions["subject"] == subject]
+        if sessions.empty:
+            click.echo(f"No sessions for subject {subject!r}.")
+            return
+
+    procedures = config.procedures
+    if procedure is not None:
+        procedures = [p for p in procedures if p.name == procedure]
+        if not procedures:
+            click.echo(f"Unknown procedure {procedure!r}.")
+            return
+
+    subject_scoped = {p.name for p in procedures if p.scope == "subject"}
+    seen_subject_procs: set[tuple[str, str]] = set()
+
+    cache_path = config.resolved_cache_path()
+    ttl = 0 if force else config.completion_cache_ttl_hours
+
+    total = complete = incomplete = skipped = 0
+
+    with CompletionCache(cache_path, ttl_hours=ttl) as cc:
+        run_cache: dict = {}
+        for _, sess_row in sessions.iterrows():
+            subj = sess_row["subject"]
+            ses = sess_row["session"]
+
+            for proc in procedures:
+                cc_session = "" if proc.scope == "subject" else ses
+
+                # Subject-scoped: only check once per subject
+                if proc.scope == "subject":
+                    key = (subj, proc.name)
+                    if key in seen_subject_procs:
+                        continue
+                    seen_subject_procs.add(key)
+
+                # Skip fresh cache entries unless --force
+                if not force and cc.is_fresh(subj, cc_session, proc.name):
+                    skipped += 1
+                    continue
+
+                root = config.get_procedure_root(proc)
+                output_path = (
+                    root / subj if proc.scope == "subject" else root / subj / ses
+                )
+                kwargs = _completion_kwargs(proc, sess_row, config)
+                result = is_complete(proc, output_path, cache=run_cache, **kwargs)
+                cc.set(subj, cc_session, proc.name, result)
+                total += 1
+                if result:
+                    complete += 1
+                else:
+                    incomplete += 1
+
+    click.echo(
+        f"Scan complete: {complete} complete, {incomplete} incomplete"
+        + (f", {skipped} skipped (fresh)" if skipped else "")
+        + f". Cache: {cache_path}"
+    )
 
 
 @main.command()
@@ -220,8 +328,25 @@ def status(ctx: click.Context) -> None:
     default="table",
     help="Output format.",
 )
+@click.option(
+    "--mode",
+    "mode",
+    type=click.Choice(["paths", "status"]),
+    default="status",
+    show_default=True,
+    help=(
+        "paths: show output paths / log paths (legacy). "
+        "status: show clean completion status strings (complete/incomplete/pending/running/failed/-)."
+    ),
+)
 @click.option("--subject", default=None, help="Filter to a single subject.")
 @click.option("--procedure", default=None, help="Show only this procedure column.")
+@click.option(
+    "--fresh",
+    is_flag=True,
+    default=False,
+    help="Re-check filesystem even for entries present in the completion cache.",
+)
 @click.option(
     "--export",
     "export_path",
@@ -240,17 +365,30 @@ def status(ctx: click.Context) -> None:
 def session_status(
     ctx: click.Context,
     output_format: str,
+    mode: str,
     subject: str | None,
     procedure: str | None,
+    fresh: bool,
     export_path: str | None,
     export_to_report_dir: bool,
 ) -> None:
-    """Show per-session status with output paths or log file locations."""
+    """Show per-session completion status.
+
+    By default (--mode status) produces a clean pivot table of status strings,
+    reading from the SQLite completion cache when available. Use `snbb-scheduler scan`
+    to populate or refresh the cache before running this command.
+
+    Use --mode paths for the legacy view showing output paths and log file locations.
+    """
     import datetime
     from pathlib import Path
 
     config: SchedulerConfig = ctx.obj["config"]
-    table = build_session_status_table(config)
+
+    if mode == "status":
+        table = _build_status_table(config, fresh=fresh)
+    else:
+        table = build_session_status_table(config)
 
     if table.empty:
         click.echo("No sessions found.")
@@ -283,6 +421,108 @@ def session_status(
         dest.parent.mkdir(parents=True, exist_ok=True)
         table.to_csv(dest, index=False)
         click.echo(f"Session status CSV exported to {dest}")
+
+
+def _build_status_table(config: SchedulerConfig, fresh: bool = False) -> pd.DataFrame:
+    """Build a clean status-string pivot table: subject × session × procedure.
+
+    Cell values: complete | incomplete | pending | running | failed | -
+
+    Reads from the SQLite completion cache first. When *fresh* is True,
+    re-checks filesystem for every entry (ignores cache TTL).
+    Falls back to the state file for jobs not yet scanned.
+    """
+    from snbb_scheduler.checks import is_complete
+    from snbb_scheduler.rules import _completion_kwargs
+
+    sessions = discover_sessions(config)
+    if sessions.empty:
+        cols = ["subject", "session"] + [p.name for p in config.procedures]
+        return pd.DataFrame(columns=cols)
+
+    state = load_state(config)
+    if not state.empty:
+        state = state.sort_values("submitted_at", ascending=False).drop_duplicates(
+            subset=["subject", "session", "procedure"], keep="first"
+        )
+
+    ttl = 0 if fresh else config.completion_cache_ttl_hours
+    run_cache: dict = {}
+    # Stores computed status for subject-scoped procs so all sessions share same value
+    subject_proc_cache: dict[tuple[str, str], str] = {}
+
+    rows = []
+    with CompletionCache(config.resolved_cache_path(), ttl_hours=ttl) as cc:
+        for _, sess_row in sessions.iterrows():
+            subj = sess_row["subject"]
+            ses = sess_row["session"]
+            out: dict = {"subject": subj, "session": ses}
+
+            for proc in config.procedures:
+                cc_session = "" if proc.scope == "subject" else ses
+
+                # Subject-scoped: reuse already-computed value for this subject
+                if proc.scope == "subject":
+                    sp_key = (subj, proc.name)
+                    if sp_key in subject_proc_cache:
+                        out[proc.name] = subject_proc_cache[sp_key]
+                        continue
+
+                # 1. Try SQLite cache
+                cached = cc.get(subj, cc_session, proc.name)
+                if cached is not None:
+                    val = "complete" if cached else "incomplete"
+                    # Even on cache hit, check state to surface pending/running/failed
+                    if not cached and not state.empty:
+                        if proc.scope == "subject":
+                            mask = (
+                                (state["subject"] == subj)
+                                & (state["procedure"] == proc.name)
+                            )
+                        else:
+                            mask = (
+                                (state["subject"] == subj)
+                                & (state["session"] == ses)
+                                & (state["procedure"] == proc.name)
+                            )
+                        matched = state[mask]
+                        if not matched.empty:
+                            val = str(matched.iloc[0]["status"])
+                    out[proc.name] = val
+                    if proc.scope == "subject":
+                        subject_proc_cache[(subj, proc.name)] = val
+                    continue
+
+                # 2. Filesystem check (cache miss or --fresh)
+                root = config.get_procedure_root(proc)
+                output_path = (
+                    root / subj if proc.scope == "subject" else root / subj / ses
+                )
+                kwargs = _completion_kwargs(proc, sess_row, config)
+                result = is_complete(proc, output_path, cache=run_cache, **kwargs)
+                cc.set(subj, cc_session, proc.name, result)
+                val = "complete" if result else "incomplete"
+
+                if not result and not state.empty:
+                    if proc.scope == "subject":
+                        mask = (state["subject"] == subj) & (state["procedure"] == proc.name)
+                    else:
+                        mask = (
+                            (state["subject"] == subj)
+                            & (state["session"] == ses)
+                            & (state["procedure"] == proc.name)
+                        )
+                    matched = state[mask]
+                    if not matched.empty:
+                        val = str(matched.iloc[0]["status"])
+
+                out[proc.name] = val
+                if proc.scope == "subject":
+                    subject_proc_cache[(subj, proc.name)] = val
+
+            rows.append(out)
+
+    return pd.DataFrame(rows)
 
 
 @main.command()
