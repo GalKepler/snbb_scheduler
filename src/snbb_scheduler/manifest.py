@@ -98,6 +98,19 @@ def build_manifest(
                     continue
 
             if not rule(session_row):
+                # rule() computes the procedure's own is_complete() as its
+                # last step (when dependencies passed) and memoizes it in
+                # `cache`. Persist a True result to the SQLite cache so
+                # future runs skip this (subject, session, procedure) via
+                # the fast path above instead of re-checking the filesystem.
+                if completion_cache is not None and cache and not _is_forced:
+                    proc = config.get_procedure(proc_name)
+                    self_kwargs = _completion_kwargs(proc, session_row, config)
+                    key = _cache_key(proc_name, session_row[f"{proc_name}_path"], self_kwargs)
+                    if cache.get(key) is True:
+                        subject = session_row["subject"]
+                        cc_session = "" if proc.scope == "subject" else session_row["session"]
+                        completion_cache.set(subject, cc_session, proc_name, True)
                 continue
             subject = session_row["subject"]
             if proc_name in subject_scoped:

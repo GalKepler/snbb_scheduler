@@ -30,6 +30,9 @@ SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/f
 # then rsynced back to the remote destination on success.
 # Leave empty (default) to use remote paths directly.
 SNBB_LOCAL_TMP_ROOT="${SNBB_LOCAL_TMP_ROOT:-}"
+# Python interpreter — set to your venv python if snbb_scheduler is not on
+# the system python path, e.g. /home/yalab_dev/venvs/snbb/bin/python3
+SNBB_PYTHON="${SNBB_PYTHON:-python3}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # The longitudinal pipeline (3 sequential recon-all runs per session) can take
@@ -97,7 +100,7 @@ if [[ -n "${SNBB_LOCAL_TMP_ROOT}" ]]; then
 
     # Run the FreeSurfer longitudinal helper against local paths
     mkdir -p "${SNBB_FS_OUTPUT}"
-    python3 "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
+    "${SNBB_PYTHON}" "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
         --bids-dir    "${LOCAL_BIDS}" \
         --output-dir  "${LOCAL_FS_OUTPUT}" \
         --subject     "${SUBJECT}" \
@@ -121,7 +124,7 @@ else
     # ── Remote filesystem mode ────────────────────────────────────────────────
     mkdir -p "${SNBB_FS_OUTPUT}"
 
-    python3 "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
+    "${SNBB_PYTHON}" "/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py" \
         --bids-dir    "${SNBB_BIDS_ROOT}" \
         --output-dir  "${SNBB_FS_OUTPUT}" \
         --subject     "${SUBJECT}" \

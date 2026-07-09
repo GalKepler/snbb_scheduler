@@ -189,9 +189,10 @@ def _discover_from_file(config: SchedulerConfig) -> pd.DataFrame:
                 dicom_path = Path(str(raw_dicom))
                 dicom_exists = True
         else:
-            # Derive DICOM path from dicom_root using the sanitized session_id
-            # (special characters already stripped by sanitize_session_id).
-            dicom_path = config.dicom_root / row["ScanID"]
+            # Derive DICOM path from dicom_root using the raw session column value
+            # (original format, e.g. "20231015_1030") so it matches the actual
+            # DICOM directory name on disk.  BIDS paths use the sanitized form.
+            dicom_path = config.dicom_root / row[config.session_col]
             dicom_exists = None  # let _build_row check filesystem
         rows.append(
             _build_row(subject, session, dicom_path, config, dicom_exists=dicom_exists)
