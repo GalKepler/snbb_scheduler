@@ -20,6 +20,7 @@ from pathlib import Path
 from snbb_scheduler.checks import check_detailed, is_complete, _SPECIALIZED_CHECKS
 from snbb_scheduler.config import DEFAULT_PROCEDURES, SchedulerConfig
 from snbb_scheduler.rules import _completion_kwargs
+from snbb_scheduler.sessions import sanitize_session_id
 
 
 # ── ANSI colour helpers ──────────────────────────────────────────────────────
@@ -57,8 +58,9 @@ def _output_path(proc, config: SchedulerConfig, subject: str, session: str) -> P
 # ── Dicom check ──────────────────────────────────────────────────────────────
 
 
-def _dicom_exists(config: SchedulerConfig, subject: str, session: str) -> tuple[bool, Path]:
-    dicom_dir = config.dicom_root / subject / session
+def _dicom_exists(config: SchedulerConfig, subject: str, raw_session: str) -> tuple[bool, Path]:
+    """Check DICOM using the raw session label (original format with underscores)."""
+    dicom_dir = config.dicom_root / subject / raw_session
     return dicom_dir.exists(), dicom_dir
 
 
@@ -66,12 +68,29 @@ def _dicom_exists(config: SchedulerConfig, subject: str, session: str) -> tuple[
 
 
 def trace(subject: str, session: str, config: SchedulerConfig) -> None:
+    """Trace pipeline for *subject* / *session*.
+
+    *session* may be in raw form (e.g. ``ses-20260429_1959``) or already
+    sanitized (``ses-202604291959``).  The underscore is stripped so that BIDS
+    output paths match what the scheduler actually writes.  DICOM is checked
+    against the original raw label because the DICOM directory keeps its
+    original name.
+    """
     sep = "─" * 70
 
-    print(f"\n{BOLD}Pipeline trace{RESET}  subject={subject}  session={session}\n{sep}")
+    # Strip "ses-" prefix, sanitize (removes underscore), re-attach prefix.
+    raw_session = session  # original, may contain underscore
+    session_id_raw = session.removeprefix("ses-")
+    session_id = sanitize_session_id(session_id_raw)
+    session = f"ses-{session_id}"  # canonical BIDS form used for output paths
 
-    # DICOM gate
-    dicom_ok, dicom_path = _dicom_exists(config, subject, session)
+    print(f"\n{BOLD}Pipeline trace{RESET}  subject={subject}  session={session}")
+    if session != raw_session:
+        print(f"{DIM}  (input '{raw_session}' normalised to '{session}'){RESET}")
+    print(sep)
+
+    # DICOM gate — use raw label so the path matches the actual directory name
+    dicom_ok, dicom_path = _dicom_exists(config, subject, raw_session)
     print(f"\n{BOLD}[DICOM]{RESET}  {dicom_path}")
     print(f"  exists : {_fmt_bool(dicom_ok)}")
     if not dicom_ok:
@@ -81,7 +100,7 @@ def trace(subject: str, session: str, config: SchedulerConfig) -> None:
 
     for proc in config.procedures:
         output_path = _output_path(proc, config, subject, session)
-        kwargs = _completion_kwargs(proc, _make_row(subject, session, config), config)
+        kwargs = _completion_kwargs(proc, _make_row(subject, session, config), config)  # session is already sanitized
 
         complete = is_complete(proc, output_path, **kwargs)
         details = check_detailed(proc, output_path, **kwargs)
