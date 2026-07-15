@@ -75,6 +75,7 @@ __all__ = [
 ]
 
 import argparse
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -724,6 +725,16 @@ def main(argv: list[str] | None = None) -> int:
                 f"(was built with {sorted(existing_tps)}, "
                 f"need {sorted(expected_tps)}) — rebuilding."
             )
+        template_dir = subjects_dir / args.subject
+        if template_dir.exists() and not existing_tps:
+            # Leftover single-session cross-sectional run at the same path
+            # (subject just became multi-session). `-base` refuses to reuse
+            # a directory that isn't already a template, so clear it first.
+            print(
+                f"[freesurfer] Step 2 (template {args.subject}): "
+                f"{template_dir} is a stale non-template run — removing before rebuild."
+            )
+            shutil.rmtree(template_dir)
         if use_apptainer:
             cmd = build_template_apptainer_command(
                 sif=args.sif,

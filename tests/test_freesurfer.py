@@ -706,6 +706,34 @@ def test_main_multi_session_stops_on_cross_failure(tmp_path):
     assert len(calls) == 1
 
 
+def test_main_multi_session_clears_stale_single_session_template_dir(tmp_path):
+    """Subject was single-session (cross-sectional output written straight to
+    <subject>/), then gained a 2nd session. Step 2 must clear the leftover
+    non-template <subject>/ dir before running -base, or FreeSurfer rejects it
+    as "an existing regular (cross sectional) run"."""
+    bids = tmp_path / "bids"
+    output = tmp_path / "freesurfer"
+    _make_t1w(bids, "sub-0001", "ses-01")
+    _make_t1w(bids, "sub-0001", "ses-02")
+
+    # Leftover single-session cross-sectional output at <subject>/ (no -base
+    # in CMDARGS, so _template_timepoints sees it as a non-template run).
+    _touch_done(output, "sub-0001")
+    marker = output / "sub-0001" / "mri" / "leftover.mgz"
+    marker.parent.mkdir(parents=True)
+    marker.write_text("stale")
+
+    with patch("snbb_scheduler.freesurfer._run", return_value=0):
+        rc = main([
+            "--bids-dir", str(bids),
+            "--output-dir", str(output),
+            "--subject", "sub-0001",
+        ])
+
+    assert rc == 0
+    assert not marker.exists()
+
+
 # ---------------------------------------------------------------------------
 # main() — error cases
 # ---------------------------------------------------------------------------
