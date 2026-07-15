@@ -349,6 +349,7 @@ def _base_apptainer_cmd(
     return [
         "apptainer",
         "run",
+        "--cleanenv",
         "--env",
         "FS_LICENSE=/opt/fs_license.txt",
         "--bind",
