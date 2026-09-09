@@ -77,9 +77,17 @@ if [[ -z "${T1W}" ]]; then
 fi
 
 # ── Stage the input at its desired output location ────────────────────────────
+# Prefer a symlink (cheap); fall back to a copy when the output tree lives on
+# a filesystem that doesn't support symlinks (e.g. an SMB/CIFS mount under
+# /mnt/*, where `ln -s` fails with "Operation not supported"). The T1w is
+# small, so copying costs nothing.
 mkdir -p "${OUT_ANAT_DIR}"
 STAGED="${OUT_ANAT_DIR}/$(basename "${T1W}")"
-ln -sfn "${T1W}" "${STAGED}"
+rm -f "${STAGED}"
+if ! ln -sfn "${T1W}" "${STAGED}" 2>/dev/null; then
+    echo "Symlink unsupported on this filesystem — copying ${T1W} instead" >&2
+    cp "${T1W}" "${STAGED}"
+fi
 
 # ── Run CAT12 (classic mode + surface/thickness + extra ROI atlases) ──────────
 # `-a` overwrites, it does not accumulate — every option must be one argument.
