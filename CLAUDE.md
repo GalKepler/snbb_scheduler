@@ -42,7 +42,7 @@ sessions.py  →  rules.py  →  manifest.py  →  submit.py
 ### Key design constraints
 
 - **`config.py` is the only place paths are defined.** All modules receive a `SchedulerConfig` instance; never hardcode paths elsewhere.
-- **Rules are declarative.** Adding a new procedure requires only: (1) a check function in `checks.py`, (2) a rule function in `rules.py`, (3) an entry in `RULES` dict, and (4) a command in `submit.py`'s `PROCEDURE_COMMANDS`. Nothing else changes.
+- **Rules are declarative.** Adding a new procedure requires no code changes to `rules.py`, `manifest.py`, or `submit.py` — they are all generic over `config.procedures`. You need only: (1) a `Procedure` entry in `config.py`'s `DEFAULT_PROCEDURES` (and/or the `procedures` list in your `config.yaml`, which *replaces* the defaults rather than merging), (2) a script in `scripts/`, and, only if a declarative `completion_marker` glob can't express completion, (3) a specialised check function registered in `checks.py`. See `docs/guides/adding-procedure.md`.
 - **Filesystem is source of truth.** No database. State is tracked in a single parquet file (`state_file` in config) with columns: `subject, session, procedure, status, submitted_at, job_id`. Statuses: `pending`, `running`, `complete`, `failed`.
 - **In-flight deduplication**: `manifest.py`'s `filter_in_flight()` removes tasks already `pending` or `running` from the state file before submission.
 - **Checks are conservative**: if in doubt, report incomplete so the procedure gets re-run.

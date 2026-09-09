@@ -75,7 +75,7 @@ procedures:
 ```
 
 On the next `run`, the scheduler will:
-- include `fmriprep_path` and `fmriprep_exists` columns in the sessions DataFrame
+- include an `fmriprep_path` column in the sessions DataFrame
 - generate a rule that triggers `fmriprep` when `bids` is complete and `fmriprep` is not
 - pass `subject` and `session` as arguments to `snbb_run_fmriprep.sh`
 

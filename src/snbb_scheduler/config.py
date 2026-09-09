@@ -83,6 +83,30 @@ DEFAULT_PROCEDURES: list[Procedure] = [
             "dwi/*desc-image_qc.tsv",
         ],
     ),
+    # CAT12 (standalone MCR build, no MATLAB) — segmentation + surface metrics.
+    # Container is owned by the bagpipe project (/media/storage/bagpipe);
+    # invocation contract is duplicated in snbb_run_cat.sh on purpose so this
+    # repo has no bagpipe dependency. See scripts/snbb_run_cat.sh header.
+    # Depends only on bids (needs just the T1w) — deliberately NOT on defacing,
+    # since CAT12 must run on the same non-defaced T1w bagpipe uses.
+    # CAT12 writes mri/report/label/surf next to its (staged) input, hence the
+    # anat/ prefix on every marker.
+    Procedure(
+        name="cat",
+        output_dir="cat12",
+        script="snbb_run_cat.sh",
+        scope="session",
+        depends_on=["bids"],
+        slurm_nice=20,
+        completion_marker=[
+            "anat/report/cat_*.xml",  # core segmentation
+            "anat/label/catROI_*.xml",  # volume ROI atlases
+            "anat/surf/lh.gyrification.*",  # surfextract panel — fails
+            "anat/surf/lh.depth.*",  # independently of the core run,
+            "anat/surf/lh.fractaldimension.*",  # so checked separately
+            "anat/surf/lh.area.*",
+        ],
+    ),
     # ── FreeSurfer longitudinal pipeline ─────────────────────────────────────
     # Single subject-scoped procedure using snbb_recon_all_helper.py.
     # For subjects with one session: runs cross-sectional recon-all.

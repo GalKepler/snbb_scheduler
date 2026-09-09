@@ -108,6 +108,20 @@ def add_defacing(tmp_path, subject, session):
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
+def add_cat(tmp_path, subject, session):
+    """Create CAT12 completion markers (core segmentation + surfextract panel)."""
+    anat_dir = tmp_path / "derivatives" / "cat12" / subject / session / "anat"
+    stem = f"{subject}_{session}_T1w"
+    (anat_dir / "report").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "report" / f"cat_{stem}.xml").touch()
+    (anat_dir / "label").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "label" / f"catROI_{stem}.xml").touch()
+    surf = anat_dir / "surf"
+    surf.mkdir(parents=True, exist_ok=True)
+    for prefix in ("gyrification", "depth", "fractaldimension", "area"):
+        (surf / f"lh.{prefix}.{stem}").touch()
+
+
 def add_freesurfer(tmp_path, subject, sessions=None):
     """Create FreeSurfer longitudinal completion markers.
 
@@ -269,6 +283,7 @@ def test_nothing_submitted_when_all_complete(tmp_path):
     add_bids_post(tmp_path, "sub-0001", "ses-01")
     add_defacing(tmp_path, "sub-0001", "ses-01")
     add_qsiprep(tmp_path, "sub-0001", "ses-01")
+    add_cat(tmp_path, "sub-0001", "ses-01")
     # FreeSurfer single-session: recon-all.done at <subject>/
     _make_bids_t1w(tmp_path, "sub-0001", "ses-01")
     add_freesurfer(tmp_path, "sub-0001")

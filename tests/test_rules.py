@@ -110,6 +110,22 @@ def mark_defacing_complete(row: dict) -> None:
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
+def mark_cat_complete(row: dict) -> None:
+    """Create CAT12 completion markers (core segmentation + surfextract panel)."""
+    anat_dir = row["cat_path"] / "anat"
+    subject = row["subject"]
+    session = row["session"]
+    stem = f"{subject}_{session}_T1w"
+    (anat_dir / "report").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "report" / f"cat_{stem}.xml").touch()
+    (anat_dir / "label").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "label" / f"catROI_{stem}.xml").touch()
+    surf = anat_dir / "surf"
+    surf.mkdir(parents=True, exist_ok=True)
+    for prefix in ("gyrification", "depth", "fractaldimension", "area"):
+        (surf / f"lh.{prefix}.{stem}").touch()
+
+
 def mark_freesurfer_complete(row: dict, sessions: list[str] | None = None) -> None:
     """Create the FreeSurfer longitudinal completion markers.
 
@@ -318,6 +334,7 @@ def test_downstream_fire_once_bids_post_done(cfg):
     assert rules["bids_post"](pd.Series(row)) is False
     assert rules["defacing"](pd.Series(row)) is True
     assert rules["qsiprep"](pd.Series(row)) is True
+    assert rules["cat"](pd.Series(row)) is True
     assert rules["freesurfer"](pd.Series(row)) is True
 
 
@@ -328,6 +345,7 @@ def test_nothing_fires_when_all_complete(cfg):
     mark_bids_post_complete(row)
     mark_defacing_complete(row)
     mark_qsiprep_complete(row)
+    mark_cat_complete(row)
     mark_freesurfer_complete(row)
     mark_qsirecon_complete(row)
     # Need sessions_df for cross-scope freesurfer check
