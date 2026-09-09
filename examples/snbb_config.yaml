@@ -96,6 +96,25 @@ procedures:
       - "dwi/*desc-preproc_dwi.bval"
       - "dwi/*desc-image_qc.tsv"
 
+  # CAT12 (standalone MCR build, no MATLAB) — segmentation + surface metrics.
+  # Container is owned by the bagpipe project (/media/storage/bagpipe);
+  # invocation contract is duplicated in snbb_run_cat.sh on purpose so this
+  # repo has no bagpipe dependency. Deliberately depends only on bids (not
+  # defacing) — CAT12 must run on the same non-defaced T1w bagpipe uses.
+  # Completion: core segmentation + ROI xml, plus the full surfextract panel.
+  - name: cat
+    output_dir: cat12
+    script: /home/galkepler/Projects/snbb_scheduler/scripts/snbb_run_cat.sh
+    scope: session
+    depends_on: [bids]
+    completion_marker:
+      - "anat/report/cat_*.xml"
+      - "anat/label/catROI_*.xml"
+      - "anat/surf/lh.gyrification.*"
+      - "anat/surf/lh.depth.*"
+      - "anat/surf/lh.fractaldimension.*"
+      - "anat/surf/lh.area.*"
+
   # Cortical reconstruction — FreeSurfer longitudinal pipeline (subject-scoped).
   # Single-session subjects: plain cross-sectional recon-all.
   # Multi-session subjects: 3-step pipeline (cross-sectional → template → longitudinal).

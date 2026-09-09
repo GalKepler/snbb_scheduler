@@ -27,7 +27,18 @@ def test_default_procedures_present():
     assert "bids_post" in names
     assert "defacing" in names
     assert "qsiprep" in names
+    assert "cat" in names
     assert "freesurfer" in names
+
+
+def test_cat_procedure_attributes():
+    cfg = SchedulerConfig()
+    cat = cfg.get_procedure("cat")
+    assert cat.output_dir == "cat12"
+    assert cat.script == "snbb_run_cat.sh"
+    assert cat.scope == "session"
+    assert cat.depends_on == ["bids"]
+    assert "defacing" not in cat.depends_on
 
 
 def test_defacing_procedure_attributes():
@@ -99,8 +110,10 @@ def test_get_procedure_root_derivatives_procedures():
     cfg = SchedulerConfig(derivatives_root=Path("/data/derivatives"))
     qsiprep = cfg.get_procedure("qsiprep")
     freesurfer = cfg.get_procedure("freesurfer")
+    cat = cfg.get_procedure("cat")
     assert cfg.get_procedure_root(qsiprep) == Path("/data/derivatives/qsiprep")
     assert cfg.get_procedure_root(freesurfer) == Path("/data/derivatives/freesurfer")
+    assert cfg.get_procedure_root(cat) == Path("/data/derivatives/cat12")
 
 
 def test_get_procedure_root_custom_procedure():

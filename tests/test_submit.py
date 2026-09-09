@@ -162,6 +162,19 @@ def test_submit_task_defacing_passes_subject_and_session(cfg):
     assert "ses-02" in cmd
 
 
+def test_submit_task_cat_job_name_and_args(cfg):
+    """cat is session-scoped → job name includes session, nice=20, and
+    snbb_run_cat.sh receives subject and session positionally."""
+    with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
+        submit_task(make_row(subject="sub-0001", session="ses-01", procedure="cat"), cfg)
+    cmd = mock_run.call_args[0][0]
+    assert "--job-name=cat_sub-0001_ses-01" in cmd
+    assert "--nice=20" in cmd
+    assert "snbb_run_cat.sh" in cmd
+    assert "sub-0001" in cmd
+    assert "ses-01" in cmd
+
+
 def test_submit_task_script_from_procedure_registry(cfg):
     """Each procedure uses its own script, not a hardcoded map."""
     for proc_name, expected_script in [
@@ -614,7 +627,7 @@ def test_submit_local_tmp_root_passed_to_all_procedures(tmp_path):
         state_file=tmp_path / "state.parquet",
         local_tmp_root=scratch,
     )
-    for proc in ("bids", "bids_post", "qsiprep", "qsirecon"):
+    for proc in ("bids", "bids_post", "qsiprep", "cat", "qsirecon"):
         with patch("subprocess.run", return_value=mock_sbatch()) as mock_run:
             submit_task(make_row(procedure=proc), cfg_tmp)
         cmd = mock_run.call_args[0][0]

@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pytest
+
 from snbb_scheduler.checks import (
     FileCheckResult,
     _count_available_t1w,
@@ -765,6 +769,68 @@ def test_defacing_incomplete_when_session_dir_missing(tmp_path):
     assert is_complete(defacing, tmp_path / "bids" / "sub-0001" / "ses-01") is False
 
 
+# ---------------------------------------------------------------------------
+# CAT12 completion (generic glob-list marker)
+# ---------------------------------------------------------------------------
+
+
+def _make_cat_output(cat_session: Path, stem: str = "sub-0001_ses-01_T1w") -> None:
+    anat = cat_session / "anat"
+    (anat / "report").mkdir(parents=True, exist_ok=True)
+    (anat / "report" / f"cat_{stem}.xml").touch()
+    (anat / "label").mkdir(parents=True, exist_ok=True)
+    (anat / "label" / f"catROI_{stem}.xml").touch()
+    surf = anat / "surf"
+    surf.mkdir(parents=True, exist_ok=True)
+    for prefix in ("gyrification", "depth", "fractaldimension", "area"):
+        (surf / f"lh.{prefix}.{stem}").touch()
+
+
+def test_cat_complete_when_all_markers_present(tmp_path):
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    cat = next(p for p in DEFAULT_PROCEDURES if p.name == "cat")
+    cat_session = tmp_path / "derivatives" / "cat12" / "sub-0001" / "ses-01"
+    _make_cat_output(cat_session)
+
+    assert is_complete(cat, cat_session) is True
+
+
+@pytest.mark.parametrize(
+    "missing_glob",
+    [
+        "anat/report/cat_*.xml",
+        "anat/label/catROI_*.xml",
+        "anat/surf/lh.gyrification.*",
+        "anat/surf/lh.depth.*",
+        "anat/surf/lh.fractaldimension.*",
+        "anat/surf/lh.area.*",
+    ],
+)
+def test_cat_incomplete_when_one_marker_missing(tmp_path, missing_glob):
+    """Core segmentation succeeding is not enough — surfextract can fail
+    independently, so every marker (including each lh.* surface file) is
+    required."""
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    cat = next(p for p in DEFAULT_PROCEDURES if p.name == "cat")
+    cat_session = tmp_path / "derivatives" / "cat12" / "sub-0001" / "ses-01"
+    _make_cat_output(cat_session)
+
+    # Remove exactly the file matching this marker's glob.
+    for f in cat_session.glob(missing_glob):
+        f.unlink()
+
+    assert is_complete(cat, cat_session) is False
+
+
+def test_cat_incomplete_when_output_dir_missing(tmp_path):
+    from snbb_scheduler.config import DEFAULT_PROCEDURES
+
+    cat = next(p for p in DEFAULT_PROCEDURES if p.name == "cat")
+    cat_session = tmp_path / "derivatives" / "cat12" / "sub-0001" / "ses-01"
+
+    assert is_complete(cat, cat_session) is False
 
 
 # ---------------------------------------------------------------------------

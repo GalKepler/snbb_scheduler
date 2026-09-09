@@ -135,6 +135,20 @@ def mark_defacing_complete(tmp_path: Path, subject: str, session: str) -> None:
     (anat_dir / f"{subject}_{session}_acq-defaced_T1w.nii.gz").touch()
 
 
+def mark_cat_complete(tmp_path: Path, subject: str, session: str) -> None:
+    """Create CAT12 completion markers (core segmentation + surfextract panel)."""
+    anat_dir = tmp_path / "derivatives" / "cat12" / subject / session / "anat"
+    stem = f"{subject}_{session}_T1w"
+    (anat_dir / "report").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "report" / f"cat_{stem}.xml").touch()
+    (anat_dir / "label").mkdir(parents=True, exist_ok=True)
+    (anat_dir / "label" / f"catROI_{stem}.xml").touch()
+    surf = anat_dir / "surf"
+    surf.mkdir(parents=True, exist_ok=True)
+    for prefix in ("gyrification", "depth", "fractaldimension", "area"):
+        (surf / f"lh.{prefix}.{stem}").touch()
+
+
 def mark_freesurfer_complete(
     tmp_path: Path, subject: str, session: str, sessions: list[str] | None = None
 ) -> None:
@@ -184,6 +198,7 @@ def test_build_manifest_no_tasks_when_all_complete(cfg, tmp_path):
         (dwi / f"{sub}_ses-01_desc-preproc_dwi.bvec").touch()
         (dwi / f"{sub}_ses-01_desc-preproc_dwi.bval").touch()
         (dwi / f"{sub}_ses-01_desc-image_qc.tsv").touch()
+        mark_cat_complete(tmp_path, sub, "ses-01")
         _make_bids_t1w(tmp_path, sub, "ses-01")
         mark_freesurfer_complete(tmp_path, sub, "ses-01")
         # qsirecon: HTML report per qsiprep session
