@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/snbb_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2268,10 +2268,10 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerConfig</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">discover_sessions</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">"/etc/snbb/config.yaml"</span><span class="p">)</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">sessions</span> <span class="o">=</span> <span class="n">discover_sessions</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">sessions</span><span class="p">[[</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span> <span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;bids_exists&quot;</span><span class="p">,</span> <span class="s2">&quot;qsiprep_exists&quot;</span><span class="p">]])</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">sessions</span><span class="p">[[</span><span class="s2">"subject"</span><span class="p">,</span> <span class="s2">"session"</span><span class="p">,</span> <span class="s2">"bids_exists"</span><span class="p">,</span> <span class="s2">"qsiprep_exists"</span><span class="p">]])</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">#      subject           session  bids_exists  qsiprep_exists</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">#   sub-0001  ses-202407110849         True           False</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">#   sub-0001  ses-202410100845         True            True</span>
@@ -2282,7 +2282,7 @@
 <p>Load and sanitize a raw linked_sessions CSV file.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_sessions</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">load_sessions</span><span class="p">(</span><span class="s2">&quot;/data/snbb/linked_sessions.csv&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">load_sessions</span><span class="p">(</span><span class="s2">"/data/snbb/linked_sessions.csv"</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Expected CSV columns:</strong> <code>SubjectCode</code>, <code>ScanID</code>, <code>dicom_path</code></p>
 <p><strong>Returns:</strong> Deduplicated DataFrame with sanitized <code>subject_code</code>, <code>session_id</code>, and <code>dicom_path</code> columns.</p>
@@ -2290,16 +2290,16 @@
 <hr />
 <h2 id="sanitize_subject_codesubject_code"><code>sanitize_subject_code(subject_code)</code><a class="headerlink" href="#sanitize_subject_codesubject_code" title="Permanent link">&para;</a></h2>
 <p>Strip special characters and zero-pad to 4 digits.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="s2">&quot;CLMC-1&quot;</span><span class="p">)</span>   <span class="c1"># → &quot;1&quot;  (strips -, then zfill(4) → &quot;0001&quot;)</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>         <span class="c1"># → &quot;0042&quot;</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="s2">&quot;0001&quot;</span><span class="p">)</span>     <span class="c1"># → &quot;0001&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="s2">"CLMC-1"</span><span class="p">)</span>   <span class="c1"># → "1"  (strips -, then zfill(4) → "0001")</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>         <span class="c1"># → "0042"</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">sanitize_subject_code</span><span class="p">(</span><span class="s2">"0001"</span><span class="p">)</span>     <span class="c1"># → "0001"</span>
 </code></pre></div>
 <hr />
 <h2 id="sanitize_session_idsession_id"><code>sanitize_session_id(session_id)</code><a class="headerlink" href="#sanitize_session_idsession_id" title="Permanent link">&para;</a></h2>
 <p>Convert to string, strip special characters, and zero-pad to 12 digits.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">&quot;202407110849&quot;</span><span class="p">)</span>  <span class="c1"># → &quot;202407110849&quot;</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="mi">202407110849</span><span class="p">)</span>    <span class="c1"># → &quot;202407110849&quot;</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">&quot;2024-07-11&quot;</span><span class="p">)</span>    <span class="c1"># → &quot;000020240711&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">"202407110849"</span><span class="p">)</span>  <span class="c1"># → "202407110849"</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="mi">202407110849</span><span class="p">)</span>    <span class="c1"># → "202407110849"</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">sanitize_session_id</span><span class="p">(</span><span class="s2">"2024-07-11"</span><span class="p">)</span>    <span class="c1"># → "000020240711"</span>
 </code></pre></div>
 <hr />
 <h2 id="build_session_status_tableconfig"><code>build_session_status_table(config)</code><a class="headerlink" href="#build_session_status_tableconfig" title="Permanent link">&para;</a></h2>
@@ -2320,10 +2320,10 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerConfig</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_session_status_table</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">"/etc/snbb/config.yaml"</span><span class="p">)</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">table</span> <span class="o">=</span> <span class="n">build_session_status_table</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">table</span><span class="p">[[</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span> <span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;bids&quot;</span><span class="p">,</span> <span class="s2">&quot;qsiprep&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">table</span><span class="p">[[</span><span class="s2">"subject"</span><span class="p">,</span> <span class="s2">"session"</span><span class="p">,</span> <span class="s2">"bids"</span><span class="p">,</span> <span class="s2">"qsiprep"</span><span class="p">]]</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1">#      subject           session  bids                                      qsiprep</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1">#   sub-0001  ses-202407110849   /data/snbb/bids/sub-0001/ses-202407110849  running</span>
 <a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1">#   sub-0002  ses-202407110849   failed                                     -</span>
@@ -2412,7 +2412,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

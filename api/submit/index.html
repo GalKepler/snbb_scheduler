@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/snbb_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2279,13 +2279,13 @@
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerConfig</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.submit</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_task</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">"/etc/snbb/config.yaml"</span><span class="p">)</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">row</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="s2">&quot;subject&quot;</span><span class="p">:</span> <span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="s2">&quot;ses-202407110849&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="s2">&quot;procedure&quot;</span><span class="p">:</span> <span class="s2">&quot;bids&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="s2">&quot;dicom_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/data/snbb/dicom/sub-0001/ses-202407110849&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="s2">"subject"</span><span class="p">:</span> <span class="s2">"sub-0001"</span><span class="p">,</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="s2">"session"</span><span class="p">:</span> <span class="s2">"ses-202407110849"</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="s2">"procedure"</span><span class="p">:</span> <span class="s2">"bids"</span><span class="p">,</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="s2">"dicom_path"</span><span class="p">:</span> <span class="s2">"/data/snbb/dicom/sub-0001/ses-202407110849"</span><span class="p">,</span>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">})</span>
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1"># Dry run</span>
@@ -2294,7 +2294,7 @@
 <a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
 <a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="c1"># Real submission</span>
 <a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="n">job_id</span> <span class="o">=</span> <span class="n">submit_task</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">job_id</span><span class="p">)</span>  <span class="c1"># &quot;12345&quot;</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">job_id</span><span class="p">)</span>  <span class="c1"># "12345"</span>
 </code></pre></div>
 <hr />
 <h2 id="submit_manifestmanifest-config-dry_runfalse-auditnone"><code>submit_manifest(manifest, config, dry_run=False, audit=None)</code><a class="headerlink" href="#submit_manifestmanifest-config-dry_runfalse-auditnone" title="Permanent link">&para;</a></h2>
@@ -2312,7 +2312,7 @@
 <p>Returns an empty DataFrame with the correct schema if <code>manifest</code> is empty.</p>
 <h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">new_rows</span> <span class="o">=</span> <span class="n">submit_manifest</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">audit</span><span class="o">=</span><span class="n">audit</span><span class="p">)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Submitted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> jobs&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Submitted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> jobs"</span><span class="p">)</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Merge with existing state and save</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">df</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">new_rows</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">]</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">if</span> <span class="n">parts</span><span class="p">:</span>
@@ -2324,8 +2324,8 @@
 <p>Internal helper that builds the Slurm job name string.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.submit</span><span class="w"> </span><span class="kn">import</span> <span class="n">_build_job_name</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">name</span> <span class="o">=</span> <span class="n">_build_job_name</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="s2">&quot;subject&quot;</span><span class="p">)</span>  <span class="c1"># &quot;qsiprep_sub-0001&quot;</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">name</span> <span class="o">=</span> <span class="n">_build_job_name</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="s2">&quot;session&quot;</span><span class="p">)</span>  <span class="c1"># &quot;bids_sub-0001_ses-202407110849&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">name</span> <span class="o">=</span> <span class="n">_build_job_name</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="s2">"subject"</span><span class="p">)</span>  <span class="c1"># "qsiprep_sub-0001"</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">name</span> <span class="o">=</span> <span class="n">_build_job_name</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="s2">"session"</span><span class="p">)</span>  <span class="c1"># "bids_sub-0001_ses-202407110849"</span>
 </code></pre></div>
 
 
@@ -2385,7 +2385,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

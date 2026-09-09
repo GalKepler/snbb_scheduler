@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/snbb_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2277,13 +2277,13 @@
 <p><strong>Used by:</strong> <code>freesurfer</code> (the specialized check overrides this; <code>null</code> here signals "use the registered check")</p>
 <hr />
 <h3 id="single-glob-pattern">Single glob pattern<a class="headerlink" href="#single-glob-pattern" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;**/*.nii.gz&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">"**/*.nii.gz"</span>
 </code></pre></div>
 <p>At least one file matching the glob must exist inside the output directory (using <code>Path.glob</code>).</p>
 <p><strong>Examples:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;fmap/*acq-dwi*_epi.nii.gz&quot;</span><span class="w">   </span><span class="c1"># bids_post: derived fieldmap written</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;anat/*acq-defaced*_T1w.nii.gz&quot;</span><span class="w"> </span><span class="c1"># defacing: defaced T1w present</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scripts/recon-all.done&quot;</span><span class="w">         </span><span class="c1"># freesurfer: exact file (no glob chars)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">"fmap/*acq-dwi*_epi.nii.gz"</span><span class="w">   </span><span class="c1"># bids_post: derived fieldmap written</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">"anat/*acq-defaced*_T1w.nii.gz"</span><span class="w"> </span><span class="c1"># defacing: defaced T1w present</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">completion_marker</span><span class="p">:</span><span class="w"> </span><span class="s">"scripts/recon-all.done"</span><span class="w">         </span><span class="c1"># freesurfer: exact file (no glob chars)</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Glob vs. literal path</p>
@@ -2293,10 +2293,10 @@ Otherwise it is treated as a literal relative path inside the output directory.<
 <hr />
 <h3 id="list-of-glob-patterns-all-must-match">List of glob patterns — ALL must match<a class="headerlink" href="#list-of-glob-patterns-all-must-match" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">completion_marker</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;anat/*_T1w.nii.gz&quot;</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;dwi/*dir-AP*_dwi.nii.gz&quot;</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;dwi/*dir-AP*_dwi.bvec&quot;</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;dwi/*dir-AP*_dwi.bval&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/*_T1w.nii.gz"</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"dwi/*dir-AP*_dwi.nii.gz"</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"dwi/*dir-AP*_dwi.bvec"</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"dwi/*dir-AP*_dwi.bval"</span>
 </code></pre></div>
 <p>Every pattern in the list must match at least one file. If any pattern has no match, the procedure is considered incomplete.</p>
 <p><strong>Used by:</strong> <code>bids</code> (checks all expected modalities), <code>qsiprep</code> (checks HTML report + all preproc DWI files)</p>
@@ -2424,7 +2424,7 @@ Otherwise it is treated as a literal relative path inside the output directory.<
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

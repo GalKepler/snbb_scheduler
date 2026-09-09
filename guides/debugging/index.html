@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/snbb_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2308,14 +2308,14 @@
 <ol>
 <li>
 <p>Check if sessions are discovered:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="s2">from snbb_scheduler.config import SchedulerConfig</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s2">from snbb_scheduler.sessions import discover_sessions</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s2">cfg = SchedulerConfig.from_yaml(&#39;/etc/snbb/config.yaml&#39;)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s2">cfg = SchedulerConfig.from_yaml('/etc/snbb/config.yaml')</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s2">sessions = discover_sessions(cfg)</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s2">print(f&#39;Found {len(sessions)} sessions&#39;)</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s2">print(sessions[[&#39;subject&#39;, &#39;session&#39;, &#39;dicom_exists&#39;]].to_string())</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s2">&quot;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s2">print(f'Found {len(sessions)} sessions')</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s2">print(sessions[['subject', 'session', 'dicom_exists']].to_string())</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s2">"</span>
 </code></pre></div></p>
 </li>
 <li>
@@ -2330,10 +2330,10 @@
 <p>Check if all procedures are already complete:
    <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerConfig</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">discover_sessions</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;/etc/snbb/config.yaml&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">SchedulerConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">"/etc/snbb/config.yaml"</span><span class="p">)</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">sessions</span> <span class="o">=</span> <span class="n">discover_sessions</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Check bids_exists for all sessions</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">sessions</span><span class="p">[[</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span> <span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;bids_exists&quot;</span><span class="p">,</span> <span class="s2">&quot;qsiprep_exists&quot;</span><span class="p">]])</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">sessions</span><span class="p">[[</span><span class="s2">"subject"</span><span class="p">,</span> <span class="s2">"session"</span><span class="p">,</span> <span class="s2">"bids_exists"</span><span class="p">,</span> <span class="s2">"qsiprep_exists"</span><span class="p">]])</span>
 </code></pre></div></p>
 </li>
 </ol>
@@ -2350,10 +2350,10 @@
 </code></pre></div>
 <p>If the job is not in sacct and the output doesn't exist, the entry remains <code>pending</code>. Clear it manually:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">state</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;/data/snbb/.scheduler_state.parquet&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">state</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">"/data/snbb/.scheduler_state.parquet"</span><span class="p">)</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Remove the stuck entry</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="o">~</span><span class="p">((</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;subject&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;procedure&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;bids&quot;</span><span class="p">))]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">state</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s2">&quot;/data/snbb/.scheduler_state.parquet&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="o">~</span><span class="p">((</span><span class="n">state</span><span class="p">[</span><span class="s2">"subject"</span><span class="p">]</span><span class="o">==</span><span class="s2">"sub-0001"</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">"procedure"</span><span class="p">]</span><span class="o">==</span><span class="s2">"bids"</span><span class="p">))]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">state</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s2">"/data/snbb/.scheduler_state.parquet"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="sbatch-fails-with-permission-error"><code>sbatch</code> fails with permission error<a class="headerlink" href="#sbatch-fails-with-permission-error" title="Permanent link">&para;</a></h2>
@@ -2366,14 +2366,14 @@
 <hr />
 <h2 id="config-errors">Config errors<a class="headerlink" href="#config-errors" title="Permanent link">&para;</a></h2>
 <h3 id="filenotfounderror"><code>FileNotFoundError</code><a class="headerlink" href="#filenotfounderror" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>FileNotFoundError: [Errno 2] No such file or directory: &#39;/etc/snbb/config.yaml&#39;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>FileNotFoundError: [Errno 2] No such file or directory: '/etc/snbb/config.yaml'
 </code></pre></div>
 <p>Pass the correct path with <code>--config</code>.</p>
 <h3 id="valueerror-invalid-yaml"><code>ValueError: Invalid YAML</code><a class="headerlink" href="#valueerror-invalid-yaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ValueError: Invalid YAML in config.yaml: ...
 </code></pre></div>
 <p>Validate your YAML syntax:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import yaml; yaml.safe_load(open(&#39;config.yaml&#39;))&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import yaml; yaml.safe_load(open('config.yaml'))"</span>
 </code></pre></div></p>
 <h3 id="valueerror-procedure-x-depends-on-y-which-is-not-in-the-procedures-list"><code>ValueError: Procedure X depends on Y which is not in the procedures list</code><a class="headerlink" href="#valueerror-procedure-x-depends-on-y-which-is-not-in-the-procedures-list" title="Permanent link">&para;</a></h3>
 <p>You defined a procedure in <code>depends_on</code> that doesn't exist. Check procedure names in your <code>procedures</code> list.</p>
@@ -2463,7 +2463,7 @@ Or set <code>$PATH</code> to include the Slurm binaries. Filesystem reconciliati
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

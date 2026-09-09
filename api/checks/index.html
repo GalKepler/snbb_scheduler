@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/snbb_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2275,22 +2275,22 @@
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Check a BIDS session (list marker)</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">bids_proc</span> <span class="o">=</span> <span class="n">Procedure</span><span class="p">(</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bids&quot;</span><span class="p">,</span> <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">script</span><span class="o">=</span><span class="s2">&quot;snbb_run_bids.sh&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">completion_marker</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;anat/*_T1w.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;dwi/*_dwi.nii.gz&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"bids"</span><span class="p">,</span> <span class="n">output_dir</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">script</span><span class="o">=</span><span class="s2">"snbb_run_bids.sh"</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">completion_marker</span><span class="o">=</span><span class="p">[</span><span class="s2">"anat/*_T1w.nii.gz"</span><span class="p">,</span> <span class="s2">"dwi/*_dwi.nii.gz"</span><span class="p">]</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">)</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/bids/sub-0001/ses-202407110849&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"/data/snbb/bids/sub-0001/ses-202407110849"</span><span class="p">)</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span><span class="n">bids_proc</span><span class="p">,</span> <span class="n">path</span><span class="p">))</span>  <span class="c1"># True if both patterns match</span>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Check freesurfer with session-count validation</span>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">fs_proc</span> <span class="o">=</span> <span class="n">Procedure</span><span class="p">(</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;freesurfer&quot;</span><span class="p">,</span> <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;freesurfer&quot;</span><span class="p">,</span> <span class="n">script</span><span class="o">=</span><span class="s2">&quot;snbb_run_freesurfer.sh&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span> <span class="n">completion_marker</span><span class="o">=</span><span class="s2">&quot;scripts/recon-all.done&quot;</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"freesurfer"</span><span class="p">,</span> <span class="n">output_dir</span><span class="o">=</span><span class="s2">"freesurfer"</span><span class="p">,</span> <span class="n">script</span><span class="o">=</span><span class="s2">"snbb_run_freesurfer.sh"</span><span class="p">,</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="n">scope</span><span class="o">=</span><span class="s2">"subject"</span><span class="p">,</span> <span class="n">completion_marker</span><span class="o">=</span><span class="s2">"scripts/recon-all.done"</span>
 <a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="p">)</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/derivatives/freesurfer/sub-0001&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"/data/snbb/derivatives/freesurfer/sub-0001"</span><span class="p">)</span>
 <a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span>
 <a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="n">fs_proc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">bids_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/data/snbb/bids&quot;</span><span class="p">),</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">bids_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">"/data/snbb/bids"</span><span class="p">),</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">"sub-0001"</span><span class="p">,</span>
 <a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="p">))</span>
 </code></pre></div>
 <hr />
@@ -2316,22 +2316,22 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.checks</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_complete</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">proc</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure</span><span class="p">(</span><span class="s2">&quot;qsirecon&quot;</span><span class="p">)</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure_root</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;sub-0001&quot;</span> <span class="o">/</span> <span class="s2">&quot;ses-01&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">proc</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure</span><span class="p">(</span><span class="s2">"qsirecon"</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_procedure_root</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"sub-0001"</span> <span class="o">/</span> <span class="s2">"ses-01"</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Basic wildcard check</span>
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span><span class="n">proc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">derivatives_root</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">derivatives_root</span><span class="p">,</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">"sub-0001"</span><span class="p">,</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">"ses-01"</span><span class="p">,</span>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">))</span>
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1"># Spec-driven check (verifies every suffix HTML)</span>
 <a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_complete</span><span class="p">(</span><span class="n">proc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span>
 <a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">derivatives_root</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">derivatives_root</span><span class="p">,</span>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sub-0001&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">&quot;ses-01&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">recon_spec</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/path/to/qsirecon_spec.yaml&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">subject</span><span class="o">=</span><span class="s2">"sub-0001"</span><span class="p">,</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">session</span><span class="o">=</span><span class="s2">"ses-01"</span><span class="p">,</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">recon_spec</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">"/path/to/qsirecon_spec.yaml"</span><span class="p">),</span>
 <a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="p">))</span>
 </code></pre></div>
 <hr />
@@ -2341,10 +2341,10 @@
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">snbb_scheduler.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Procedure</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nd">@_register_check</span><span class="p">(</span><span class="s2">&quot;myprocedure&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nd">@_register_check</span><span class="p">(</span><span class="s2">"myprocedure"</span><span class="p">)</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">_check_myprocedure</span><span class="p">(</span><span class="n">proc</span><span class="p">:</span> <span class="n">Procedure</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1"># Custom logic here</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">return</span> <span class="p">(</span><span class="n">output_path</span> <span class="o">/</span> <span class="s2">&quot;DONE&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">return</span> <span class="p">(</span><span class="n">output_path</span> <span class="o">/</span> <span class="s2">"DONE"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2408,7 +2408,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
