@@ -2001,6 +2001,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#25-prepare-the-custom-volumetric-atlases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5. Prepare the custom volumetric atlases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#3-confirm-apptainer-works-on-the-production-server" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2126,9 +2137,38 @@ a <code>bagpipe/</code> path that doesn't exist on the production server.</p>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sha256sum<span class="w"> </span>/media/storage/bagpipe/outputs/containers/cat12.sif<span class="w">                       </span><span class="c1"># here</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>sha256sum<span class="w"> </span>/media/storage/apptainer/images/cat12-26.0.rc3.sif<span class="w">                          </span><span class="c1"># on prod</span>
 </code></pre></div>
+<h2 id="25-prepare-the-custom-volumetric-atlases">2.5. Prepare the custom volumetric atlases<a class="headerlink" href="#25-prepare-the-custom-volumetric-atlases" title="Permanent link">&para;</a></h2>
+<p>CAT12 can compute its ROI stats against the same atlases qsirecon uses
+(<code>SNBB_ATLASES</code> in <code>snbb_run_qsirecon.sh</code>) via its own <code>ownatlas</code> field —
+but it needs an uncompressed <code>.nii</code> + a <code>ROIid;ROIabbr;ROIname</code> <code>.csv</code> per
+atlas, not the <code>.nii.gz</code> + BIDS-Atlas <code>.tsv</code> qsirecon reads directly. This is
+a one-time conversion, not a per-job step:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python3<span class="w"> </span>scripts/prepare_cat_atlases.py
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># or, if the atlas pack lives somewhere else on this server:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>python3<span class="w"> </span>scripts/prepare_cat_atlases.py<span class="w"> </span>--atlas-pack-dir<span class="w"> </span>/path/to/snbb-atlas-pack/qsirecon_ext<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">                                        </span>--out-dir<span class="w"> </span>/path/to/derivatives/cat12_atlases
+</code></pre></div>
+<p>This is stdlib-only Python (<code>gzip</code>/<code>csv</code>), no dependencies — run it directly
+wherever the qsirecon atlas pack (<code>SNBB_ATLASES_DIR</code>) is reachable on this
+server; it's already working for qsirecon there, so it's already reachable.
+It converts 45 atlases (~tens of MB total, cheap); the other 14 names in
+<code>SNBB_ATLASES</code> are QSIRecon's own built-in atlases, not local files, and
+aren't included.</p>
+<p>Point <code>snbb_run_cat.sh</code>'s <code>SNBB_CAT_ATLAS_DIR</code> at wherever <code>--out-dir</code>
+landed (matches the script's own default if you used defaults on both ends).
+If you'd rather skip custom atlases for now, just leave <code>SNBB_CAT_ATLAS_DIR</code>
+unset/nonexistent — the script silently skips <code>ownatlas</code> and only runs
+CAT12's built-in atlases (neuromorphometrics, lpba40, cobra, thalamus,
+thalamic_nuclei, suit).</p>
+<p><strong>This is genuinely untested at this scale</strong> — bagpipe has only ever run
+CAT12's <code>ownatlas</code> with a single atlas. Verify a real single-session run
+(step 6 below) produces the expected <code>label/catROI_&lt;AtlasName&gt;_&lt;stem&gt;.xml</code>
+per atlas before trusting it for a full cohort — if CAT12 chokes on 45
+atlases at once, the fallback is to trim <code>ATLASES</code> in
+<code>prepare_cat_atlases.py</code> down to a smaller set.</p>
 <h2 id="3-confirm-apptainer-works-on-the-production-server">3. Confirm Apptainer works on the production server<a class="headerlink" href="#3-confirm-apptainer-works-on-the-production-server" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>apptainer<span class="w"> </span>--version
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>/media/storage/apptainer/images/cat12-26.0.rc3.sif<span class="w"> </span><span class="nb">echo</span><span class="w"> </span>ok
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>apptainer<span class="w"> </span>--version
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>/media/storage/apptainer/images/cat12-26.0.rc3.sif<span class="w"> </span><span class="nb">echo</span><span class="w"> </span>ok
 </code></pre></div>
 <p>If <code>apptainer</code> isn't installed there, this is the one genuinely new
 dependency <code>cat</code> introduces (the other procedures already required it) —
@@ -2139,10 +2179,11 @@ machine.</p>
 in <code>scripts/</code> — either edit the defaults in the file directly, or export the
 env vars before the scheduler submits (e.g. in the shell/cron/systemd
 environment that runs <code>snbb-scheduler run</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_BIDS_ROOT</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/bids</span><span class="si">}</span><span class="s2">"</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12</span><span class="si">}</span><span class="s2">"</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nv">SNBB_CAT_SIF</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_CAT_SIF</span><span class="k">:-</span><span class="p">/media/storage/bagpipe/outputs/containers/cat12.sif</span><span class="si">}</span><span class="s2">"</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nv">SNBB_DEBUG_LOG</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_DEBUG_LOG</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/logs/cat/debug_submit.log</span><span class="si">}</span><span class="s2">"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_BIDS_ROOT</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/bids</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nv">SNBB_CAT_SIF</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_CAT_SIF</span><span class="k">:-</span><span class="p">/media/storage/bagpipe/outputs/containers/cat12.sif</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nv">SNBB_DEBUG_LOG</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_DEBUG_LOG</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/logs/cat/debug_submit.log</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nv">SNBB_CAT_ATLAS_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNBB_CAT_ATLAS_DIR</span><span class="k">:-</span><span class="p">/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12_atlases</span><span class="si">}</span><span class="s2">"</span>
 </code></pre></div>
 <p>On the production server:</p>
 <ul>
@@ -2156,8 +2197,10 @@ environment that runs <code>snbb-scheduler run</code>):</p>
   (<code>/media/storage/apptainer/images/cat12-26.0.rc3.sif</code> in the example above).</li>
 <li><code>SNBB_DEBUG_LOG</code> → same <code>logs/&lt;procedure&gt;/debug_submit.log</code> pattern as the
   others.</li>
+<li><code>SNBB_CAT_ATLAS_DIR</code> → wherever <code>prepare_cat_atlases.py --out-dir</code> wrote to
+  in step 2.5.</li>
 </ul>
-<p>Either edit these four lines directly in <code>scripts/snbb_run_cat.sh</code> on the
+<p>Either edit these five lines directly in <code>scripts/snbb_run_cat.sh</code> on the
 production checkout, or set the env vars in whatever wraps the scheduler
 invocation there — check how the <em>other</em> five scripts were overridden on
 that server and do the same thing for consistency.</p>
@@ -2169,24 +2212,24 @@ that list <strong>replaces</strong> <code>DEFAULT_PROCEDURES</code> wholesale ra
 with it. <code>cat</code> will silently never run until you add it there too, even
 though it's in <code>config.py</code>'s built-in defaults.</p>
 <p>Find the production config:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cat<span class="w"> </span>/etc/snbb/config.yaml<span class="w">   </span><span class="c1"># or wherever --config points on that server</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>grep<span class="w"> </span>-n<span class="w"> </span><span class="s2">"^procedures:"</span><span class="w"> </span>-A2<span class="w"> </span>/etc/snbb/config.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>cat<span class="w"> </span>/etc/snbb/config.yaml<span class="w">   </span><span class="c1"># or wherever --config points on that server</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>grep<span class="w"> </span>-n<span class="w"> </span><span class="s2">"^procedures:"</span><span class="w"> </span>-A2<span class="w"> </span>/etc/snbb/config.yaml
 </code></pre></div>
 <p>If it has its own <code>procedures:</code> list, add this block to it (adjust the
 <code>script:</code> path to match where the repo is actually checked out on that
 server — it must be an absolute path, same as the other entries):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cat</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cat12</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/snbb_scheduler/scripts/snbb_run_cat.sh</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">session</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">bids</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="nt">completion_marker</span><span class="p">:</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/report/cat_*.xml"</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/label/catROI_*.xml"</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.gyrification.*"</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.depth.*"</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.fractaldimension.*"</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.area.*"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cat</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cat12</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/snbb_scheduler/scripts/snbb_run_cat.sh</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">session</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">bids</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="nt">completion_marker</span><span class="p">:</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/report/cat_*.xml"</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/label/catROI_*.xml"</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.gyrification.*"</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.depth.*"</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.fractaldimension.*"</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"anat/surf/lh.area.*"</span>
 </code></pre></div>
 <p>Insertion position in the list doesn't affect scheduling (only <code>depends_on</code>
 does), so appending it anywhere is fine.</p>
@@ -2194,28 +2237,31 @@ does), so appending it anywhere is fine.</p>
 using <code>DEFAULT_PROCEDURES</code> from <code>config.py</code> and picks up <code>cat</code> automatically
 once you've pulled the code — nothing to edit here.</p>
 <h2 id="6-verify-before-letting-it-loose-on-the-full-cohort">6. Verify before letting it loose on the full cohort<a class="headerlink" href="#6-verify-before-letting-it-loose-on-the-full-cohort" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># 1. does the manifest pick it up?</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>snbb-scheduler<span class="w"> </span>manifest<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cat
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># 2. what would actually be submitted?</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>snbb-scheduler<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>--dry-run<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cat
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># 3. run ONE session by hand, outside Slurm, and watch it end-to-end (~1h)</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span>...<span class="w"> </span><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="o">=</span>...<span class="w"> </span><span class="nv">SNBB_CAT_SIF</span><span class="o">=</span>...<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">  </span>bash<span class="w"> </span>scripts/snbb_run_cat.sh<span class="w"> </span>sub-XXXX<span class="w"> </span>ses-YY
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">   </span><span class="c1"># must be 0 — the script checks its own output, since the</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">          </span><span class="c1"># container always exits 0 regardless of internal success</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="c1"># 4. once that's clean, submit one real job through the scheduler</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>snbb-scheduler<span class="w"> </span>retry<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>--procedure<span class="w"> </span>cat<span class="w"> </span>--subject<span class="w"> </span>sub-XXXX
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>snbb-scheduler<span class="w"> </span>monitor<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># 1. does the manifest pick it up?</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>snbb-scheduler<span class="w"> </span>manifest<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cat
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># 2. what would actually be submitted?</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>snbb-scheduler<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>--dry-run<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cat
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># 3. run ONE session by hand, outside Slurm, and watch it end-to-end (~1h)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="nv">SNBB_BIDS_ROOT</span><span class="o">=</span>...<span class="w"> </span><span class="nv">SNBB_CAT_DERIVATIVES</span><span class="o">=</span>...<span class="w"> </span><span class="nv">SNBB_CAT_SIF</span><span class="o">=</span>...<span class="w"> </span><span class="nv">SNBB_CAT_ATLAS_DIR</span><span class="o">=</span>...<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">  </span>bash<span class="w"> </span>scripts/snbb_run_cat.sh<span class="w"> </span>sub-XXXX<span class="w"> </span>ses-YY
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span><span class="w">   </span><span class="c1"># must be 0 — the script checks its own output, since the</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">          </span><span class="c1"># container always exits 0 regardless of internal success</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="c1"># 4. once that's clean, submit one real job through the scheduler</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>snbb-scheduler<span class="w"> </span>retry<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml<span class="w"> </span>--procedure<span class="w"> </span>cat<span class="w"> </span>--subject<span class="w"> </span>sub-XXXX
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>snbb-scheduler<span class="w"> </span>monitor<span class="w"> </span>--config<span class="w"> </span>/etc/snbb/config.yaml
 </code></pre></div>
 <p>Only after a real single-session run has produced
 <code>derivatives/cat12/sub-XXXX/ses-YY/anat/{report,label,surf}/...</code> should you
-let the normal scheduled sweep pick up the rest of the cohort.</p>
+let the normal scheduled sweep pick up the rest of the cohort. If
+<code>SNBB_CAT_ATLAS_DIR</code> is set, also check <code>anat/label/</code> for one
+<code>catROI_&lt;AtlasName&gt;_&lt;stem&gt;.xml</code> per atlas in that directory — this is the
+part with no prior real-world test at 45-atlases scale (see step 2.5).</p>
 <h2 id="notes-things-that-are-not-blockers">Notes / things that are <em>not</em> blockers<a class="headerlink" href="#notes-things-that-are-not-blockers" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>scripts/snbb_run_cat.sh</code> has no hardcoded absolute paths outside its four
+<li><code>scripts/snbb_run_cat.sh</code> has no hardcoded absolute paths outside its five
   <code>SNBB_*</code> overrides (unlike <code>snbb_run_freesurfer.sh</code>, which calls
   <code>/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py</code>
   as a literal string with no env-var override at all — a pre-existing,
