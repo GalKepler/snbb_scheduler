@@ -68,6 +68,42 @@ sha256sum /media/storage/bagpipe/outputs/containers/cat12.sif                   
 sha256sum /media/storage/apptainer/images/cat12-26.0.rc3.sif                          # on prod
 ```
 
+## 2.5. Prepare the custom volumetric atlases
+
+CAT12 can compute its ROI stats against the same atlases qsirecon uses
+(`SNBB_ATLASES` in `snbb_run_qsirecon.sh`) via its own `ownatlas` field —
+but it needs an uncompressed `.nii` + a `ROIid;ROIabbr;ROIname` `.csv` per
+atlas, not the `.nii.gz` + BIDS-Atlas `.tsv` qsirecon reads directly. This is
+a one-time conversion, not a per-job step:
+
+```bash
+python3 scripts/prepare_cat_atlases.py
+# or, if the atlas pack lives somewhere else on this server:
+python3 scripts/prepare_cat_atlases.py --atlas-pack-dir /path/to/snbb-atlas-pack/qsirecon_ext \
+                                        --out-dir /path/to/derivatives/cat12_atlases
+```
+
+This is stdlib-only Python (`gzip`/`csv`), no dependencies — run it directly
+wherever the qsirecon atlas pack (`SNBB_ATLASES_DIR`) is reachable on this
+server; it's already working for qsirecon there, so it's already reachable.
+It converts 45 atlases (~tens of MB total, cheap); the other 14 names in
+`SNBB_ATLASES` are QSIRecon's own built-in atlases, not local files, and
+aren't included.
+
+Point `snbb_run_cat.sh`'s `SNBB_CAT_ATLAS_DIR` at wherever `--out-dir`
+landed (matches the script's own default if you used defaults on both ends).
+If you'd rather skip custom atlases for now, just leave `SNBB_CAT_ATLAS_DIR`
+unset/nonexistent — the script silently skips `ownatlas` and only runs
+CAT12's built-in atlases (neuromorphometrics, lpba40, cobra, thalamus,
+thalamic_nuclei, suit).
+
+**This is genuinely untested at this scale** — bagpipe has only ever run
+CAT12's `ownatlas` with a single atlas. Verify a real single-session run
+(step 6 below) produces the expected `label/catROI_<AtlasName>_<stem>.xml`
+per atlas before trusting it for a full cohort — if CAT12 chokes on 45
+atlases at once, the fallback is to trim `ATLASES` in
+`prepare_cat_atlases.py` down to a smaller set.
+
 ## 3. Confirm Apptainer works on the production server
 
 ```bash
@@ -92,6 +128,7 @@ SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
 SNBB_CAT_DERIVATIVES="${SNBB_CAT_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12}"
 SNBB_CAT_SIF="${SNBB_CAT_SIF:-/media/storage/bagpipe/outputs/containers/cat12.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/cat/debug_submit.log}"
+SNBB_CAT_ATLAS_DIR="${SNBB_CAT_ATLAS_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12_atlases}"
 ```
 
 On the production server:
@@ -106,8 +143,10 @@ On the production server:
   (`/media/storage/apptainer/images/cat12-26.0.rc3.sif` in the example above).
 - `SNBB_DEBUG_LOG` → same `logs/<procedure>/debug_submit.log` pattern as the
   others.
+- `SNBB_CAT_ATLAS_DIR` → wherever `prepare_cat_atlases.py --out-dir` wrote to
+  in step 2.5.
 
-Either edit these four lines directly in `scripts/snbb_run_cat.sh` on the
+Either edit these five lines directly in `scripts/snbb_run_cat.sh` on the
 production checkout, or set the env vars in whatever wraps the scheduler
 invocation there — check how the *other* five scripts were overridden on
 that server and do the same thing for consistency.
@@ -164,7 +203,7 @@ snbb-scheduler manifest --config /etc/snbb/config.yaml | grep cat
 snbb-scheduler run --config /etc/snbb/config.yaml --dry-run | grep cat
 
 # 3. run ONE session by hand, outside Slurm, and watch it end-to-end (~1h)
-SNBB_BIDS_ROOT=... SNBB_CAT_DERIVATIVES=... SNBB_CAT_SIF=... \
+SNBB_BIDS_ROOT=... SNBB_CAT_DERIVATIVES=... SNBB_CAT_SIF=... SNBB_CAT_ATLAS_DIR=... \
   bash scripts/snbb_run_cat.sh sub-XXXX ses-YY
 echo $?   # must be 0 — the script checks its own output, since the
           # container always exits 0 regardless of internal success
@@ -176,11 +215,14 @@ snbb-scheduler monitor --config /etc/snbb/config.yaml
 
 Only after a real single-session run has produced
 `derivatives/cat12/sub-XXXX/ses-YY/anat/{report,label,surf}/...` should you
-let the normal scheduled sweep pick up the rest of the cohort.
+let the normal scheduled sweep pick up the rest of the cohort. If
+`SNBB_CAT_ATLAS_DIR` is set, also check `anat/label/` for one
+`catROI_<AtlasName>_<stem>.xml` per atlas in that directory — this is the
+part with no prior real-world test at 45-atlases scale (see step 2.5).
 
 ## Notes / things that are *not* blockers
 
-- `scripts/snbb_run_cat.sh` has no hardcoded absolute paths outside its four
+- `scripts/snbb_run_cat.sh` has no hardcoded absolute paths outside its five
   `SNBB_*` overrides (unlike `snbb_run_freesurfer.sh`, which calls
   `/home/galkepler/Projects/snbb_scheduler/scripts/snbb_recon_all_helper.py`
   as a literal string with no env-var override at all — a pre-existing,

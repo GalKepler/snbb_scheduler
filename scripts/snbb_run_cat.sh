@@ -17,11 +17,22 @@
 # CAT26 build. So the raw T1w is symlinked into the output tree first, and
 # the container is pointed at that symlink; output lands alongside it.
 #
+# Custom volumetric ROI atlases: run scripts/prepare_cat_atlases.py once to
+# convert the qsirecon atlas pack into CAT12's ownatlas format, then this
+# script feeds every atlas found there to CAT12 alongside its built-in ones.
+#
 # ── Site configuration ────────────────────────────────────────────────────────
 SNBB_BIDS_ROOT="${SNBB_BIDS_ROOT:-/media/storage/yalab-dev/snbb_scheduler/bids}"
 SNBB_CAT_DERIVATIVES="${SNBB_CAT_DERIVATIVES:-/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12}"
 SNBB_CAT_SIF="${SNBB_CAT_SIF:-/media/storage/bagpipe/outputs/containers/cat12.sif}"
 SNBB_DEBUG_LOG="${SNBB_DEBUG_LOG:-/media/storage/yalab-dev/snbb_scheduler/logs/cat/debug_submit.log}"
+# Directory of CAT12-ready custom volumetric atlases (uncompressed .nii +
+# matching ROIid;ROIabbr;ROIname .csv, same basename) — every *.nii found
+# here is fed to CAT12's own ROImenu.atlases.ownatlas field, same mechanism
+# as bagpipe's single production atlas. Prepared once via
+# scripts/prepare_cat_atlases.py (the qsirecon atlas pack -> this format);
+# leave unset / empty to skip custom atlases entirely.
+SNBB_CAT_ATLAS_DIR="${SNBB_CAT_ATLAS_DIR:-/media/storage/yalab-dev/snbb_scheduler/derivatives/cat12_atlases}"
 # ─────────────────────────────────────────────────────────────────────────────
 
 #SBATCH --time=4:00:00
@@ -43,6 +54,7 @@ mkdir -p "$(dirname "${SNBB_DEBUG_LOG}")"
     echo "SNBB_BIDS_ROOT:        ${SNBB_BIDS_ROOT}"
     echo "SNBB_CAT_DERIVATIVES:  ${SNBB_CAT_DERIVATIVES}"
     echo "SNBB_CAT_SIF:          ${SNBB_CAT_SIF}"
+    echo "SNBB_CAT_ATLAS_DIR:    ${SNBB_CAT_ATLAS_DIR}"
 } >> "${SNBB_DEBUG_LOG}" 2>&1
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -104,6 +116,27 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.thalamus = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.thalamic_nuclei = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.suit = 1;"
 
+# Custom volumetric atlases (ownatlas) — every *.nii under SNBB_CAT_ATLAS_DIR,
+# same mechanism bagpipe uses for its one production atlas (CAT12 resamples
+# each onto its own internal grid at extraction time, so their MNI152NLin2009cAsym
+# source space is fine). Untested at this scale (bagpipe has only ever run
+# this with one atlas) — verify per-atlas label/catROI_<name>_<stem>.xml
+# output on a real single-session run before trusting it for a full cohort.
+EXTRA_BINDS=()
+if [[ -d "${SNBB_CAT_ATLAS_DIR}" ]]; then
+    mapfile -t ATLAS_NII < <(find "${SNBB_CAT_ATLAS_DIR}" -maxdepth 1 -name '*.nii' | sort)
+    if [[ ${#ATLAS_NII[@]} -gt 0 ]]; then
+        EXTRA_BINDS+=(--bind "${SNBB_CAT_ATLAS_DIR}":"${SNBB_CAT_ATLAS_DIR}":ro)
+        ATLAS_CELL=""
+        for a in "${ATLAS_NII[@]}"; do
+            ATLAS_CELL+="'${a}',"
+        done
+        ATLAS_CELL="${ATLAS_CELL%,}"
+        BATCH_LINES="${BATCH_LINES}
+matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ownatlas = {${ATLAS_CELL}};"
+    fi
+fi
+
 # --writable-tmpfs: CAT12 needs a writable overlay for its own scratch/report
 #   files.
 # --cleanenv + --env SHELL=/bin/bash: apptainer otherwise leaks the host's
@@ -117,6 +150,7 @@ apptainer run --writable-tmpfs --cleanenv \
     --env SHELL=/bin/bash \
     --bind "${SNBB_BIDS_ROOT}":"${SNBB_BIDS_ROOT}":ro \
     --bind "${SNBB_CAT_DERIVATIVES}":"${SNBB_CAT_DERIVATIVES}" \
+    "${EXTRA_BINDS[@]}" \
     "${SNBB_CAT_SIF}" \
     -a "${BATCH_LINES}" \
     "${STAGED}"
