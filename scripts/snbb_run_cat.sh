@@ -119,19 +119,23 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.suit = 1;"
 # Custom volumetric atlases (ownatlas) — every *.nii under SNBB_CAT_ATLAS_DIR,
 # same mechanism bagpipe uses for its one production atlas (CAT12 resamples
 # each onto its own internal grid at extraction time, so their MNI152NLin2009cAsym
-# source space is fine). Untested at this scale (bagpipe has only ever run
-# this with one atlas) — verify per-atlas label/catROI_<name>_<stem>.xml
-# output on a real single-session run before trusting it for a full cohort.
+# source space is fine).
 EXTRA_BINDS=()
 if [[ -d "${SNBB_CAT_ATLAS_DIR}" ]]; then
     mapfile -t ATLAS_NII < <(find "${SNBB_CAT_ATLAS_DIR}" -maxdepth 1 -name '*.nii' | sort)
     if [[ ${#ATLAS_NII[@]} -gt 0 ]]; then
         EXTRA_BINDS+=(--bind "${SNBB_CAT_ATLAS_DIR}":"${SNBB_CAT_ATLAS_DIR}":ro)
+        # `;`, not `,` — cfg_getfile requires a COLUMN cellstr for this field
+        # ({'a','b'} is a MATLAB row cell array, {'a';'b'} a column one). A
+        # single atlas is 1x1 (trivially both), which is why bagpipe's
+        # one-atlas use never hit this; real error with >1:
+        #   "Input file lists to cfg_getfile('filter',...) must be a column
+        #   cellstr." — confirmed 2026-09-10.
         ATLAS_CELL=""
         for a in "${ATLAS_NII[@]}"; do
-            ATLAS_CELL+="'${a}',"
+            ATLAS_CELL+="'${a}';"
         done
-        ATLAS_CELL="${ATLAS_CELL%,}"
+        ATLAS_CELL="${ATLAS_CELL%;}"
         BATCH_LINES="${BATCH_LINES}
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ownatlas = {${ATLAS_CELL}};"
     fi
