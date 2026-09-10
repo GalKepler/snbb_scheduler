@@ -41,10 +41,10 @@ from __future__ import annotations
 
 import argparse
 import csv
-import gzip
-import shutil
 import sys
 from pathlib import Path
+
+import nibabel as nib
 
 ATLASES = [
     "Schaefer2018N100n7Tian2020S1", "Schaefer2018N100n7Tian2020S2",
@@ -91,8 +91,17 @@ def convert_one(name: str, pack_dir: Path, out_dir: Path, force: bool = False) -
     out_csv = out_dir / f"{name}.csv"
 
     if force or not out_nii.exists():
-        with gzip.open(src_nii, "rb") as f_in, open(out_nii, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
+        # ponytail: the pack ships RAS (x affine +1); CAT12's ownatlas needs
+        # LAS (x affine -1, as in bagpipe's validated copy) or it silently
+        # emits an all-empty remapped atlas (cat_main_roi:emptyMappedAtlas).
+        img = nib.load(src_nii)
+        las_img = img.as_reoriented(
+            nib.orientations.ornt_transform(
+                nib.orientations.io_orientation(img.affine),
+                nib.orientations.axcodes2ornt("LAS"),
+            )
+        )
+        nib.save(las_img, out_nii)
 
     if force or not out_csv.exists():
         with open(src_tsv, newline="") as f_in, open(out_csv, "w", newline="") as f_out:
@@ -145,10 +154,14 @@ def _self_test() -> None:
         src_dir = pack_dir / f"atlas-{name}"
         src_dir.mkdir(parents=True)
 
-        with gzip.open(
-            src_dir / f"atlas-{name}_space-MNI152NLin2009cAsym_res-01_dseg.nii.gz", "wb"
-        ) as f:
-            f.write(b"fake-nifti-bytes")
+        import numpy as np
+
+        # RAS affine (x +1), matching the real qsirecon pack's orientation.
+        ras_affine = np.array(
+            [[1, 0, 0, -96], [0, 1, 0, -132], [0, 0, 1, -78], [0, 0, 0, 1]], dtype=float
+        )
+        src_img = nib.Nifti1Image(np.zeros((4, 4, 4), dtype="int16"), ras_affine)
+        nib.save(src_img, src_dir / f"atlas-{name}_space-MNI152NLin2009cAsym_res-01_dseg.nii.gz")
 
         with open(src_dir / f"atlas-{name}_dseg.tsv", "w", newline="") as f:
             f.write("index\tlabel\tname\themisphere\n")
@@ -159,7 +172,9 @@ def _self_test() -> None:
 
         out_nii = out_dir / f"{name}.nii"
         out_csv = out_dir / f"{name}.csv"
-        assert out_nii.read_bytes() == b"fake-nifti-bytes", "nii not decompressed correctly"
+        assert nib.aff2axcodes(nib.load(out_nii).affine) == ("L", "A", "S"), (
+            "output atlas must be reoriented to LAS for CAT12's ownatlas"
+        )
         rows = out_csv.read_text().splitlines()
         assert rows[0] == "ROIid;ROIabbr;ROIname", f"unexpected csv header: {rows[0]}"
         assert rows[1] == "1;LH_Vis_1;7Networks_LH_Vis_1", f"unexpected row: {rows[1]}"
