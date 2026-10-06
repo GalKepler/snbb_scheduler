@@ -70,10 +70,52 @@ if [[ ${#T1W_CANDIDATES[@]} -eq 0 ]]; then
     exit 1
 fi
 
-T1W=""
+# Prefer the highest rec-norm run with a readable header whose matrix size
+# matches the most common one among those runs (ties → the lowest run's): a
+# repeated MPRAGE is re-acquired because the earlier one was unusable
+# (motion), while an aborted repeat has a different matrix size. If no such
+# header is readable, fall back to rec-norm/run-01, then to the only file.
+t1w_dims() {  # "XxYxZ" from a NIfTI-1 header (.nii or .nii.gz); empty if unreadable
+    local h=()
+    read -r -a h < <( (gzip -cdf -- "$1" 2>/dev/null || true) | od -An -v -t d2 -N 48 | tr -s ' \n' ' ') || true
+    if [[ ${#h[@]} -eq 24 && ${h[0]} -eq 348 && ${h[1]} -eq 0 ]]; then
+        echo "${h[21]}x${h[22]}x${h[23]}"
+    fi
+}
+
+RUN_FILES=() RUN_NUMS=() RUN_DIMS=()
 for cand in "${T1W_CANDIDATES[@]}"; do
     base="$(basename "${cand}")"
-    if [[ "${base}" == *rec-norm* && "${base}" != *acq-defaced* && "${base}" == *run-01* ]]; then
+    if [[ "${base}" == *rec-norm* && "${base}" != *acq-defaced* && "${base}" =~ _run-([0-9]+) ]]; then
+        run=$((10#${BASH_REMATCH[1]}))
+        dims="$(t1w_dims "${cand}")"
+        if [[ -n "${dims}" ]]; then
+            RUN_FILES+=("${cand}") RUN_NUMS+=("${run}") RUN_DIMS+=("${dims}")
+        fi
+    fi
+done
+
+REF_DIMS="" ref_count=0 ref_run=0
+for i in "${!RUN_FILES[@]}"; do
+    count=0
+    for d in "${RUN_DIMS[@]}"; do
+        if [[ "${d}" == "${RUN_DIMS[i]}" ]]; then count=$((count + 1)); fi
+    done
+    if (( count > ref_count || (count == ref_count && RUN_NUMS[i] < ref_run) )); then
+        REF_DIMS="${RUN_DIMS[i]}" ref_count=${count} ref_run=${RUN_NUMS[i]}
+    fi
+done
+
+T1W="" best_run=-1
+for i in "${!RUN_FILES[@]}"; do
+    if [[ "${RUN_DIMS[i]}" == "${REF_DIMS}" ]] && (( RUN_NUMS[i] > best_run )); then
+        T1W="${RUN_FILES[i]}" best_run=${RUN_NUMS[i]}
+    fi
+done
+
+for cand in "${T1W_CANDIDATES[@]}"; do
+    base="$(basename "${cand}")"
+    if [[ -z "${T1W}" && "${base}" == *rec-norm* && "${base}" != *acq-defaced* && "${base}" == *run-01* ]]; then
         T1W="${cand}"
         break
     fi
